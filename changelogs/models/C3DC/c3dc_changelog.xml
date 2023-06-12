@@ -1,0 +1,717 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <changeSet id="8935" author="NWM">
+    <neo4j:cypher>CREATE (n0:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8936" author="NWM">
+    <neo4j:cypher>CREATE (n1:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8937" author="NWM">
+    <neo4j:cypher>CREATE (n4:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8938" author="NWM">
+    <neo4j:cypher>MERGE (n7:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8939" author="NWM">
+    <neo4j:cypher>CREATE (n10:property {handle:'diagnosis_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant diagnosis in the investigation or study, which is used for linking metadata.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8940" author="NWM">
+    <neo4j:cypher>CREATE (n13:concept {nanoid:'fBUUa2',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8941" author="NWM">
+    <neo4j:cypher>MERGE (n16:term {value:'Additional Finding Identifier',origin_id:'2534569',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8942" author="NWM">
+    <neo4j:cypher>CREATE (n19:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8943" author="NWM">
+    <neo4j:cypher>CREATE (n22:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8944" author="NWM">
+    <neo4j:cypher>MERGE (n25:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8945" author="NWM">
+    <neo4j:cypher>CREATE (n28:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8946" author="NWM">
+    <neo4j:cypher>CREATE (n31:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8947" author="NWM">
+    <neo4j:cypher>MERGE (n34:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8948" author="NWM">
+    <neo4j:cypher>CREATE (n37:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8949" author="NWM">
+    <neo4j:cypher>CREATE (n40:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8950" author="NWM">
+    <neo4j:cypher>MERGE (n43:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8951" author="NWM">
+    <neo4j:cypher>CREATE (n46:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8952" author="NWM">
+    <neo4j:cypher>CREATE (n49:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8953" author="NWM">
+    <neo4j:cypher>MERGE (n52:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8954" author="NWM">
+    <neo4j:cypher>CREATE (n55:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8955" author="NWM">
+    <neo4j:cypher>CREATE (n58:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8956" author="NWM">
+    <neo4j:cypher>MERGE (n61:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8957" author="NWM">
+    <neo4j:cypher>CREATE (n64:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8958" author="NWM">
+    <neo4j:cypher>CREATE (n67:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8959" author="NWM">
+    <neo4j:cypher>MERGE (n70:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8960" author="NWM">
+    <neo4j:cypher>CREATE (n73:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8961" author="NWM">
+    <neo4j:cypher>CREATE (n76:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8962" author="NWM">
+    <neo4j:cypher>MERGE (n79:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8963" author="NWM">
+    <neo4j:cypher>CREATE (n82:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8964" author="NWM">
+    <neo4j:cypher>CREATE (n85:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8965" author="NWM">
+    <neo4j:cypher>MERGE (n88:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8966" author="NWM">
+    <neo4j:cypher>CREATE (n91:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8967" author="NWM">
+    <neo4j:cypher>CREATE (n94:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8968" author="NWM">
+    <neo4j:cypher>MERGE (n97:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8969" author="NWM">
+    <neo4j:cypher>CREATE (n100:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8970" author="NWM">
+    <neo4j:cypher>CREATE (n103:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8971" author="NWM">
+    <neo4j:cypher>MERGE (n106:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8972" author="NWM">
+    <neo4j:cypher>CREATE (n109:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8973" author="NWM">
+    <neo4j:cypher>CREATE (n110:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8974" author="NWM">
+    <neo4j:cypher>CREATE (n113:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8975" author="NWM">
+    <neo4j:cypher>MERGE (n116:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8976" author="NWM">
+    <neo4j:cypher>CREATE (n119:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8977" author="NWM">
+    <neo4j:cypher>CREATE (n122:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8978" author="NWM">
+    <neo4j:cypher>MERGE (n125:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8979" author="NWM">
+    <neo4j:cypher>CREATE (n128:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8980" author="NWM">
+    <neo4j:cypher>CREATE (n131:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8981" author="NWM">
+    <neo4j:cypher>MERGE (n134:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8982" author="NWM">
+    <neo4j:cypher>CREATE (n137:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8983" author="NWM">
+    <neo4j:cypher>CREATE (n140:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8984" author="NWM">
+    <neo4j:cypher>MERGE (n143:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8985" author="NWM">
+    <neo4j:cypher>CREATE (n146:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8986" author="NWM">
+    <neo4j:cypher>CREATE (n149:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8987" author="NWM">
+    <neo4j:cypher>MERGE (n152:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8988" author="NWM">
+    <neo4j:cypher>CREATE (n155:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8989" author="NWM">
+    <neo4j:cypher>CREATE (n158:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8990" author="NWM">
+    <neo4j:cypher>MERGE (n161:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8991" author="NWM">
+    <neo4j:cypher>CREATE (n164:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8992" author="NWM">
+    <neo4j:cypher>CREATE (n167:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8993" author="NWM">
+    <neo4j:cypher>MERGE (n170:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8994" author="NWM">
+    <neo4j:cypher>CREATE (n173:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8995" author="NWM">
+    <neo4j:cypher>CREATE (n176:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8996" author="NWM">
+    <neo4j:cypher>MERGE (n179:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8997" author="NWM">
+    <neo4j:cypher>CREATE (n182:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8998" author="NWM">
+    <neo4j:cypher>CREATE (n185:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8999" author="NWM">
+    <neo4j:cypher>MERGE (n188:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9000" author="NWM">
+    <neo4j:cypher>CREATE (n191:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9001" author="NWM">
+    <neo4j:cypher>CREATE (n194:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9002" author="NWM">
+    <neo4j:cypher>MERGE (n197:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9003" author="NWM">
+    <neo4j:cypher>CREATE (n200:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9004" author="NWM">
+    <neo4j:cypher>CREATE (n203:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9005" author="NWM">
+    <neo4j:cypher>MERGE (n206:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9006" author="NWM">
+    <neo4j:cypher>CREATE (n209:property {handle:'participant_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant, in the investigation or study, of the specimen at its point of origin.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9007" author="NWM">
+    <neo4j:cypher>CREATE (n212:concept {nanoid:'zE4jeh',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9008" author="NWM">
+    <neo4j:cypher>MERGE (n215:term {value:'Biospecimen Source Subject Identifier',origin_id:'6867052',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9009" author="NWM">
+    <neo4j:cypher>CREATE (n218:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9010" author="NWM">
+    <neo4j:cypher>CREATE (n219:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9011" author="NWM">
+    <neo4j:cypher>CREATE (n222:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9012" author="NWM">
+    <neo4j:cypher>MERGE (n225:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9013" author="NWM">
+    <neo4j:cypher>CREATE (n228:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9014" author="NWM">
+    <neo4j:cypher>CREATE (n231:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9015" author="NWM">
+    <neo4j:cypher>MERGE (n234:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9016" author="NWM">
+    <neo4j:cypher>CREATE (n237:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9017" author="NWM">
+    <neo4j:cypher>CREATE (n240:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9018" author="NWM">
+    <neo4j:cypher>MERGE (n243:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9019" author="NWM">
+    <neo4j:cypher>CREATE (n246:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9020" author="NWM">
+    <neo4j:cypher>CREATE (n249:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9021" author="NWM">
+    <neo4j:cypher>MERGE (n252:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9022" author="NWM">
+    <neo4j:cypher>CREATE (n255:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9023" author="NWM">
+    <neo4j:cypher>CREATE (n258:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9024" author="NWM">
+    <neo4j:cypher>MERGE (n261:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9025" author="NWM">
+    <neo4j:cypher>CREATE (n264:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9026" author="NWM">
+    <neo4j:cypher>CREATE (n267:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9027" author="NWM">
+    <neo4j:cypher>MERGE (n270:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9028" author="NWM">
+    <neo4j:cypher>CREATE (n273:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9029" author="NWM">
+    <neo4j:cypher>CREATE (n276:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9030" author="NWM">
+    <neo4j:cypher>MERGE (n279:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9031" author="NWM">
+    <neo4j:cypher>CREATE (n282:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9032" author="NWM">
+    <neo4j:cypher>CREATE (n285:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9033" author="NWM">
+    <neo4j:cypher>MERGE (n288:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9034" author="NWM">
+    <neo4j:cypher>CREATE (n291:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9035" author="NWM">
+    <neo4j:cypher>CREATE (n294:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9036" author="NWM">
+    <neo4j:cypher>MERGE (n297:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9037" author="NWM">
+    <neo4j:cypher>CREATE (n300:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9038" author="NWM">
+    <neo4j:cypher>CREATE (n303:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9039" author="NWM">
+    <neo4j:cypher>MERGE (n306:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9040" author="NWM">
+    <neo4j:cypher>CREATE (n309:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9041" author="NWM">
+    <neo4j:cypher>CREATE (n312:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9042" author="NWM">
+    <neo4j:cypher>MERGE (n315:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9043" author="NWM">
+    <neo4j:cypher>CREATE (n318:property {handle:'sample_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the sample in the investigation or study.'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9044" author="NWM">
+    <neo4j:cypher>CREATE (n321:concept {nanoid:'MNtJJq',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9045" author="NWM">
+    <neo4j:cypher>MERGE (n324:term {value:'Sample ID',origin_id:'2003904',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9046" author="NWM">
+    <neo4j:cypher>CREATE (n327:node {handle:'study',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9047" author="NWM">
+    <neo4j:cypher>CREATE (n328:property {handle:'study_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A stable unique alphanumeric identifier assigned to a study and any objects by the database of Genotypes and Phenotypes (dbGaP).'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9048" author="NWM">
+    <neo4j:cypher>CREATE (n331:concept {nanoid:'jtk6R5',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9049" author="NWM">
+    <neo4j:cypher>MERGE (n334:term {value:'dbGaP Accession Number',origin_id:'11524544',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9050" author="NWM">
+    <neo4j:cypher>CREATE (n337:relationship {handle:'of_diagnosis',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9051" author="NWM">
+    <neo4j:cypher>CREATE (n342:relationship {handle:'of_participant',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9052" author="NWM">
+    <neo4j:cypher>CREATE (n347:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9053" author="NWM">
+    <neo4j:cypher>CREATE (n352:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9054" author="NWM">
+    <neo4j:cypher>MATCH (n2:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n3:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}) CREATE (n2)-[r0:has_property]-&gt;(n3)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9055" author="NWM">
+    <neo4j:cypher>MATCH (n5:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}), (n6:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n5)-[r1:has_concept]-&gt;(n6)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9056" author="NWM">
+    <neo4j:cypher>MATCH (n8:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n9:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n8)-[r2:represents]-&gt;(n9)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9057" author="NWM">
+    <neo4j:cypher>MATCH (n11:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n12:property {handle:'diagnosis_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant diagnosis in the investigation or study, which is used for linking metadata.'}) CREATE (n11)-[r3:has_property]-&gt;(n12)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9058" author="NWM">
+    <neo4j:cypher>MATCH (n14:property {handle:'diagnosis_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant diagnosis in the investigation or study, which is used for linking metadata.'}), (n15:concept {nanoid:'fBUUa2',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n14)-[r4:has_concept]-&gt;(n15)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9059" author="NWM">
+    <neo4j:cypher>MATCH (n17:term {value:'Additional Finding Identifier',origin_id:'2534569',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n18:concept {nanoid:'fBUUa2',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n17)-[r5:represents]-&gt;(n18)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9060" author="NWM">
+    <neo4j:cypher>MATCH (n20:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n21:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n20)-[r6:has_property]-&gt;(n21)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9061" author="NWM">
+    <neo4j:cypher>MATCH (n23:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n24:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n23)-[r7:has_concept]-&gt;(n24)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9062" author="NWM">
+    <neo4j:cypher>MATCH (n26:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n27:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n26)-[r8:represents]-&gt;(n27)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9063" author="NWM">
+    <neo4j:cypher>MATCH (n29:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n30:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n29)-[r9:has_property]-&gt;(n30)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9064" author="NWM">
+    <neo4j:cypher>MATCH (n32:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n33:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n32)-[r10:has_concept]-&gt;(n33)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9065" author="NWM">
+    <neo4j:cypher>MATCH (n35:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n36:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n35)-[r11:represents]-&gt;(n36)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9066" author="NWM">
+    <neo4j:cypher>MATCH (n38:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n39:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n38)-[r12:has_property]-&gt;(n39)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9067" author="NWM">
+    <neo4j:cypher>MATCH (n41:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n42:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n41)-[r13:has_concept]-&gt;(n42)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9068" author="NWM">
+    <neo4j:cypher>MATCH (n44:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n45:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n44)-[r14:represents]-&gt;(n45)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9069" author="NWM">
+    <neo4j:cypher>MATCH (n47:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n48:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n47)-[r15:has_property]-&gt;(n48)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9070" author="NWM">
+    <neo4j:cypher>MATCH (n50:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n51:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n50)-[r16:has_concept]-&gt;(n51)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9071" author="NWM">
+    <neo4j:cypher>MATCH (n53:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n54:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n53)-[r17:represents]-&gt;(n54)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9072" author="NWM">
+    <neo4j:cypher>MATCH (n56:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n57:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n56)-[r18:has_property]-&gt;(n57)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9073" author="NWM">
+    <neo4j:cypher>MATCH (n59:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n60:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n59)-[r19:has_concept]-&gt;(n60)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9074" author="NWM">
+    <neo4j:cypher>MATCH (n62:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n63:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n62)-[r20:represents]-&gt;(n63)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9075" author="NWM">
+    <neo4j:cypher>MATCH (n65:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n66:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n65)-[r21:has_property]-&gt;(n66)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9076" author="NWM">
+    <neo4j:cypher>MATCH (n68:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n69:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n68)-[r22:has_concept]-&gt;(n69)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9077" author="NWM">
+    <neo4j:cypher>MATCH (n71:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n72:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n71)-[r23:represents]-&gt;(n72)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9078" author="NWM">
+    <neo4j:cypher>MATCH (n74:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n75:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n74)-[r24:has_property]-&gt;(n75)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9079" author="NWM">
+    <neo4j:cypher>MATCH (n77:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n78:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n77)-[r25:has_concept]-&gt;(n78)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9080" author="NWM">
+    <neo4j:cypher>MATCH (n80:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n81:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n80)-[r26:represents]-&gt;(n81)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9081" author="NWM">
+    <neo4j:cypher>MATCH (n83:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n84:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n83)-[r27:has_property]-&gt;(n84)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9082" author="NWM">
+    <neo4j:cypher>MATCH (n86:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n87:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n86)-[r28:has_concept]-&gt;(n87)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9083" author="NWM">
+    <neo4j:cypher>MATCH (n89:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n90:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n89)-[r29:represents]-&gt;(n90)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9084" author="NWM">
+    <neo4j:cypher>MATCH (n92:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n93:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n92)-[r30:has_property]-&gt;(n93)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9085" author="NWM">
+    <neo4j:cypher>MATCH (n95:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n96:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n95)-[r31:has_concept]-&gt;(n96)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9086" author="NWM">
+    <neo4j:cypher>MATCH (n98:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n99:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n98)-[r32:represents]-&gt;(n99)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9087" author="NWM">
+    <neo4j:cypher>MATCH (n101:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n102:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n101)-[r33:has_property]-&gt;(n102)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9088" author="NWM">
+    <neo4j:cypher>MATCH (n104:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n105:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n104)-[r34:has_concept]-&gt;(n105)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9089" author="NWM">
+    <neo4j:cypher>MATCH (n107:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n108:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n107)-[r35:represents]-&gt;(n108)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9090" author="NWM">
+    <neo4j:cypher>MATCH (n111:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n112:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}) CREATE (n111)-[r36:has_property]-&gt;(n112)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9091" author="NWM">
+    <neo4j:cypher>MATCH (n114:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}), (n115:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n114)-[r37:has_concept]-&gt;(n115)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9092" author="NWM">
+    <neo4j:cypher>MATCH (n117:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n118:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n117)-[r38:represents]-&gt;(n118)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9093" author="NWM">
+    <neo4j:cypher>MATCH (n120:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n121:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n120)-[r39:has_property]-&gt;(n121)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9094" author="NWM">
+    <neo4j:cypher>MATCH (n123:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n124:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n123)-[r40:has_concept]-&gt;(n124)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9095" author="NWM">
+    <neo4j:cypher>MATCH (n126:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n127:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n126)-[r41:represents]-&gt;(n127)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9096" author="NWM">
+    <neo4j:cypher>MATCH (n129:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n130:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n129)-[r42:has_property]-&gt;(n130)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9097" author="NWM">
+    <neo4j:cypher>MATCH (n132:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n133:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n132)-[r43:has_concept]-&gt;(n133)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9098" author="NWM">
+    <neo4j:cypher>MATCH (n135:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n136:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n135)-[r44:represents]-&gt;(n136)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9099" author="NWM">
+    <neo4j:cypher>MATCH (n138:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n139:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n138)-[r45:has_property]-&gt;(n139)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9100" author="NWM">
+    <neo4j:cypher>MATCH (n141:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n142:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n141)-[r46:has_concept]-&gt;(n142)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9101" author="NWM">
+    <neo4j:cypher>MATCH (n144:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n145:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n144)-[r47:represents]-&gt;(n145)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9102" author="NWM">
+    <neo4j:cypher>MATCH (n147:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n148:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n147)-[r48:has_property]-&gt;(n148)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9103" author="NWM">
+    <neo4j:cypher>MATCH (n150:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n151:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n150)-[r49:has_concept]-&gt;(n151)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9104" author="NWM">
+    <neo4j:cypher>MATCH (n153:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n154:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n153)-[r50:represents]-&gt;(n154)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9105" author="NWM">
+    <neo4j:cypher>MATCH (n156:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n157:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n156)-[r51:has_property]-&gt;(n157)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9106" author="NWM">
+    <neo4j:cypher>MATCH (n159:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n160:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n159)-[r52:has_concept]-&gt;(n160)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9107" author="NWM">
+    <neo4j:cypher>MATCH (n162:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n163:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n162)-[r53:represents]-&gt;(n163)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9108" author="NWM">
+    <neo4j:cypher>MATCH (n165:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n166:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n165)-[r54:has_property]-&gt;(n166)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9109" author="NWM">
+    <neo4j:cypher>MATCH (n168:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n169:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n168)-[r55:has_concept]-&gt;(n169)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9110" author="NWM">
+    <neo4j:cypher>MATCH (n171:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n172:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n171)-[r56:represents]-&gt;(n172)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9111" author="NWM">
+    <neo4j:cypher>MATCH (n174:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n175:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n174)-[r57:has_property]-&gt;(n175)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9112" author="NWM">
+    <neo4j:cypher>MATCH (n177:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n178:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n177)-[r58:has_concept]-&gt;(n178)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9113" author="NWM">
+    <neo4j:cypher>MATCH (n180:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n181:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n180)-[r59:represents]-&gt;(n181)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9114" author="NWM">
+    <neo4j:cypher>MATCH (n183:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n184:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n183)-[r60:has_property]-&gt;(n184)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9115" author="NWM">
+    <neo4j:cypher>MATCH (n186:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n187:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n186)-[r61:has_concept]-&gt;(n187)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9116" author="NWM">
+    <neo4j:cypher>MATCH (n189:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n190:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n189)-[r62:represents]-&gt;(n190)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9117" author="NWM">
+    <neo4j:cypher>MATCH (n192:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n193:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n192)-[r63:has_property]-&gt;(n193)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9118" author="NWM">
+    <neo4j:cypher>MATCH (n195:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n196:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n195)-[r64:has_concept]-&gt;(n196)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9119" author="NWM">
+    <neo4j:cypher>MATCH (n198:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n199:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n198)-[r65:represents]-&gt;(n199)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9120" author="NWM">
+    <neo4j:cypher>MATCH (n201:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n202:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n201)-[r66:has_property]-&gt;(n202)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9121" author="NWM">
+    <neo4j:cypher>MATCH (n204:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n205:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n204)-[r67:has_concept]-&gt;(n205)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9122" author="NWM">
+    <neo4j:cypher>MATCH (n207:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n208:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n207)-[r68:represents]-&gt;(n208)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9123" author="NWM">
+    <neo4j:cypher>MATCH (n210:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n211:property {handle:'participant_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant, in the investigation or study, of the specimen at its point of origin.'}) CREATE (n210)-[r69:has_property]-&gt;(n211)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9124" author="NWM">
+    <neo4j:cypher>MATCH (n213:property {handle:'participant_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the participant, in the investigation or study, of the specimen at its point of origin.'}), (n214:concept {nanoid:'zE4jeh',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n213)-[r70:has_concept]-&gt;(n214)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9125" author="NWM">
+    <neo4j:cypher>MATCH (n216:term {value:'Biospecimen Source Subject Identifier',origin_id:'6867052',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n217:concept {nanoid:'zE4jeh',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n216)-[r71:represents]-&gt;(n217)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9126" author="NWM">
+    <neo4j:cypher>MATCH (n220:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n221:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}) CREATE (n220)-[r72:has_property]-&gt;(n221)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9127" author="NWM">
+    <neo4j:cypher>MATCH (n223:property {handle:'harmonized_value_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'The unqiue identifier for the harmonized value entry.'}), (n224:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n223)-[r73:has_concept]-&gt;(n224)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9128" author="NWM">
+    <neo4j:cypher>MATCH (n226:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n227:concept {nanoid:'hV2eHo',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n226)-[r74:represents]-&gt;(n227)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9129" author="NWM">
+    <neo4j:cypher>MATCH (n229:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n230:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n229)-[r75:has_property]-&gt;(n230)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9130" author="NWM">
+    <neo4j:cypher>MATCH (n232:property {handle:'source_dataset',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n233:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n232)-[r76:has_concept]-&gt;(n233)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9131" author="NWM">
+    <neo4j:cypher>MATCH (n235:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n236:concept {nanoid:'QqCatB',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n235)-[r77:represents]-&gt;(n236)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9132" author="NWM">
+    <neo4j:cypher>MATCH (n238:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n239:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n238)-[r78:has_property]-&gt;(n239)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9133" author="NWM">
+    <neo4j:cypher>MATCH (n241:property {handle:'source_field_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n242:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n241)-[r79:has_concept]-&gt;(n242)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9134" author="NWM">
+    <neo4j:cypher>MATCH (n244:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n245:concept {nanoid:'KTcwST',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n244)-[r80:represents]-&gt;(n245)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9135" author="NWM">
+    <neo4j:cypher>MATCH (n247:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n248:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n247)-[r81:has_property]-&gt;(n248)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9136" author="NWM">
+    <neo4j:cypher>MATCH (n250:property {handle:'source_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n251:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n250)-[r82:has_concept]-&gt;(n251)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9137" author="NWM">
+    <neo4j:cypher>MATCH (n253:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n254:concept {nanoid:'3qsK2p',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n253)-[r83:represents]-&gt;(n254)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9138" author="NWM">
+    <neo4j:cypher>MATCH (n256:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n257:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n256)-[r84:has_property]-&gt;(n257)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9139" author="NWM">
+    <neo4j:cypher>MATCH (n259:property {handle:'source_data_file_guid',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n260:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n259)-[r85:has_concept]-&gt;(n260)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9140" author="NWM">
+    <neo4j:cypher>MATCH (n262:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n263:concept {nanoid:'baiANw',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n262)-[r86:represents]-&gt;(n263)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9141" author="NWM">
+    <neo4j:cypher>MATCH (n265:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n266:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n265)-[r87:has_property]-&gt;(n266)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9142" author="NWM">
+    <neo4j:cypher>MATCH (n268:property {handle:'source_data_file_name',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n269:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n268)-[r88:has_concept]-&gt;(n269)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9143" author="NWM">
+    <neo4j:cypher>MATCH (n271:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n272:concept {nanoid:'PQWMVJ',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n271)-[r89:represents]-&gt;(n272)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9144" author="NWM">
+    <neo4j:cypher>MATCH (n274:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n275:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n274)-[r90:has_property]-&gt;(n275)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9145" author="NWM">
+    <neo4j:cypher>MATCH (n277:property {handle:'transformation_logic',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n278:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n277)-[r91:has_concept]-&gt;(n278)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9146" author="NWM">
+    <neo4j:cypher>MATCH (n280:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n281:concept {nanoid:'U7SxvX',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n280)-[r92:represents]-&gt;(n281)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9147" author="NWM">
+    <neo4j:cypher>MATCH (n283:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n284:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n283)-[r93:has_property]-&gt;(n284)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9148" author="NWM">
+    <neo4j:cypher>MATCH (n286:property {handle:'version',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n287:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n286)-[r94:has_concept]-&gt;(n287)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9149" author="NWM">
+    <neo4j:cypher>MATCH (n289:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n290:concept {nanoid:'en8zZ3',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n289)-[r95:represents]-&gt;(n290)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9150" author="NWM">
+    <neo4j:cypher>MATCH (n292:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n293:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n292)-[r96:has_property]-&gt;(n293)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9151" author="NWM">
+    <neo4j:cypher>MATCH (n295:property {handle:'harmonized_term',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n296:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n295)-[r97:has_concept]-&gt;(n296)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9152" author="NWM">
+    <neo4j:cypher>MATCH (n298:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n299:concept {nanoid:'jHebb7',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n298)-[r98:represents]-&gt;(n299)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9153" author="NWM">
+    <neo4j:cypher>MATCH (n301:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n302:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n301)-[r99:has_property]-&gt;(n302)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9154" author="NWM">
+    <neo4j:cypher>MATCH (n304:property {handle:'harmonized_cde',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n305:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n304)-[r100:has_concept]-&gt;(n305)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9155" author="NWM">
+    <neo4j:cypher>MATCH (n307:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n308:concept {nanoid:'3MxuFY',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n307)-[r101:represents]-&gt;(n308)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9156" author="NWM">
+    <neo4j:cypher>MATCH (n310:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n311:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}) CREATE (n310)-[r102:has_property]-&gt;(n311)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9157" author="NWM">
+    <neo4j:cypher>MATCH (n313:property {handle:'harmonized_value',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'TBD'}), (n314:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n313)-[r103:has_concept]-&gt;(n314)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9158" author="NWM">
+    <neo4j:cypher>MATCH (n316:term {origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n317:concept {nanoid:'MuHqk9',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n316)-[r104:represents]-&gt;(n317)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9159" author="NWM">
+    <neo4j:cypher>MATCH (n319:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n320:property {handle:'sample_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the sample in the investigation or study.'}) CREATE (n319)-[r105:has_property]-&gt;(n320)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9160" author="NWM">
+    <neo4j:cypher>MATCH (n322:property {handle:'sample_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A unique sequence of alphanumeric characters used to identify the sample in the investigation or study.'}), (n323:concept {nanoid:'MNtJJq',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n322)-[r106:has_concept]-&gt;(n323)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9161" author="NWM">
+    <neo4j:cypher>MATCH (n325:term {value:'Sample ID',origin_id:'2003904',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n326:concept {nanoid:'MNtJJq',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n325)-[r107:represents]-&gt;(n326)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9162" author="NWM">
+    <neo4j:cypher>MATCH (n329:node {handle:'study',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n330:property {handle:'study_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A stable unique alphanumeric identifier assigned to a study and any objects by the database of Genotypes and Phenotypes (dbGaP).'}) CREATE (n329)-[r108:has_property]-&gt;(n330)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9163" author="NWM">
+    <neo4j:cypher>MATCH (n332:property {handle:'study_id',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78',value_domain:'string',desc:'A stable unique alphanumeric identifier assigned to a study and any objects by the database of Genotypes and Phenotypes (dbGaP).'}), (n333:concept {nanoid:'jtk6R5',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n332)-[r109:has_concept]-&gt;(n333)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9164" author="NWM">
+    <neo4j:cypher>MATCH (n335:term {value:'dbGaP Accession Number',origin_id:'11524544',origin_name:'caDSR',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n336:concept {nanoid:'jtk6R5',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n335)-[r110:represents]-&gt;(n336)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9165" author="NWM">
+    <neo4j:cypher>MATCH (n338:relationship {handle:'of_diagnosis',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n339:node {handle:'diagnosis',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n338)-[r111:has_src]-&gt;(n339)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9166" author="NWM">
+    <neo4j:cypher>MATCH (n340:relationship {handle:'of_diagnosis',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n341:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n340)-[r112:has_dst]-&gt;(n341)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9167" author="NWM">
+    <neo4j:cypher>MATCH (n343:relationship {handle:'of_participant',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n344:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n343)-[r113:has_src]-&gt;(n344)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9168" author="NWM">
+    <neo4j:cypher>MATCH (n345:relationship {handle:'of_participant',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n346:node {handle:'study',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n345)-[r114:has_dst]-&gt;(n346)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9169" author="NWM">
+    <neo4j:cypher>MATCH (n348:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n349:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n348)-[r115:has_src]-&gt;(n349)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9170" author="NWM">
+    <neo4j:cypher>MATCH (n350:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n351:node {handle:'participant',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n350)-[r116:has_dst]-&gt;(n351)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9171" author="NWM">
+    <neo4j:cypher>MATCH (n353:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n354:node {handle:'sample',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n353)-[r117:has_src]-&gt;(n354)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9172" author="NWM">
+    <neo4j:cypher>MATCH (n355:relationship {handle:'of_sample',model:'C3DC',multiplicity:'many_to_one',_commit:'5392729606842d1038fc297255c7ab361640ae78'}), (n356:node {handle:'study',model:'C3DC',_commit:'5392729606842d1038fc297255c7ab361640ae78'}) CREATE (n355)-[r118:has_dst]-&gt;(n356)</neo4j:cypher>
+  </changeSet>
+</databaseChangeLog>
