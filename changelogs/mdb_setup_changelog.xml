@@ -45,22 +45,24 @@
   <changeSet id="15" author="NWM">
 	<!--Only looks at node's first label-->
     <neo4j:cypher><![CDATA[
-        call apoc.trigger.add('add-nanoid-property', 
-            'UNWIND $createdNodes AS node 
-            WITH node, labels(node)[0] as label
-			WHERE label in ["node", "relationship", "property", "value_set", "concept", "predicate", "term", "origin", "model", "tag"]
-			WHERE NOT exists(node.nanoid) 
-            SET node.nanoid = apoc.text.random(6, "abcdefghijkmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789")', 
-            {phase: "afterAsync"})
+      CALL apoc.trigger.add('add-nanoid-property',
+      '
+      UNWIND $createdNodes AS node
+      WITH node
+      WHERE ANY(label IN labels(node) WHERE label IN ["node", "relationship", "property", "value_set", "concept", "predicate", "term", "origin", "model", "tag"])
+        AND NOT exists(node.nanoid)
+      SET node.nanoid = apoc.text.random(6, "abcdefghijkmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789")
+      ',
+      { phase: "afterAsync" })
     ]]></neo4j:cypher>
   </changeSet>
   <changeSet id="16" author="NWM">
-	<neo4j:cypher>CREATE CONSTRAINT node_unique_attrs IF NOT EXISTS FOR (n:node) REQUIRE (n.model, n.handle) IS UNIQUE</neo4j:cypher>
+	  <neo4j:cypher>CREATE CONSTRAINT node_unique_attrs IF NOT EXISTS FOR (n:node) REQUIRE (n.model, n.handle) IS UNIQUE</neo4j:cypher>
   </changeSet>
   <changeSet id="17" author="NWM">
-	<neo4j:cypher>CREATE CONSTRAINT property_unique_attrs IF NOT EXISTS FOR (p:property) REQUIRE (p.model, p.handle, p.desc) IS UNIQUE</neo4j:cypher>
+	  <neo4j:cypher>CREATE CONSTRAINT property_unique_attrs IF NOT EXISTS FOR (p:property) REQUIRE (p.model, p.handle, p.desc) IS UNIQUE</neo4j:cypher>
   </changeSet>
-  <changeSet id="18" author="NWM">
-	<neo4j:cypher>CREATE CONSTRAINT term_unique_attrs IF NOT EXISTS FOR (t:term) REQUIRE (t.origin_name, t.origin_id, t.origin_version) IS UNIQUE</neo4j:cypher>
-  </changeSet>
+  <!-- <changeSet id="18" author="NWM"> -->
+	  <!-- <neo4j:cypher>CREATE CONSTRAINT term_unique_attrs IF NOT EXISTS FOR (t:term) REQUIRE (t.origin_name, t.origin_id, t.origin_version) IS UNIQUE</neo4j:cypher> -->
+  <!-- </changeSet> -->
 </databaseChangeLog>
