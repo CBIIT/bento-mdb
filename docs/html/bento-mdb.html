@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metamodel Database &mdash; bento-mdb 0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changelog.html" />
+    <link rel="prev" title="Metamodel Database" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            bento-mdb
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Metamodel Database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#current-projects">Current Projects</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#models">Models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mappings">Mappings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#structure">Structure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#node">Node</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#relationship">Relationship</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#property">Property</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#concept">Concept</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#predicate">Predicate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#origin">Origin</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#term-value">Term &gt; Value</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#value-set">Value Set</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tag">Tag</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#semantic-information-in-the-mdb">Semantic Information in the MDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mdb-setup">MDB Setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#setting-up-a-new-mdb-instance">Setting up a New MDB Instance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#liquibase-cli-commands">Liquibase CLI Commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-queries">Example Queries</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conduct.html">Code of Conduct</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">bento-mdb</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Metamodel Database</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/bento-mdb.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="metamodel-database">
+<h1>Metamodel Database<a class="headerlink" href="#metamodel-database" title="Permalink to this heading"></a></h1>
+<p>The metamodel database (MDB) records</p>
+<ul class="simple">
+<li><p>node/relationship/property structure of models;</p></li>
+<li><p>the official local vocabulary - terms that are employed in the backend data system;</p></li>
+<li><p>synonyms for local vocabulary mapped from external standards; and</p></li>
+<li><p>the value sets for properties with enumerated value domains, and data types for other properties.</p></li>
+</ul>
+<p>The production instance of MDB contains a practical representation of a data model, in that it records the curated external terminology mappings and official sets of valid terms for each relevant property. In this way, the MDB is an extension of the <a class="reference external" href="https://github.com/CBIIT/bento-mdf">MDF</a> for any model it contains.</p>
+<p>As the central location for official mappings to external vocabularies, the MDB can (should) be used as part of software modules that convert between the data physically stored in the production database and external standards. For example, an API known as the Simple Terminology Service <a class="reference external" href="https://github.com/CBIIT/bento-sts">STS</a>, using MDB as its backend, is used for simple queries about a given model and validation of incoming data.</p>
+<p>More details about the structure and contents of MDB are given in the <a class="reference external" href="https://github.com/CBIIT/bento-meta">bento-meta</a> repository, which houses APIS for working with the MDB in Python and Perl.</p>
+<section id="current-projects">
+<h2>Current Projects<a class="headerlink" href="#current-projects" title="Permalink to this heading"></a></h2>
+<p>The production MDB currently represents these projects:</p>
+<section id="models">
+<h3>Models<a class="headerlink" href="#models" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/CBIIT/ccdi-model">Childhood Cancer Data Initiative</a></p></li>
+<li><p><a class="reference external" href="https://github.com/CBIIT/ccdi-model">Cancer Data Service</a></p></li>
+<li><p><a class="reference external" href="https://github.com/CBIIT/gdc-model">Genomic Data Commons</a></p></li>
+<li><p><a class="reference external" href="https://caninecommons.cancer.gov">Integrated Canine Data Commons</a></p></li>
+</ul>
+</section>
+<section id="mappings">
+<h3>Mappings<a class="headerlink" href="#mappings" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/nelsonwmoore/dss-model">Data Standards Service</a></p></li>
+</ul>
+</section>
+</section>
+<section id="structure">
+<h2>Structure<a class="headerlink" href="#structure" title="Permalink to this heading"></a></h2>
+<p>The MDB is formulated as a <a class="reference external" href="https://en.wikipedia.org/wiki/Graph_database#Labeled-property_graph">graph model</a>. This model contains more structure than will be exposed by the Simple Terminology Service (in order to keep it Simple). Other services can be built on the DB to perform translations, add terms and mappings, create visualizations, and other functions.</p>
+<p>The metamodel is described in a <a class="reference download internal" download="" href="_downloads/c7066bcd87845a32a41652658038fe67/metamodel.yaml"><span class="xref download myst">Model Description File</span></a>. Documents and tools for this format are at <a class="reference external" href="https://github.com/CBIIT/bento-mdf">bento-mdf</a>.</p>
+<p><img alt="metamodel graphic" src="_images/metamodel.svg" /></p>
+<p>The MDB model contains the following nodes:</p>
+<section id="node">
+<h3>Node<a class="headerlink" href="#node" title="Permalink to this heading"></a></h3>
+<p>A node with the label “node” in the MDB represents a model node: for example, a <code class="docutils literal notranslate"><span class="pre">Diagnosis</span></code> node.</p>
+</section>
+<section id="relationship">
+<h3>Relationship<a class="headerlink" href="#relationship" title="Permalink to this heading"></a></h3>
+<p>A Relationship <em>node</em> represents a model <em>relationship</em>; for example, a model may entail a relationship <code class="docutils literal notranslate"><span class="pre">has_diagnosis</span></code> from a <code class="docutils literal notranslate"><span class="pre">Case</span></code> node to a <code class="docutils literal notranslate"><span class="pre">Diagnosis</span></code> node. To represent this in the metamodel, a Relationship node is created with <code class="docutils literal notranslate"><span class="pre">handle</span></code> = <code class="docutils literal notranslate"><span class="pre">has_diagnosis</span></code>, along with a link <code class="docutils literal notranslate"><span class="pre">has_src</span></code> to the <code class="docutils literal notranslate"><span class="pre">Case</span></code> node, and a link <code class="docutils literal notranslate"><span class="pre">has_dst</span></code> to the <code class="docutils literal notranslate"><span class="pre">Diagnosis</span></code> node. A Neo4j relationship is also created between Node nodes, with a type = <code class="docutils literal notranslate"><span class="pre">&lt;relationship</span> <span class="pre">handle&gt;</span></code>. In the example, <code class="docutils literal notranslate"><span class="pre">Case</span></code> and <code class="docutils literal notranslate"><span class="pre">Diagnosis</span></code> nodes would be linked by a <code class="docutils literal notranslate"><span class="pre">has_diagnosis</span></code> relationship.</p>
+</section>
+<section id="property">
+<h3>Property<a class="headerlink" href="#property" title="Permalink to this heading"></a></h3>
+<p>A Property node in the MDB represents a property of a model node: for example, the <code class="docutils literal notranslate"><span class="pre">disease</span></code> property of a <code class="docutils literal notranslate"><span class="pre">Diagnosis</span></code> node.</p>
+</section>
+<section id="concept">
+<h3>Concept<a class="headerlink" href="#concept" title="Permalink to this heading"></a></h3>
+<p>A Concept node represents an intellectual concept. It is abstract, in that it has no human readable name as such; it will however have a unique ID. The Concept node can be thought of as a connecting point for sets of Terms that are identical in meaning (are <em>synonymous</em>).</p>
+</section>
+<section id="predicate">
+<h3>Predicate<a class="headerlink" href="#predicate" title="Permalink to this heading"></a></h3>
+<p>A Predicate node is a means for semantically relating two Concept nodes, A Predicate itself can also link to a Concept that it represents. Semantic concepts behind a predicate could be, e.g., “contains”, “is a child of”, “is broader than”.</p>
+</section>
+<section id="origin">
+<h3>Origin<a class="headerlink" href="#origin" title="Permalink to this heading"></a></h3>
+<p>An Origin node represents an entity (institution, internal project, defined standard, recognized body, public database) that defines and/or promulgates a terminology and represents it authoritatively.</p>
+</section>
+<section id="term-value">
+<h3>Term &gt; Value<a class="headerlink" href="#term-value" title="Permalink to this heading"></a></h3>
+<p>A Term node is an instance of encoding (a “representation”) of a concept. Each Term node is linked to at least one Origin node, which represents the entity that provides the term value/code and/or the term semantics.</p>
+<p>The value property of a Term node is the string representation of the term. This is a token that, for example, may be physically stored in a database as a datum.</p>
+</section>
+<section id="value-set">
+<h3>Value Set<a class="headerlink" href="#value-set" title="Permalink to this heading"></a></h3>
+<p>A Value Set node aggregates (links to) a number of Term nodes that define the list of acceptable values for a property slot. The value set does not directly aggregate Concepts; it is meant to define the pragmatic set of valid representations of values for a property.</p>
+</section>
+<section id="tag">
+<h3>Tag<a class="headerlink" href="#tag" title="Permalink to this heading"></a></h3>
+<p>A Tag node represents a simple key/value pair. Any other type of node can be annotated with a Tag node. For example, Concepts can have Tags that indicate the mapping_source that asserts two Properties are synonymous.</p>
+</section>
+</section>
+<section id="semantic-information-in-the-mdb">
+<h2>Semantic Information in the MDB<a class="headerlink" href="#semantic-information-in-the-mdb" title="Permalink to this heading"></a></h2>
+<p>Semantic structure (for example, hierarchical groupings of concepts, or other “facts” or “predicate” relationships), besides synonymy and value set grouping, is recorded in the MDB using the <code class="docutils literal notranslate"><span class="pre">predicate</span></code> node to link subject and object <code class="docutils literal notranslate"><span class="pre">concept</span></code> nodes.</p>
+<p>In general, to the extent that semantic information exists, it is better to access it by external services via the relevant Origins (e.g., NCI Thesaurus). External model topologies need not be concordant with the model structure represented in the MDB. However, it can be useful to semantically annotate certain concepts within the MDB itself. In particular, parent-child, class-subclass, and more general <a class="reference external" href="https://www.w3.org/2004/02/skos/specs">SKOS</a> annotations may be useful to have locally for terminology mapping applications.</p>
+</section>
+<section id="mdb-setup">
+<h2>MDB Setup<a class="headerlink" href="#mdb-setup" title="Permalink to this heading"></a></h2>
+<p>The production MDB is a Neo4j database that is instantiated using <a class="reference external" href="https://docs.liquibase.com/concepts/changelogs/home.html">Liquibase changelogs</a>. These changelogs are generated using <a class="reference external" href="https://github.com/CBIIT/bento-meta">bento-meta</a> scripts on <a class="reference external" href="https://github.com/CBIIT/bento-mdf">MDF representations</a> of models and mappings.</p>
+<section id="setting-up-a-new-mdb-instance">
+<h3>Setting up a New MDB Instance<a class="headerlink" href="#setting-up-a-new-mdb-instance" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://neo4j.com/docs/operations-manual/current/installation/">Install and deploy new Neo4j database</a>. The production MDB uses Neo4j v4.4.5.</p></li>
+<li><p><a class="reference external" href="https://neo4j.com/labs/apoc/4.4/installation/">Install Awesome Procedures On Cypher (APOC)</a> by adding APOC jar file to /plugins/ directory. The production MDB used apoc-4.4.0.6.jar which is compatible with this Neo4j version.</p></li>
+<li><p>Enable APOC triggers (which are used to add nanoids to new entities) by adding an apoc.conf file to the /conf/ directory with the line: <code class="docutils literal notranslate"><span class="pre">apoc.trigger.enabled=true</span></code>.</p></li>
+<li><p><a class="reference external" href="https://www.liquibase.com/download">Install Liquibase CLI</a>.</p></li>
+<li><p><a class="reference external" href="https://neo4j.com/labs/liquibase/docs/download/">Install Neo4j Plugin for Liquibase</a>.</p></li>
+<li><p>Populate database from Liquibase changelogs with the <code class="docutils literal notranslate"><span class="pre">liquibase</span> <span class="pre">update</span></code> command.</p></li>
+</ol>
+</section>
+</section>
+<section id="liquibase-cli-commands">
+<h2>Liquibase CLI Commands<a class="headerlink" href="#liquibase-cli-commands" title="Permalink to this heading"></a></h2>
+<p>These examples assume the changelog is in XML format and that Neo4j runs at the URI <code class="docutils literal notranslate"><span class="pre">bolt://localhost</span></code> with user <code class="docutils literal notranslate"><span class="pre">neo4j</span></code> and password <code class="docutils literal notranslate"><span class="pre">changeme</span></code> and should be changed to match your setup.</p>
+<ul>
+<li><p>Dry run:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>liquibase<span class="w"> </span>--url<span class="w"> </span>jdbc:neo4j:bolt://localhost<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--username<span class="w"> </span>neo4j<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--password<span class="w"> </span>changeme<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--changeLogFile<span class="w"> </span>changeLog.xml<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>updateSQL
+</pre></div>
+</div>
+</li>
+<li><p>Update the database:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>liquibase<span class="w"> </span>--url<span class="w"> </span>jdbc:neo4j:bolt://localhost<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--username<span class="w"> </span>neo4j<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--password<span class="w"> </span>changeme<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--changeLogFile<span class="w"> </span>changeLog.xml<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>update
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="example-queries">
+<h2>Example Queries<a class="headerlink" href="#example-queries" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>What are the nodes in the ICDC model?</p>
+<div class="highlight-cypher notranslate"><div class="highlight"><pre><span></span><span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="n">node</span><span class="w"> </span><span class="p">{</span><span class="n">model</span><span class="p">:</span><span class="s">&quot;ICDC&quot;</span><span class="p">})</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">n</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>What are the nodes in the CCDI model?</p>
+<div class="highlight-cypher notranslate"><div class="highlight"><pre><span></span><span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="n">node</span><span class="w"> </span><span class="p">{</span><span class="n">model</span><span class="p">:</span><span class="s">&quot;CCDI&quot;</span><span class="p">})</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">n</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>What are the acceptable values for the ICDC “body_system” property?</p>
+<div class="highlight-cypher notranslate"><div class="highlight"><pre><span></span><span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">property</span><span class="w"> </span><span class="p">{</span><span class="n">handle</span><span class="p">:</span><span class="s">&quot;body_system&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">model</span><span class="p">:</span><span class="s">&quot;ICDC&quot;</span><span class="p">})</span><span class="o">--&gt;</span><span class="p">(:</span><span class="n">value_set</span><span class="p">)</span><span class="o">--&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">:</span><span class="n">term</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Are there properties that have the same name (“handle”) in both ICDC and CCDI?</p>
+<div class="highlight-cypher notranslate"><div class="highlight"><pre><span></span><span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">property</span><span class="w"> </span><span class="p">{</span><span class="n">model</span><span class="p">:</span><span class="s">&quot;ICDC&quot;</span><span class="p">}),</span><span class="w"> </span><span class="p">(</span><span class="n">q</span><span class="p">:</span><span class="n">property</span><span class="w"> </span><span class="p">{</span><span class="n">model</span><span class="p">:</span><span class="s">&quot;CCDI&quot;</span><span class="p">})</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">handle</span><span class="p">=</span><span class="n">q</span><span class="p">.</span><span class="n">handle</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">handle</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Do these properties refer to the same semantic concept, or different concepts?</p>
+<div class="highlight-cypher notranslate"><div class="highlight"><pre><span></span><span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="n">property</span><span class="p">)</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="n">count</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">ct</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">.</span><span class="n">handle</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">handle</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="n">ct</span><span class="p">&gt;</span><span class="m">1</span>
+<span class="k">match</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="n">property</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">has_concept</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="n">n</span><span class="p">.</span><span class="n">handle</span><span class="p">=</span><span class="n">handle</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Metamodel Database" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright CBIIT.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -14,4 +14,4 @@ The [bento-meta](https://github.com/CBIIT/bento-meta) repository contains APIS f
 
 ## Documentation
 
-Please proceed to the[bento-mdb readthedocs page](https://bento-mdb.readthedocs.io/en/latest/).
+[View MDB documentation on GitHub Pages](https://cbiit.github.io/bento-mdb/)

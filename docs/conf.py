@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "bento-mdb"
-copyright = "2023, Mark A. Jensen, Nelson Moore"
+copyright = "CBIIT"
 author = "Mark A. Jensen, Nelson Moore"
 release = "0.0.1"
 

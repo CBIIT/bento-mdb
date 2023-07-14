@@ -8,8 +8,7 @@ if "%SPHINXBUILD%" == "" (
 	set SPHINXBUILD=sphinx-build
 )
 set SOURCEDIR=.
-set BUILDDIR=_build
-set SPHINXPROJ=bento-mdb
+set BUILDDIR=.
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
