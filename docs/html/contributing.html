@@ -130,8 +130,7 @@ on the web in blog posts, articles, and such.</p>
 </section>
 <section id="commit-guidelines">
 <h2>Commit Guidelines<a class="headerlink" href="#commit-guidelines" title="Permalink to this heading"></a></h2>
-<p>Python Semantic Release (PSR) is used to automatically bump version numbers based on keywords in commit messages.</p>
-<p>The default commit message format used by PSR is the <a class="reference external" href="https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#commit-message-format">Angular commit style</a>:</p>
+<p>The default commit message format follows the <a class="reference external" href="https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#commit-message-format">Angular commit style</a>:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">&lt;type&gt;(optional scope): short summary in present tense</span>
 
 <span class="gp gp-VirtualEnv">(optional body: explains motivation for the change)</span>
@@ -141,8 +140,8 @@ on the web in blog posts, articles, and such.</p>
 </div>
 <p><strong>Type</strong> should be one of the following:</p>
 <ul class="simple">
-<li><p><strong>feat</strong>: A new feature (used by PSR to trigger a minor version bump)</p></li>
-<li><p><strong>fix</strong>: A bug fix (used by PSR to trigger a patch version bump)</p></li>
+<li><p><strong>feat</strong>: A new feature</p></li>
+<li><p><strong>fix</strong>: A bug fix</p></li>
 <li><p><strong>docs</strong>: Documentation only changes</p></li>
 <li><p><strong>style</strong>: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)</p></li>
 <li><p><strong>refactor</strong>: A code change that neither fixes a bug nor adds a feature</p></li>
@@ -154,7 +153,7 @@ on the web in blog posts, articles, and such.</p>
 <p><strong>Subject</strong> contains a succinct description of the change in imperative, present tense (e.g. “change”), without a capitalized first letter or a “.” at the end.</p>
 <p><strong>Body</strong> also uses imperative, present tense and includes the motivartion for the change and contrasts to previous behavior.</p>
 <p><strong>Footer</strong> should contain any information about breaking changes and references to GitHub issues that this commit closes.</p>
-<p>Breaking changes should start with the word <code class="docutils literal notranslate"><span class="pre">BREAKING</span> <span class="pre">CHANGE:</span></code> and are used by PSR to trigger a major release.</p>
+<p>Breaking changes should start with the word <code class="docutils literal notranslate"><span class="pre">BREAKING</span> <span class="pre">CHANGE:</span></code>.</p>
 </section>
 <section id="pull-request-guidelines">
 <h2>Pull Request Guidelines<a class="headerlink" href="#pull-request-guidelines" title="Permalink to this heading"></a></h2>

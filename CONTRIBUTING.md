@@ -38,9 +38,7 @@ If you are proposing a feature:
 
 ## Commit Guidelines
 
-Python Semantic Release (PSR) is used to automatically bump version numbers based on keywords in commit messages.
-
-The default commit message format used by PSR is the [Angular commit style](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#commit-message-format):
+The default commit message format follows the [Angular commit style](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#commit-message-format):
 
 ```console
 <type>(optional scope): short summary in present tense
@@ -52,8 +50,8 @@ The default commit message format used by PSR is the [Angular commit style](http
 
 **Type** should be one of the following:
 
-* **feat**: A new feature (used by PSR to trigger a minor version bump)
-* **fix**: A bug fix (used by PSR to trigger a patch version bump)
+* **feat**: A new feature
+* **fix**: A bug fix
 * **docs**: Documentation only changes
 * **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 * **refactor**: A code change that neither fixes a bug nor adds a feature
@@ -69,7 +67,7 @@ The default commit message format used by PSR is the [Angular commit style](http
 
 **Footer** should contain any information about breaking changes and references to GitHub issues that this commit closes.
 
-Breaking changes should start with the word `BREAKING CHANGE:` and are used by PSR to trigger a major release.
+Breaking changes should start with the word `BREAKING CHANGE:`.
 
 ## Pull Request Guidelines
 
