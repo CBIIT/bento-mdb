@@ -1,0 +1,277 @@
+Nodes:
+  node:
+    Props:
+      - handle
+      - model
+  relationship:
+    Props:
+      - handle
+      - model
+      - multiplicity
+      - is_required
+  property:
+    Props:
+      - handle
+      - model
+      - is_required
+      - value_domain
+      - units
+      - pattern
+  value_set:
+    Props:
+      - handle
+      - url
+      - origin_name
+  concept:
+    Props:
+      - nanoid
+  predicate:
+    Props:
+      - handle
+    Desc: |
+      The predicate node allows some semantic info to be captured in the MDB.
+      A predicate links concepts by means of has_subject and has_object
+      links. Thus two concepts and a predicate can form a semantic triple.
+  term:
+    Props:
+      - handle
+      - value
+      - origin_name
+      - origin_id
+      - origin_definition
+  origin:
+    Props:
+      - name
+      - url
+      - is_external
+  model:
+    Props:
+      - handle
+      - name
+      - repository
+  tag:
+    Props:
+      - key
+      - value
+Relationships:
+  has_concept:
+    Mul: many_to_one
+    Props: null
+    Ends:
+      - Src: node
+        Dst: concept
+        Req: true
+      - Src: property
+        Dst: concept
+        Req: true
+      - Src: relationship
+        Dst: concept
+        Req: true
+      - Src: value_set
+        Dst: concept
+        Req: false
+      - Src: predicate
+        Dst: concept
+        Req: false
+  has_origin:
+    Mul: many_to_one
+    Props: null
+    Ends:
+      - Src: term
+        Dst: origin
+        Req: true
+      - Src: value_set
+        Dst: origin
+        Mul: one_to_one
+        Req: false
+  has_model:
+    Mul: one_to_one
+    Props: null
+    Ends:
+      - Src: node
+        Dst: model
+      - Src: relationship
+        Dst: model
+      - Src: property
+        Dst: model
+  has_src:
+    Mul: one_to_one
+    Props: null
+    Ends:
+      - Src: relationship
+        Dst: node
+        Req: true
+  has_dst:
+    Mul: one_to_one
+    Props: null
+    Ends:
+      - Src: relationship
+        Dst: node
+        Req: true
+  has_property:
+    Mul: one_to_many
+    Props: null
+    Ends:
+      - Src: node
+        Dst: property
+      - Src: relationship
+        Dst: property
+  has_value_set:
+    Mul: one_to_one
+    Props: null
+    Ends:
+      - Src: property
+        Dst: value_set
+  has_term:
+    Mul: one_to_many
+    Props: null
+    Ends:
+      - Src: value_set
+        Dst: term
+  has_tag:
+    Mul: many_to_many
+    Props: null
+    Ends:
+      - Src: node
+        Dst: tag
+      - Src: relationship
+        Dst: tag
+      - Src: property
+        Dst: tag
+      - Src: concept
+        Dst: tag
+      - Src: term
+        Dst: tag
+      - Src: value_set
+        Dst: tag
+      - Src: origin
+        Dst: tag
+      - Src: model
+        Dst: tag
+  represents:
+    Mul: one_to_many
+    Props: null
+    Ends:
+      - Src: term
+        Dst: concept
+        Desc: |
+          this is an interesting point in this representation- two terms could have the same value but be linked to (\"represent\")
+          different concepts. Then the terms are \"homonyms\", but not \"synonyms\". The difference is in the graph context:
+          a term\'s value is not its meaning, but the concept is, and the terms context is the value_set in which it is
+          grouped (or the entity, including the entity\'s home model, which is linked to the concept)
+  has_subject:
+    Props: null
+    Mul: one_to_many
+    Ends:
+      - Src: predicate
+        Dst: concept
+        Desc: The subject concept of this predicate
+  has_object:
+    Props: null
+    Mul: one_to_many
+    Ends:
+      - Src: predicate
+        Dst: concept
+        Desc: The object concept of this predicate
+UniversalNodeProperties:
+  mustHave:
+    - nanoid
+  mayHave:
+    - desc
+
+PropDefinitions:
+  handle:
+    Req: true
+    Type: string
+    Desc: |
+      the name of the entity in local vocabulary; not necessarily the term
+      per se. For a Relationship, the handle is the "relationship
+      type" in a Neo4j representation
+  desc:
+    Type: string
+    Desc:
+      A human-readable description of the entity.
+  value:
+    Req: true
+    Type: string
+    Desc:
+      A code or other data representation of the Term.
+  key:
+    Req: True
+    Type: string
+    Desc:
+      A string key.
+  nanoid:
+    Req: true
+    Type: string
+    Desc: 6char content-free uid for model entities
+  model:
+    Req: true
+    Type: string
+    Desc: model (handle) in which this entity participates 
+  is_external:
+    Type: boolean
+    Desc: if this Origin represents an external (to BIDS/CTOS) standard (property missing => false)
+  repository:
+    Type: url
+    Desc: |
+      A url pointing to a (GitHub, e.g.) repository where the model is
+      described or defined.
+  url:
+    Type: url
+  pattern:
+    Desc: A regular expression, set when value_domain = regexp
+    Type: string
+  origin_id:
+    Type: string
+    Req: true
+    Desc: |
+      the Origin authority\'s identifier for the Term - concept code,
+      term ID, or similar
+  origin_name:
+    Type: string
+    Desc: |
+      the name for the Term's Origin, which should match the
+      name property of an Origin node existing in the MDB.
+  origin_definition:
+    Type: string
+    Desc: |
+      The text definition of the Term as provided by the Origin authority
+  multiplicity:
+    Desc: |
+      Descriptor of the number of these relationships that may exist between
+      source and destination node instances.
+    Type:
+      - one_to_one
+      - many_to_many
+      - one_to_many
+      - many_to_one
+  is_required:
+    Type: boolean
+    Desc: |
+      Indicates whether the property or relationship must be present in
+      instances of the model.
+  name:
+    Type: string
+    Desc: |
+      Human readable identifier for the entity.
+  units:
+    Desc: |
+      For a value_domain of 'number', this property gives the units of the
+      number as a string; e.g., 'mg', 'cm','degrees'. Multiple allowable
+      units are separated by semicolons: 'um;angstrom'. Unit string tokens
+      could (should?) have their own Terms and Concepts for completeness.
+      For other value_domain values, units should be unset
+    Type: string
+  value_domain:
+    Req: true
+    Type:
+      - number
+      - integer
+      - string
+      - datetime
+      - boolean
+      - regexp
+      - url
+      - value_set
+  
