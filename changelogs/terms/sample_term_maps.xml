@@ -132,4 +132,43 @@
   <changeSet id="85399" author="Nelson">
     <neo4j:cypher>MATCH (p:property {model: "ICDC", handle: "tumor_grade"})-[:has_value_set]->(:value_set)-[:has_term]->(t:term {value: "Not Applicable"}), (c:concept {nanoid: "tmap19"}) MERGE (t)-[:represents]->(c)</neo4j:cypher>
   </changeSet>
+  <changeSet id="85400" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap02"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85401" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap04"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85402" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap06"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85403" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap07"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85404" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap08"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85405" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap09"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85406" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap10"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85407" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap11"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85408" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap12"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85409" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap14"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85410" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap15"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85411" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap17"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85412" author="Nelson">
+    <neo4j:cypher>MATCH (c:concept {nanoid: "tmap19"}) MERGE (c)-[:has_tag]->(t:tag {key: "mapping_source", value: "DSS", _commit: "sample_term_maps"})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
