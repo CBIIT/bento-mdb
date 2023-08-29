@@ -1,18 +1,18 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-  <changeSet id="42597" author="MAJ">
+  <changeSet id="19" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'CCDI', name: 'CCDI', repository: 'https://github.com/CBIIT/ccdi-model'})</neo4j:cypher>
   </changeSet>
-  <changeSet id="42598" author="MAJ">
+  <changeSet id="20" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'CDS', name: 'CDS', repository: 'https://github.com/CBIIT/cds-model'})</neo4j:cypher>
   </changeSet>
-  <changeSet id="42599" author="MAJ">
+  <changeSet id="21" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'DSS', name: 'DSS', repository: 'https://github.com/CBIIT/dss-model'})</neo4j:cypher>
   </changeSet>
-  <changeSet id="42600" author="MAJ">
+  <changeSet id="22" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'GDC', name: 'GDC', repository: 'https://github.com/CBIIT/gdc-model'})</neo4j:cypher>
   </changeSet>
-  <changeSet id="42601" author="MAJ">
+  <changeSet id="23" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'ICDC', name: 'ICDC', repository: 'https://github.com/CBIIT/icdc-model-tool'})</neo4j:cypher>
   </changeSet>
 </databaseChangeLog>
