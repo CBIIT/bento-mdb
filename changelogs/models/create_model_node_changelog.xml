@@ -15,4 +15,7 @@
   <changeSet id="23" author="MAJ">
     <neo4j:cypher>MERGE (:model {handle: 'ICDC', name: 'ICDC', repository: 'https://github.com/CBIIT/icdc-model-tool'})</neo4j:cypher>
   </changeSet>
+  <changeSet id="44939" author="NWM">
+    <neo4j:cypher>MERGE (:model {handle: 'CTDC', name: 'CTDC', repository: 'https://github.com/CBIIT/ctdc-model'})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
