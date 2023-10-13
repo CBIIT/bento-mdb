@@ -1,0 +1,258 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <changeSet id="44940" author="NWM">
+    <neo4j:cypher>MATCH (n0:term {handle:'specimen_initial_genomic_sequencing_to_specimen_collection_day_count',value:'Specimen Initial Genomic Sequencing To Specimen Collection Day Count',origin_id:'11251130',origin_name:'caDSR'}) DETACH DELETE n0</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44941" author="NWM">
+    <neo4j:cypher>MATCH (n1:term {value:'10000884-Acute Myeloid Leukemia Not Otherwise Specified',origin_name:'CTDC'}) DETACH DELETE n1</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44942" author="NWM">
+    <neo4j:cypher>MATCH (n2:term {value:'10036910 - Prostate Carcinoma',origin_name:'CTDC'}) DETACH DELETE n2</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44943" author="NWM">
+    <neo4j:cypher>MATCH (n3:term {value:'10041071 - Lung Small Cell Carcinoma',origin_name:'CTDC'}) DETACH DELETE n3</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44944" author="NWM">
+    <neo4j:cypher>MATCH (n4:term {value:'10010029 - Colorectal Carcinoma -10066354 - Gastroesophageal Junction Adenocarcinoma',origin_name:'CTDC'}) DETACH DELETE n4</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44945" author="NWM">
+    <neo4j:cypher>MATCH (n5:term {value:'10053571 - Melanoma',origin_name:'CTDC'}) DETACH DELETE n5</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44946" author="NWM">
+    <neo4j:cypher>MATCH (n6:term {value:'10028566 - Plasma Cell Myeloma',origin_name:'CTDC'}) DETACH DELETE n6</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44947" author="NWM">
+    <neo4j:cypher>MATCH (n7:term {value:'10029514 - Lung Non-Small Cell Carcinoma',origin_name:'CTDC'}) DETACH DELETE n7</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44948" author="NWM">
+    <neo4j:cypher>MATCH (n16:property {handle:'x_radiological_procedure_name',model:'CTDC',value_domain:'string',desc:'text CDE ID = 6411539'}) DETACH DELETE n16</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44949" author="NWM">
+    <neo4j:cypher>MATCH (n17:property {handle:'parent_biospecimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'}) DETACH DELETE n17</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44950" author="NWM">
+    <neo4j:cypher>MATCH (n18:property {handle:'days_from_initial_genomic_sequencing_to_Specimen_collection',model:'CTDC',value_domain:'number',units:'days',desc:'text CDE ID = 11251130'}) DETACH DELETE n18</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44951" author="NWM">
+    <neo4j:cypher>MATCH (n19:property {handle:'x_targeted_therapy',model:'CTDC',value_domain:'string',desc:'text CDE ID = 6400634'}) DETACH DELETE n19</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44952" author="NWM">
+    <neo4j:cypher>MATCH (n20:property {handle:'biospecimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'}) DETACH DELETE n20</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44953" author="NWM">
+    <neo4j:cypher>MATCH (n21:property {handle:'x_therapy',model:'CTDC',value_domain:'string',desc:'text CDE ID = 6400634'}) DETACH DELETE n21</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44954" author="NWM">
+    <neo4j:cypher>MATCH (n22:property {handle:'treatment_id',model:'CTDC',value_domain:'string',desc:'A unique identifier of each treatment record, used to identify the correct treatment records during data updates. The value of this property will generally be the same as the value of the subject_id property. &lt;br&gt; NO CDE REQUIRED'}) DETACH DELETE n22</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44955" author="NWM">
+    <neo4j:cypher>MATCH (n23:property {handle:'x_surgical_procedure_name',model:'CTDC',value_domain:'string',desc:'text CDE ID = 6411539'}) DETACH DELETE n23</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44956" author="NWM">
+    <neo4j:cypher>MATCH (n129:node {handle:'subject',model:'CTDC',desc:'text'})&lt;-[r31:has_dst]-(n127:relationship {handle:'of_subject',model:'CTDC',multiplicity:'many_to_one'})-[r30:has_src]-&gt;(n128:node {handle:'treatment',model:'CTDC',desc:'text'}) DETACH DELETE n127</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44957" author="NWM">
+    <neo4j:cypher>MATCH (n130:node {handle:'treatment',model:'CTDC',desc:'text'}) DETACH DELETE n130</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44958" author="NWM">
+    <neo4j:cypher>MERGE (n8:term {value:'10010029',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44959" author="NWM">
+    <neo4j:cypher>MERGE (n9:term {value:'10000884',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44960" author="NWM">
+    <neo4j:cypher>MERGE (n10:term {value:'10066354',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44961" author="NWM">
+    <neo4j:cypher>MERGE (n11:term {value:'10029514',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44962" author="NWM">
+    <neo4j:cypher>MERGE (n12:term {value:'10053571',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44963" author="NWM">
+    <neo4j:cypher>MERGE (n13:term {value:'10041071',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44964" author="NWM">
+    <neo4j:cypher>MERGE (n14:term {value:'10028566',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44965" author="NWM">
+    <neo4j:cypher>MERGE (n15:term {value:'10036910',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44966" author="NWM">
+    <neo4j:cypher>MERGE (n24:property {handle:'parent_specimen_type',model:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44967" author="NWM">
+    <neo4j:cypher>MERGE (n25:property {handle:'specimen_type',model:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44968" author="NWM">
+    <neo4j:cypher>MATCH (n26:property {handle:'ctep_disease_code',model:'CTDC',_parent_handle:'diagnosis'}) SET n26.desc = 'A human-readable \"narrative\" statement of the primary disease with which the subject in question has been diagnosed &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44969" author="NWM">
+    <neo4j:cypher>MATCH (n28:property {handle:'obi_specimen_type',model:'CTDC',_parent_handle:'specimen'}) SET n28.desc = 'This doesn\'t match the caDSR record of \"Specimen Material OBIB Source\" for CDE ID = 11253427'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44970" author="NWM">
+    <neo4j:cypher>MATCH (n30:property {handle:'study_id',model:'CTDC',_parent_handle:'study'}) SET n30.desc = 'Any external identifier by which the study/trial in question is known'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44971" author="NWM">
+    <neo4j:cypher>MATCH (n32:property {handle:'data_file_format',model:'CTDC',_parent_handle:'data_file'}) SET n32.desc = 'The electronic format of the file, as derived during file validation &lt;br&gt;CDE ID = 11416926'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44972" author="NWM">
+    <neo4j:cypher>MATCH (n34:property {handle:'carcinogen_exposure',model:'CTDC',_parent_handle:'exposure'}) SET n34.desc = 'Indicator as to whether the subject in question has had significant exposure to any known carcinogen(s) &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44973" author="NWM">
+    <neo4j:cypher>MATCH (n36:property {handle:'specimen_category',model:'CTDC',_parent_handle:'specimen'}) SET n36.desc = 'This in NOT the CMB Catalog Site\'s \"Tissue Ccategory\" i.e. the indicator as to normal vs primary vs metastatic &lt;br&gt;CDE ID = 7069877'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44974" author="NWM">
+    <neo4j:cypher>MATCH (n38:property {handle:'data_file_name',model:'CTDC',_parent_handle:'data_file'}) SET n38.desc = 'The name of the data file &lt;br&gt;CDE ID = 11284037'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44975" author="NWM">
+    <neo4j:cypher>MATCH (n40:property {handle:'study_type',model:'CTDC',_parent_handle:'study'}) SET n40.desc = 'The underlying scientific nature of the study/trial &lt;br&gt;CDE ID = 11160683'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44976" author="NWM">
+    <neo4j:cypher>MATCH (n42:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'}) SET n42.desc = 'An eight digit numerical code for the primary disease with which the subject in question has been diagnosed &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44977" author="NWM">
+    <neo4j:cypher>MATCH (n89:property {handle:'study_description',model:'CTDC',_parent_handle:'study'}) SET n89.desc = 'Narrative description of the study/trial'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44978" author="NWM">
+    <neo4j:cypher>MATCH (n91:property {handle:'assessment_timepoint',model:'CTDC',_parent_handle:'specimen'}) SET n91.desc = 'CMB Catalog Site\'s \"Collection Timepoint\" &lt;br&gt;CDE ID = 7065963'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44979" author="NWM">
+    <neo4j:cypher>MATCH (n93:property {handle:'associated_link_url',model:'CTDC',_parent_handle:'associated_link'}) SET n93.desc = 'The url to which an end user will be redirected upon selection of the corresponding link name displayed within the UI &lt;br&gt;NO CDE REQUIRED'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44980" author="NWM">
+    <neo4j:cypher>MATCH (n95:property {handle:'data_file_location',model:'CTDC',_parent_handle:'data_file'}) SET n95.desc = 'The specific location within the S3 storage bucket at which the file is stored, expressed in terms of a unique url &lt;br&gt;NO CDE REQUIRED'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44981" author="NWM">
+    <neo4j:cypher>MATCH (n97:property {handle:'data_file_description',model:'CTDC',_parent_handle:'data_file'}) SET n97.desc = 'A short narrative description of the data file\'s derivation, e.g. from normal tissue versus tumor tissue &lt;br&gt;CDE ID = 11280338'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44982" author="NWM">
+    <neo4j:cypher>MATCH (n99:property {handle:'parent_specimen_id',model:'CTDC',_parent_handle:'specimen'}) SET n99.desc = 'CMB\'s \"Parent Biospecimen ID\" &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44983" author="NWM">
+    <neo4j:cypher>MATCH (n101:property {handle:'study_name',model:'CTDC',_parent_handle:'study'}) SET n101.desc = 'Full title of the study/trial &lt;br&gt;CDE ID = 11459810'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44984" author="NWM">
+    <neo4j:cypher>MATCH (n103:property {handle:'specimen_id',model:'CTDC',_parent_handle:'specimen'}) SET n103.desc = 'CMB\'s \"Biospecimen ID\" &lt;br&gt;NO CDE REQUIRED? &lt;br&gt;This property is used as the key via which child records, e.g. data files generated via Oncomine panel analyses, can be associated with the appropriate specimen during data loading, and to identify the correct records during data updates.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44985" author="NWM">
+    <neo4j:cypher>MATCH (n105:property {handle:'project_name',model:'CTDC',_parent_handle:'project'}) SET n105.desc = 'Full title of the study/trial &lt;br&gt;CDE ID = 11459804'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44986" author="NWM">
+    <neo4j:cypher>MATCH (n107:property {handle:'data_file_size',model:'CTDC',_parent_handle:'data_file'}) SET n107.desc = 'The exact size of the data file in question, expressed in bytes &lt;br&gt;CDE ID = 11479876'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44987" author="NWM">
+    <neo4j:cypher>MATCH (n109:property {handle:'type_of_tissue',model:'CTDC',_parent_handle:'specimen'}) SET n109.desc = 'caDSR\'s version of CMB Catalog\'s \"Tissue Category\" &lt;br&gt;CDE ID = 7003892'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44988" author="NWM">
+    <neo4j:cypher>MATCH (n111:property {handle:'project_short_name',model:'CTDC',_parent_handle:'project'}) SET n111.desc = 'Internally-assigned project \"code\" &lt;br&gt;CDE ID = 11459806 &lt;br&gt;This property is used as the key via which child records, e.g. study/trial, image collection and principal investigator records, can be associated with the appropriate project during data loading, and to identify the correct records during data updates.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44989" author="NWM">
+    <neo4j:cypher>MATCH (n113:property {handle:'snomed_disease_code',model:'CTDC',_parent_handle:'diagnosis'}) SET n113.desc = 'A human-readable \"narrative\" statement of the primary disease with which the subject in question has been diagnosed, but inclusive of both the stage and histological subtype of the disease in question &lt;br&gt;CDE ID = 6642369'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44990" author="NWM">
+    <neo4j:cypher>MATCH (n115:property {handle:'data_file_type',model:'CTDC',_parent_handle:'data_file'}) SET n115.desc = 'A curated indicator as to the type of content represented by the data file &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44991" author="NWM">
+    <neo4j:cypher>MATCH (n117:property {handle:'anatomical_collection_site',model:'CTDC',_parent_handle:'specimen'}) SET n117.desc = 'CMB\'s version of \"sample site\" &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44992" author="NWM">
+    <neo4j:cypher>MATCH (n119:property {handle:'associated_link_name',model:'CTDC',_parent_handle:'associated_link'}) SET n119.desc = 'The exact text to be displayed within the UI and used as an intuitive identifier of any given associated link &lt;br&gt; NO CDE REQUIRED'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44993" author="NWM">
+    <neo4j:cypher>MATCH (n121:property {handle:'tissue_category',model:'CTDC',_parent_handle:'specimen'}) SET n121.desc = 'CMB Catalog\'s version of caDSR\'s \"Tyoe of Tissue\" &lt;br&gt;NOT CURRENTLY ASSIGNED ANY CDE'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44994" author="NWM">
+    <neo4j:cypher>MATCH (n123:property {handle:'dates_of_conduct',model:'CTDC',_parent_handle:'study'}) SET n123.desc = 'Timespan over which the study/trial was/is being conducted'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44995" author="NWM">
+    <neo4j:cypher>MATCH (n125:property {handle:'study_short_name',model:'CTDC',_parent_handle:'study'}) SET n125.desc = 'Internally-assigned study/trial \"code\" &lt;br&gt;CDE ID = 11459812 &lt;br&gt;This property is used as the key via which child records, e.g. image collection and subject records, can be associated with the appropriate study/trial during data loading, and to identify the correct records during data updates.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44996" author="NWM">
+    <neo4j:cypher>MATCH (n131:node {handle:'program',model:'CTDC'}) SET n131.desc = 'Within the Clinical Trial Data Commons, projects and studies/trials are grouped into discrete programs, based upon the origins and/or scientific nature of each project or study/trial. These programs may or may not directly relate to any formal program, e.g. NCI funding programs. The Program node contains the properties required to appropriately characterize any given CTDC program.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44997" author="NWM">
+    <neo4j:cypher>MATCH (n133:node {handle:'data_file',model:'CTDC'}) SET n133.desc = 'Data files can be associated with CTDC project, study, participant, diagnosis and specimen records, but are not themselves stored within the application. Instead, the application stores records as to the existence and nature of such data files. The Data File node is comprised of properties which characterize these files in terms of their size, format and content, such that they can be appropriately represented within the applicationâ€™s UI, and in terms of their storage location, such that they can be retrieved for analysis.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44998" author="NWM">
+    <neo4j:cypher>MATCH (n135:node {handle:'diagnosis',model:'CTDC'}) SET n135.desc = 'The Diagnosis node contains numerous properties which fully characterize the type of cancer with which any given study/trial subject was diagnosed, inclusive of disease stage, histology/pathology, and age at diagnosis.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="44999" author="NWM">
+    <neo4j:cypher>MATCH (n137:node {handle:'principal_investigator',model:'CTDC'}) SET n137.desc = 'The Principal Investigator node contains properties which identify the principal investigator(s) responsible for any given study/trial. A study/trial may have one or more principal investigators, and any given individual may be listed as a principal investigator on more than one study/trial.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45000" author="NWM">
+    <neo4j:cypher>MATCH (n139:node {handle:'associated_link',model:'CTDC'}) SET n139.desc = 'The Associated Link node cotains the properties required to associate multiple links to additional information about any given study/trial to the appropriate study/trial, and define an inuitive label via which each link will be diplayed within the UI.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45001" author="NWM">
+    <neo4j:cypher>MATCH (n141:node {handle:'study',model:'CTDC'}) SET n141.desc = 'The Study node contains properties required to characterize each study/trial in terms of a title, describe when, how and why the study/trial was conducted, and provide links to additional information about the study/trial.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45002" author="NWM">
+    <neo4j:cypher>MATCH (n143:node {handle:'specimen',model:'CTDC'}) SET n143.desc = 'The Specimen node contains numerous properties which provide an in-depth characterization of the types of biospecimens which were collected from any given study/trial participant and subsequently analyzed.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45003" author="NWM">
+    <neo4j:cypher>MATCH (n155:node {handle:'image_collection',model:'CTDC'}) SET n155.desc = 'The Image Collection node is comprised of properties which describe collections of images that are associated with any given study/trial. These properties characterize such image collections in terms of the types of images they contain, where the collections are hosted, and how they can be accessed.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45004" author="NWM">
+    <neo4j:cypher>MATCH (n157:node {handle:'demographic',model:'CTDC'}) SET n157.desc = 'The Demographic node is comprised of properties which describe the key characteristics of each study/trial subject, such as sex, gender, race and etnnicity, etc.'</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45005" author="NWM">
+    <neo4j:cypher>MATCH (n44:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r0:has_value_set]-&gt;(n45:value_set), (n45:value_set)-[r1:has_term]-&gt;(n46:term {value:'10010029 - Colorectal Carcinoma -10066354 - Gastroesophageal Junction Adenocarcinoma',origin_name:'CTDC'}) DELETE r1</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45006" author="NWM">
+    <neo4j:cypher>MATCH (n47:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r2:has_value_set]-&gt;(n48:value_set), (n48:value_set)-[r3:has_term]-&gt;(n49:term {value:'10053571 - Melanoma',origin_name:'CTDC'}) DELETE r3</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45007" author="NWM">
+    <neo4j:cypher>MATCH (n50:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r4:has_value_set]-&gt;(n51:value_set), (n51:value_set)-[r5:has_term]-&gt;(n52:term {value:'10028566 - Plasma Cell Myeloma',origin_name:'CTDC'}) DELETE r5</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45008" author="NWM">
+    <neo4j:cypher>MATCH (n53:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r6:has_value_set]-&gt;(n54:value_set), (n54:value_set)-[r7:has_term]-&gt;(n55:term {value:'10000884-Acute Myeloid Leukemia Not Otherwise Specified',origin_name:'CTDC'}) DELETE r7</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45009" author="NWM">
+    <neo4j:cypher>MATCH (n56:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r8:has_value_set]-&gt;(n57:value_set), (n57:value_set)-[r9:has_term]-&gt;(n58:term {value:'10036910 - Prostate Carcinoma',origin_name:'CTDC'}) DELETE r9</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45010" author="NWM">
+    <neo4j:cypher>MATCH (n59:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r10:has_value_set]-&gt;(n60:value_set), (n60:value_set)-[r11:has_term]-&gt;(n61:term {value:'10041071 - Lung Small Cell Carcinoma',origin_name:'CTDC'}) DELETE r11</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45011" author="NWM">
+    <neo4j:cypher>MATCH (n62:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r12:has_value_set]-&gt;(n63:value_set), (n63:value_set)-[r13:has_term]-&gt;(n64:term {value:'10029514 - Lung Non-Small Cell Carcinoma',origin_name:'CTDC'}) DELETE r13</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45012" author="NWM">
+    <neo4j:cypher>MATCH (n145:node {handle:'specimen',model:'CTDC'})-[r32:has_property]-&gt;(n146:property {handle:'parent_biospecimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'}) DELETE r32</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45013" author="NWM">
+    <neo4j:cypher>MATCH (n147:node {handle:'specimen',model:'CTDC'})-[r33:has_property]-&gt;(n148:property {handle:'biospecimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE'}) DELETE r33</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45014" author="NWM">
+    <neo4j:cypher>MATCH (n149:node {handle:'specimen',model:'CTDC'})-[r34:has_property]-&gt;(n150:property {handle:'days_from_initial_genomic_sequencing_to_Specimen_collection',model:'CTDC',value_domain:'number',units:'days',desc:'text CDE ID = 11251130'}) DELETE r34</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45015" author="NWM">
+    <neo4j:cypher>MATCH (n65:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r14:has_value_set]-&gt;(n66:value_set), (n67:term {value:'10000884',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n66)-[r15:has_term]-&gt;(n67)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45016" author="NWM">
+    <neo4j:cypher>MATCH (n68:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r16:has_value_set]-&gt;(n69:value_set), (n70:term {value:'10041071',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n69)-[r17:has_term]-&gt;(n70)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45017" author="NWM">
+    <neo4j:cypher>MATCH (n71:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r18:has_value_set]-&gt;(n72:value_set), (n73:term {value:'10066354',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n72)-[r19:has_term]-&gt;(n73)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45018" author="NWM">
+    <neo4j:cypher>MATCH (n74:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r20:has_value_set]-&gt;(n75:value_set), (n76:term {value:'10029514',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n75)-[r21:has_term]-&gt;(n76)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45019" author="NWM">
+    <neo4j:cypher>MATCH (n77:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r22:has_value_set]-&gt;(n78:value_set), (n79:term {value:'10036910',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n78)-[r23:has_term]-&gt;(n79)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45020" author="NWM">
+    <neo4j:cypher>MATCH (n80:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r24:has_value_set]-&gt;(n81:value_set), (n82:term {value:'10010029',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n81)-[r25:has_term]-&gt;(n82)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45021" author="NWM">
+    <neo4j:cypher>MATCH (n83:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r26:has_value_set]-&gt;(n84:value_set), (n85:term {value:'10028566',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n84)-[r27:has_term]-&gt;(n85)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45022" author="NWM">
+    <neo4j:cypher>MATCH (n86:property {handle:'meddra_disease_code',model:'CTDC',_parent_handle:'diagnosis'})-[r28:has_value_set]-&gt;(n87:value_set), (n88:term {value:'10053571',origin_name:'CTDC',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n87)-[r29:has_term]-&gt;(n88)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45023" author="NWM">
+    <neo4j:cypher>MATCH (n151:node {handle:'specimen',model:'CTDC'}), (n152:property {handle:'parent_specimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n151)-[r35:has_property]-&gt;(n152)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45024" author="NWM">
+    <neo4j:cypher>MATCH (n153:node {handle:'specimen',model:'CTDC'}), (n154:property {handle:'specimen_type',model:'CTDC',value_domain:'value_set',desc:'text NOT CURRENTLY ASSIGNED ANY CDE',_commit:'ec1035f71b2f09770023c50ae238f3b701fb1f67'}) MERGE (n153)-[r36:has_property]-&gt;(n154)</neo4j:cypher>
+  </changeSet>
+</databaseChangeLog>
