@@ -21,4 +21,7 @@
   <changeSet id="73041" author="NWM">
     <neo4j:cypher>MERGE (:model {handle: 'HTAN', name: 'HTAN', repository: 'https://github.com/CBIIT/htan-model'})</neo4j:cypher>
   </changeSet>
+  <changeSet id="77277" author="NWM">
+    <neo4j:cypher>MERGE (:model {handle: 'mCODE', name: 'mCODE', repository: 'https://github.com/CBIIT/mcode-model'})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
