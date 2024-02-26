@@ -57,12 +57,6 @@
     ]]></neo4j:cypher>
   </changeSet>
   <changeSet id="16" author="NWM">
-	  <neo4j:cypher>CREATE CONSTRAINT node_unique_attrs IF NOT EXISTS FOR (n:node) REQUIRE (n.model, n.handle) IS UNIQUE</neo4j:cypher>
+    <neo4j:cypher>CREATE CONSTRAINT node_unique_attrs IF NOT EXISTS FOR (n:node) REQUIRE (n.model, n.handle) IS UNIQUE</neo4j:cypher>
   </changeSet>
-  <changeSet id="17" author="NWM">
-	  <neo4j:cypher>CREATE CONSTRAINT property_unique_attrs IF NOT EXISTS FOR (p:property) REQUIRE (p.model, p.handle, p.desc) IS UNIQUE</neo4j:cypher>
-  </changeSet>
-  <!-- <changeSet id="18" author="NWM"> -->
-	  <!-- <neo4j:cypher>CREATE CONSTRAINT term_unique_attrs IF NOT EXISTS FOR (t:term) REQUIRE (t.origin_name, t.origin_id, t.origin_version) IS UNIQUE</neo4j:cypher> -->
-  <!-- </changeSet> -->
 </databaseChangeLog>
