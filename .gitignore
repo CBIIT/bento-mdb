@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 **/liquibase.properties
 changelogs/liquibase.properties.backup.01
+.vscode

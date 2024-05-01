@@ -22,25 +22,25 @@
     <neo4j:cypher>create index if not exists for (n:tag) on (n.key, n.value)</neo4j:cypher>
   </changeSet>
   <changeSet id="8" author="NWM">
-    <neo4j:cypher>create fulltext index termDefn for (t:term) on each [t.origin_definition]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index termDefn if not exists for (t:term) on each [t.origin_definition]</neo4j:cypher>
   </changeSet>
   <changeSet id="9" author="NWM">
-    <neo4j:cypher>create fulltext index termValue for (t:term) on each [t.value]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index termValue if not exists for (t:term) on each [t.value]</neo4j:cypher>
   </changeSet>
   <changeSet id="10" author="NWM">
-    <neo4j:cypher>create fulltext index termValueDefn for (t:term) on each [t.value, t.origin_defintion]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index termValueDefn if not exists for (t:term) on each [t.value, t.origin_defintion]</neo4j:cypher>
   </changeSet>
   <changeSet id="11" author="NWM">
-    <neo4j:cypher>create fulltext index tagKeyValue for (g:tag) on each [g.key, g.value]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index tagKeyValue if not exists for (g:tag) on each [g.key, g.value]</neo4j:cypher>
   </changeSet>
   <changeSet id="12" author="NWM">
-    <neo4j:cypher>create fulltext index nodeHandle for (n:node) on each [n.handle]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index nodeHandle if not exists for (n:node) on each [n.handle]</neo4j:cypher>
   </changeSet>
   <changeSet id="13" author="NWM">
-    <neo4j:cypher>create fulltext index edgeHandle for (n:relationship) on each [n.handle]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index edgeHandle if not exists for (n:relationship) on each [n.handle]</neo4j:cypher>
   </changeSet>
   <changeSet id="14" author="NWM">
-    <neo4j:cypher>create fulltext index propHandle for (n:property) on each [n.handle]</neo4j:cypher>
+    <neo4j:cypher>create fulltext index propHandle if not exists for (n:property) on each [n.handle]</neo4j:cypher>
   </changeSet>
   <changeSet id="15" author="NWM">
 	<!--Only looks at node's first label-->
