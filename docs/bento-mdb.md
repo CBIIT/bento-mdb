@@ -17,15 +17,21 @@ More details about the structure and contents of MDB are given in the [bento-met
 The production MDB currently represents these projects:
 
 ### Models
-
-- [Childhood Cancer Data Initiative](https://github.com/CBIIT/ccdi-model)
-- [Cancer Data Service](https://github.com/CBIIT/ccdi-model)
-- [Genomic Data Commons](https://github.com/CBIIT/gdc-model)
-- [Integrated Canine Data Commons](https://caninecommons.cancer.gov)
+| Project | MDFs | Version |
+| :-------- | -------: | -------: |
+| [Childhood Cancer Data Initiative](https://clinicalcommons.ccdi.cancer.gov/) | [CCDI](https://github.com/CBIIT/ccdi-model) | v1.7.2 |
+| [Cancer Data Service](https://dataservice.datacommons.cancer.gov/#/home) | [CDS](https://github.com/CBIIT/cds-model) | v1.3.3 |
+| [Cancer Research Data Commons](https://datascience.cancer.gov/data-commons) | [CRDC](https://github.com/CBIIT/dss-classification-scheme) | TBD |
+| [Clinical and Translational Data Commons](https://datacommons.cancer.gov/repository/clinical-and-translational-data-commons) | [CTDC](https://github.com/CBIIT/ctdc-model) | TBD |
+| [Genomic Data Commons](https://gdc.cancer.gov/) | [GDC](https://github.com/CBIIT/gdc-model) | v3.0.0 |
+| [Human Tumor Atlas Network](https://humantumoratlas.org/) | [HTAN](https://github.com/CBIIT/htan-model/) | v24.3.1 |
+| [Integrated Canine Data Commons](https://caninecommons.cancer.gov) | [ICDC](https://github.com/CBIIT/icdc-model-tool) | TBD |
+| [minimal Common Oncology Data Elements](https://build.fhir.org/ig/HL7/fhir-mCODE-ig/) | [mCODE](https://github.com/CBIIT/mcode-model) | v3.0.0 |
+| [Proteomic Data Commons](https://proteomic.datacommons.cancer.gov/pdc/) | [PDC](https://github.com/CBIIT/pdc-model) | v2.0.2 |
 
 ### Mappings
 
-- [Data Standards Service](https://github.com/nelsonwmoore/dss-model)
+- [Data Standards Service](https://github.com/CBIIT/dss-classification-scheme)
 
 ## Structure
 
