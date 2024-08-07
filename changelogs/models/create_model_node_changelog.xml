@@ -51,4 +51,13 @@
   <changeSet id="33" author="NWM">
     <neo4j:cypher>MERGE (:model {handle: 'PDC', name: 'PDC', version: "v2.0.2", repository: 'https://github.com/CBIIT/pdc-model'})</neo4j:cypher>
   </changeSet>
+  <changeSet id="204015" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'CCDI'}) SET m.version = "v1.9.1"</neo4j:cypher>
+  </changeSet>
+  <changeSet id="204016" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'CDS'}) SET m.version = "v4.0.0"</neo4j:cypher>
+  </changeSet>
+  <changeSet id="204017" author="NWM">
+    <neo4j:cypher>MERGE (:model {handle: 'IDC', name: 'IDC', repository: 'https://github.com/CBIIT/idc-model', version: 'vTBD'})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
