@@ -60,4 +60,7 @@
   <changeSet id="204017" author="NWM">
     <neo4j:cypher>MERGE (:model {handle: 'IDC', name: 'IDC', repository: 'https://github.com/CBIIT/idc-model', version: 'vTBD'})</neo4j:cypher>
   </changeSet>
+  <changeSet id="214818" author="NWM">
+    <neo4j:cypher>MERGE (:model {handle: 'C3DC', name: 'C3DC', repository: 'https://github.com/CBIIT/c3dc-model', version: 'v1.3.0'})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
