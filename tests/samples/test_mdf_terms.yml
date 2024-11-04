@@ -1,0 +1,19 @@
+Handle: TEST
+Version: 1.2.3
+Nodes:
+  file:
+    Props:
+      - file_type
+  other_file:
+    Props:
+      - file_type
+Relationships: {}
+PropDefinitions:
+  file_type:
+    Enum:
+      - "bam"
+      - "cram"
+      - "dict"
+    Term:
+      - Origin: caDSR
+        Value: File Type

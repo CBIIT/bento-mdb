@@ -39,8 +39,8 @@ TERM_KEY = (TERM_VALUE_2, TERM_ORIGIN_2)
 
 
 def test_make_diff_changelog_length() -> None:
-    mdf_old = MDF(TEST_MDF, handle=MODEL_HDL, _commit=_COMMIT, raiseError=True)
-    mdf_new = MDF(TEST_MDF_DIFF, handle=MODEL_HDL, _commit=_COMMIT, raiseError=True)
+    mdf_old = MDF(TEST_MDF, handle=MODEL_HDL, _commit=_COMMIT, raise_error=True)
+    mdf_new = MDF(TEST_MDF_DIFF, handle=MODEL_HDL, _commit=_COMMIT, raise_error=True)
     diff = diff_models(mdl_a=mdf_old.model, mdl_b=mdf_new.model)
     changelog = convert_diff_to_changelog(
         diff=diff,

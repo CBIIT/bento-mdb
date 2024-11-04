@@ -57,24 +57,23 @@ def escape_quotes_in_attr(entity: Entity) -> None:
     Quotes in string attributes may or may not already be escaped, so this function
     unescapes all previously escaped ' and " characters and replaces them with
     """
-    for key, val in vars(entity).items():
-        if (
-            val
-            and val is not None
-            and key != "pvt"
-            and isinstance(
-                val,
-                str,
-            )
-        ):
+    for attr in entity.attspec:
+        val = getattr(entity, attr, None)
+        if val is not None and isinstance(val, str):
             # First unescape any previously escaped quotes
             unescape_val = val.replace(r"\'", "'").replace(r"\"", '"')
 
-            # Escape all quotes
-            escape_val = unescape_val.replace("'", r"\'").replace('"', r"\"")
+            # Escape all quotes, use utf-8 encoded versions of backslash and quotes
+            # so extra backslash isn't added to the string
+            escape_val = unescape_val.replace(
+                r"'",
+                "\u005c\u0027",
+            ).replace(
+                r'"',
+                "\u005c\u0022",
+            )
 
-            # Update the modified value back to the attribute
-            setattr(entity, key, escape_val)
+            setattr(entity, attr, escape_val)
 
 
 def reset_pg_ent_counter() -> None:

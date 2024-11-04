@@ -14,16 +14,8 @@ import click
 from bento_mdf.mdf import MDF
 from bento_meta.mdb.mdb import make_nanoid
 from bento_meta.objects import Concept, Property, Tag, Term, ValueSet
-from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
-from minicypher.clauses import (
-    Create,
-    Match,
-    Merge,
-    OnCreateSet,
-)
-from minicypher.entities import N, R, T
-
-from src.changelog_utils import (
+from bento_meta.objects import Model as ModelEnt
+from changelog_utils import (
     Delete,
     DetachDelete,
     Statement,
@@ -32,6 +24,14 @@ from src.changelog_utils import (
     reset_pg_ent_counter,
     update_config_changeset_id,
 )
+from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
+from minicypher.clauses import (
+    Create,
+    Match,
+    Merge,
+    OnCreateSet,
+)
+from minicypher.entities import N, R, T
 
 if TYPE_CHECKING:
     from bento_meta.entity import Entity
@@ -46,6 +46,7 @@ class ModelToChangelogConverter:
     def __init__(
         self,
         model: Model,
+        *,
         add_rollback: bool = True,
         terms_only: bool = False,
     ) -> None:
@@ -76,21 +77,20 @@ class ModelToChangelogConverter:
         stmt_type = "add_ents"
         if entity in self.added_entities:
             msg = f"Entity with attrs: {entity.get_attr_dict()} already added."
-            logger.warning(msg)
+            logger.info(msg)
             return
         escape_quotes_in_attr(entity)
         reset_pg_ent_counter()
         cypher_ent = cypherize_entity(entity)
         if isinstance(entity, Property) and "_parent_handle" in cypher_ent.props:
             cypher_ent.props.pop("_parent_handle")
-        if isinstance(entity, (Term, ValueSet)):
+        if isinstance(entity, (Term, ValueSet, Concept)):
             if "_commit" not in cypher_ent.props:
                 stmt = Statement(Merge(cypher_ent))
             # remove _commit prop of Term/VS cypher_ent for Merge
             else:
                 commit = cypher_ent.props.pop("_commit")
                 stmt = Statement(Merge(cypher_ent), OnCreateSet(commit))
-        if isinstance(entity, Term):
             rollback = Statement("empty")
         else:
             stmt = Statement(Create(cypher_ent))
@@ -168,9 +168,10 @@ class ModelToChangelogConverter:
         """Generate cypher statements to create/merge an entity's concept attribute."""
         if not entity.concept:
             return
-        entity.concept.tags["mapping_source"] = Tag(
-            {"key": "mapping_source", "value": self.model.handle},
-        )
+        if not entity.concept.tags.get("mapping_source"):
+            entity.concept.tags["mapping_source"] = Tag(
+                {"key": "mapping_source", "value": self.model.handle},
+            )
         self.generate_cypher_to_add_entity(entity.concept)
         self.generate_cypher_to_add_relationship(entity, "has_concept", entity.concept)
         self.process_tags(entity.concept)
@@ -180,6 +181,8 @@ class ModelToChangelogConverter:
         """Generate cypher statements to create/merge an entity's value_set attribute."""
         if not entity.value_set:
             return
+        if not entity.value_set.nanoid:
+            entity.value_set.nanoid = make_nanoid()
         self.generate_cypher_to_add_entity(entity.value_set)
         self.generate_cypher_to_add_relationship(
             entity,
@@ -241,10 +244,32 @@ class ModelToChangelogConverter:
             self.process_origin(term)
             self.process_concept(term)
 
+    def set_model_version(
+        self,
+        *,
+        latest_version: bool = False,
+    ) -> None:
+        """Create model node and set model version for other entities."""
+        model_ent = ModelEnt(
+            {
+                "latest_version": latest_version,
+                "repository": self.model.uri,
+                "handle": self.model.handle,
+                "version": self.model.version,
+                "name": self.model.handle,
+            },
+        )
+        self.generate_cypher_to_add_entity(model_ent)
+        if model_ent.version is not None:
+            add_version_to_model_ents(self.model)
+
     def convert_model_to_changelog(
         self,
         author: str,
         config_file_path: str | Path,
+        model_version: str | None = None,
+        *,
+        latest_version: bool = False,
     ) -> Changelog:
         """
         Convert a bento meta model to a Liquibase Changelog.
@@ -265,6 +290,11 @@ class ModelToChangelogConverter:
         """
         # if property shared by multiple nodes/edges,
         separate_shared_props(self.model)
+
+        # create model node and add model version to other entities
+        if model_version is not None:
+            self.model.version = model_version
+        self.set_model_version(latest_version=latest_version)
 
         if not self.terms_only:
             self.process_model_nodes()
@@ -306,13 +336,33 @@ def separate_shared_props(model: Model) -> None:
 
     for key, prop in model.props.items():
         if prop in initial_props:
-            new_prop = Property(prop.get_attr_dict())
+            new_prop = prop.dup()
             if new_prop.nanoid:
                 new_prop.nanoid = make_nanoid()
+            if prop._commit:
+                new_prop._commit = prop._commit
+            if prop.value_set:
+                new_prop.value_set = prop.value_set.dup()
             model.nodes[key[0]].props[key[1]] = new_prop
             model.props[(key[0], key[1])] = new_prop
         else:
             initial_props.add(prop)
+
+
+def add_version_to_model_ents(model: Model):
+    """Set model version for entities in model."""
+    for node in model.nodes.values():
+        if node.version:
+            continue
+        node.version = model.version
+    for edge in model.edges.values():
+        if edge.version:
+            continue
+        edge.version = model.version
+    for prop in model.props.values():
+        if prop.version:
+            continue
+        prop.version = model.version
 
 
 @click.command()
@@ -363,6 +413,18 @@ def separate_shared_props(model: Model) -> None:
     help="Add cypher stmts with rollback to changesets",
 )
 @click.option(
+    "--model_version",
+    required=False,
+    type=str,
+    help="Manually set model version (e.g., 1.2.3) if not included in MDF.",
+)
+@click.option(
+    "--latest_version",
+    required=False,
+    type=bool,
+    help="Is this the latest data model version?",
+)
+@click.option(
     "--terms_only",
     required=False,
     type=bool,
@@ -375,13 +437,16 @@ def main(
     config_file_path: str | Path,
     author: str,
     _commit: str | None,
+    model_version: str | None,
+    *,
     add_rollback: bool,
+    latest_version: bool,
     terms_only: bool,
 ) -> None:
     """Get liquibase changelog from mdf files for a model."""
     logger.info("Script started")
 
-    mdf = MDF(*mdf_files, handle=model_handle, _commit=_commit, raiseError=True)
+    mdf = MDF(*mdf_files, handle=model_handle, _commit=_commit, raise_error=True)
     if not mdf.model:
         msg = "Error getting model from MDF"
         raise RuntimeError(msg)
@@ -392,7 +457,12 @@ def main(
         add_rollback=add_rollback,
         terms_only=terms_only,
     )
-    changelog = converter.convert_model_to_changelog(author, config_file_path)
+    changelog = converter.convert_model_to_changelog(
+        author,
+        config_file_path,
+        model_version,
+        latest_version=latest_version,
+    )
     logger.info("Changelog converted from MDF successfully")
 
     changelog.save_to_file(str(Path(output_file_path)), encoding="UTF-8")
