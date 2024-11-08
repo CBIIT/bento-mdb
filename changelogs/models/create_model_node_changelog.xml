@@ -1,66 +1,36 @@
 <?xml version='1.0' encoding='us-ascii'?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-  <changeSet id="17" author="MAJ">
-    <neo4j:cypher>MERGE (:model {handle: 'CCDI', name: 'CCDI', repository: 'https://github.com/CBIIT/ccdi-model'})</neo4j:cypher>
+  <changeSet id="17" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'C3DC'}) SET m.repository = 'https://github.com/CBIIT/c3dc-model'</neo4j:cypher>
   </changeSet>
-  <changeSet id="18" author="MAJ">
-    <neo4j:cypher>MERGE (:model {handle: 'CDS', name: 'CDS', repository: 'https://github.com/CBIIT/cds-model'})</neo4j:cypher>
+  <changeSet id="18" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'CCDI'}) SET m.repository = 'https://github.com/CBIIT/ccdi-model'</neo4j:cypher>
   </changeSet>
-  <changeSet id="19" author="MAJ">
-    <neo4j:cypher>MERGE (:model {handle: 'CRDC', name: 'CRDC', repository: 'https://github.com/CBIIT/crdc-model'})</neo4j:cypher>
+  <changeSet id="19" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'CDS'}) SET m.repository = 'https://github.com/CBIIT/cds-model'</neo4j:cypher>
   </changeSet>
-  <changeSet id="20" author="MAJ">
-    <neo4j:cypher>MERGE (:model {handle: 'GDC', name: 'GDC', repository: 'https://github.com/CBIIT/gdc-model'})</neo4j:cypher>
+  <changeSet id="20" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'CTDC'}) SET m.repository = 'https://github.com/CBIIT/ctdc-model'</neo4j:cypher>
   </changeSet>
-  <changeSet id="21" author="MAJ">
-    <neo4j:cypher>MERGE (:model {handle: 'ICDC', name: 'ICDC', repository: 'https://github.com/CBIIT/icdc-model-tool'})</neo4j:cypher>
+  <changeSet id="21" author="NWM">
+    <neo4j:cypher>MATCH (m:model {handle: 'GDC'}) SET m.repository = 'https://github.com/CBIIT/gdc-model'</neo4j:cypher>
   </changeSet>
   <changeSet id="22" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'CTDC', name: 'CTDC', repository: 'https://github.com/CBIIT/ctdc-model'})</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'HTAN'}) SET m.repository = 'https://github.com/CBIIT/htan-model'</neo4j:cypher>
   </changeSet>
   <changeSet id="23" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'HTAN', name: 'HTAN', repository: 'https://github.com/CBIIT/htan-model'})</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'ICDC'}) SET m.repository = 'https://github.com/CBIIT/icdc-model-tool'</neo4j:cypher>
   </changeSet>
   <changeSet id="24" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'mCODE', name: 'mCODE', repository: 'https://github.com/CBIIT/mcode-model'})</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'mCODE'}) SET m.repository = 'https://github.com/nelsonwmoore/mcode-model'</neo4j:cypher>
   </changeSet>
   <changeSet id="25" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CCDI'}) SET m.version = "v1.7.2"</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'PDC'}) SET m.repository = 'https://github.com/CBIIT/pdc-model'</neo4j:cypher>
   </changeSet>
   <changeSet id="26" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CDS'}) SET m.version = "v1.3.3"</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'CRDC'}) SET m.repository = 'https://github.com/nelsonwmoore/crdc-model'</neo4j:cypher>
   </changeSet>
   <changeSet id="27" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CRDC'}) SET m.version = "vTBD"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="28" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'GDC'}) SET m.version = "v3.0.3"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="29" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'ICDC'}) SET m.version = "vTBD"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="30" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CTDC'}) SET m.version = "vTBD"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="31" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'HTAN'}) SET m.version = "v24.3.1"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="32" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'mCODE'}) SET m.version = "v3.0.0"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="33" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'PDC', name: 'PDC', version: "v2.0.2", repository: 'https://github.com/CBIIT/pdc-model'})</neo4j:cypher>
-  </changeSet>
-  <changeSet id="204015" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CCDI'}) SET m.version = "v1.9.1"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="204016" author="NWM">
-    <neo4j:cypher>MATCH (m:model {handle: 'CDS'}) SET m.version = "v4.0.0"</neo4j:cypher>
-  </changeSet>
-  <changeSet id="204017" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'IDC', name: 'IDC', repository: 'https://github.com/CBIIT/idc-model', version: 'vTBD'})</neo4j:cypher>
-  </changeSet>
-  <changeSet id="214818" author="NWM">
-    <neo4j:cypher>MERGE (:model {handle: 'C3DC', name: 'C3DC', repository: 'https://github.com/CBIIT/c3dc-model', version: 'v1.3.0'})</neo4j:cypher>
+    <neo4j:cypher>MATCH (m:model {handle: 'CRDCSearch'}) SET m.repository = 'https://github.com/pihltd/CRDCSearchModel'</neo4j:cypher>
   </changeSet>
 </databaseChangeLog>
