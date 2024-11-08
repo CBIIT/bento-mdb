@@ -17,17 +17,19 @@ More details about the structure and contents of MDB are given in the [bento-met
 The production MDB currently represents these projects:
 
 ### Models
-| Project | MDFs | Version |
+| Project | MDFs | Latest Version |
 | :-------- | -------: | -------: |
-| [Childhood Cancer Data Initiative](https://clinicalcommons.ccdi.cancer.gov/) | [CCDI](https://github.com/CBIIT/ccdi-model) | v1.7.2 |
-| [Cancer Data Service](https://dataservice.datacommons.cancer.gov/#/home) | [CDS](https://github.com/CBIIT/cds-model) | v1.3.3 |
+| [Childhood Cancer Clinical Data Commons](https://clinicalcommons.ccdi.cancer.gov/) | [C3DC](https://github.com/CBIIT/c3dc-model) | 1.4.0 |
+| [Childhood Cancer Data Initiative](https://clinicalcommons.ccdi.cancer.gov/) | [CCDI](https://github.com/CBIIT/ccdi-model) | 2.0.0 |
+| [Cancer Data Service](https://dataservice.datacommons.cancer.gov/#/home) | [CDS](https://github.com/CBIIT/cds-model) | 4.0.4 |
 | [Cancer Research Data Commons](https://datascience.cancer.gov/data-commons) | [CRDC](https://github.com/CBIIT/dss-classification-scheme) | TBD |
-| [Clinical and Translational Data Commons](https://datacommons.cancer.gov/repository/clinical-and-translational-data-commons) | [CTDC](https://github.com/CBIIT/ctdc-model) | TBD |
-| [Genomic Data Commons](https://gdc.cancer.gov/) | [GDC](https://github.com/CBIIT/gdc-model) | v3.0.0 |
-| [Human Tumor Atlas Network](https://humantumoratlas.org/) | [HTAN](https://github.com/CBIIT/htan-model/) | v24.3.1 |
-| [Integrated Canine Data Commons](https://caninecommons.cancer.gov) | [ICDC](https://github.com/CBIIT/icdc-model-tool) | TBD |
-| [minimal Common Oncology Data Elements](https://build.fhir.org/ig/HL7/fhir-mCODE-ig/) | [mCODE](https://github.com/CBIIT/mcode-model) | v3.0.0 |
-| [Proteomic Data Commons](https://proteomic.datacommons.cancer.gov/pdc/) | [PDC](https://github.com/CBIIT/pdc-model) | v2.0.2 |
+| [Clinical and Translational Data Commons](https://datacommons.cancer.gov/repository/clinical-and-translational-data-commons) | [CTDC](https://github.com/CBIIT/ctdc-model) | 1.0.0 |
+| [Genomic Data Commons](https://gdc.cancer.gov/) | [GDC](https://github.com/CBIIT/gdc-model) | 3.0.3 |
+| [Human Tumor Atlas Network](https://humantumoratlas.org/) | [HTAN](https://github.com/CBIIT/htan-model/) | 24.3.1 |
+| [Integrated Canine Data Commons](https://caninecommons.cancer.gov) | [ICDC](https://github.com/CBIIT/icdc-model-tool) | 1.0.0 |
+| [minimal Common Oncology Data Elements](https://build.fhir.org/ig/HL7/fhir-mCODE-ig/) | [mCODE](https://github.com/CBIIT/mcode-model) | 3.0.0 |
+| [Proteomic Data Commons](https://proteomic.datacommons.cancer.gov/pdc/) | [PDC](https://github.com/CBIIT/pdc-model) | 2.0.2 |
+| [CRDC Search Model](https://github.com/pihltd/CRDCSearchModel) | [CRDCSearch](https://github.com/pihltd/CRDCSearchModel) | 0.1.0 |
 
 ### Mappings
 

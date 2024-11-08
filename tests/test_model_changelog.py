@@ -12,6 +12,7 @@ from src.make_model_changelog import ModelToChangelogConverter
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")
+TEST_MODEL_MDF_TERMS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_terms.yml")
 TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
 AUTHOR = "Tolkien"
 MODEL_HDL = "TEST"
@@ -28,7 +29,7 @@ class TestMakeModelChangelog:
 
     def test_make_model_changelog_length(self) -> None:
         """Test for length of changelog generated from model MDF."""
-        mdf = MDF(TEST_MODEL_MDF, handle=MODEL_HDL, _commit=_COMMIT, raiseError=True)
+        mdf = MDF(TEST_MODEL_MDF, handle=MODEL_HDL, _commit=_COMMIT, raise_error=True)
         converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
         changelog = converter.convert_model_to_changelog(
             author=AUTHOR,
@@ -36,7 +37,7 @@ class TestMakeModelChangelog:
         )
         update_config_changeset_id(TEST_CHANGELOG_CONFIG, 1)
         actual = len(changelog.subelements)
-        expected = 51
+        expected = 52
         assert actual == expected
 
     def test_make_model_changelog_shared_props(self) -> None:
@@ -69,46 +70,128 @@ class TestMakeModelChangelog:
             remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
         ]
         expected = [
+            "CREATE (n0:model {handle:'TEST',name:'TEST',latest_version:'False'})",
             "CREATE (n0:node {handle:'cell_line',model:'TEST'})",
             "CREATE (n0:property "
-            "{handle:'id',model:'TEST',value_domain:'string',desc:'desc of "
-            "id',nanoid:''})",
+            "{handle:'id',model:'TEST',nanoid:'',value_domain:'string',desc:'desc of "
+            "id'})",
             "CREATE (n0:node {handle:'clinical_measure_file',model:'TEST'})",
             "CREATE (n0:property "
-            "{handle:'id',model:'TEST',value_domain:'string',desc:'desc of "
-            "id',nanoid:''})",
+            "{handle:'id',model:'TEST',nanoid:'',value_domain:'string',desc:'desc of "
+            "id'})",
             "MATCH (n0:node {handle:'cell_line',model:'TEST'}), (n1:property "
-            "{handle:'id',model:'TEST',value_domain:'string',desc:'desc of "
-            "id',nanoid:''}) MERGE (n0)-[r0:has_property]->(n1)",
+            "{handle:'id',model:'TEST',nanoid:'',value_domain:'string',desc:'desc of "
+            "id'}) MERGE (n0)-[r0:has_property]->(n1)",
             "MATCH (n0:node {handle:'clinical_measure_file',model:'TEST'}), (n1:property "
-            "{handle:'id',model:'TEST',value_domain:'string',desc:'desc of "
-            "id',nanoid:''}) MERGE (n0)-[r0:has_property]->(n1)",
+            "{handle:'id',model:'TEST',nanoid:'',value_domain:'string',desc:'desc of "
+            "id'}) MERGE (n0)-[r0:has_property]->(n1)",
         ]
+        print("ACTUAL", *actual, sep="\n")
+        print("EXPECTED", *expected, sep="\n")
         assert actual == expected
 
-    # def test_make_model_changelog_terms(self):
-    #     """Terms only mdf with tags + nested terms"""
-    #     model = Model(handle=MODEL_HDL)
-    #     term_1 = Term({"handle": "term_1", "value": "Term 1", "origin_name": "TEST"})
-    #     concept = Concept()
-    #     term_2 = Term({"handle": "term_2", "value": "Term 2", "origin_name": "TEST"})
-    #     term_3 = Term({"handle": "term_3", "value": "Term 3", "origin_name": "TEST"})
-    #     tag_1 = Tag({"key": "origin_preferred_term", "value": "origin_preferred_term"})
-    #     concept.terms[(term_2.handle, term_2.origin_name)] = term_2
-    #     concept.terms[(term_3.handle, term_3.origin_name)] = term_3
-    #     term_1.concept = concept
-    #     term_1.tags[tag_1.key] = tag_1
-    #     model.terms[(term_1.handle, term_1.origin_name)] = term_1
-    #     converter = ModelToChangelogConverter(model=model, add_rollback=False)
-    #     changelog = converter.convert_model_to_changelog(
-    #         author=AUTHOR,
-    #         config_file_path=TEST_CHANGELOG_CONFIG,
-    #     )
-    #     update_config_changeset_id(TEST_CHANGELOG_CONFIG, 1)
-    #     actual = [
-    #         remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
-    #     ]
-    #     expected = [
-    #     ]
-    #     print(f"{actual=}\n{expected=}")
-    #     assert actual == expected
+    def test_shared_props_with_value_set(self) -> None:
+        """Test for shared properties with value_set."""
+        mdf = MDF(
+            TEST_MODEL_MDF_TERMS,
+            handle=MODEL_HDL,
+            _commit=_COMMIT,
+            raise_error=True,
+        )
+        converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
+        changelog = converter.convert_model_to_changelog(
+            author=AUTHOR,
+            config_file_path=TEST_CHANGELOG_CONFIG,
+        )
+        update_config_changeset_id(TEST_CHANGELOG_CONFIG, 1)
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
+        ]
+        expected = [
+            "CREATE (n0:model {handle:'TEST',name:'TEST',version:'1.2.3',"
+            "latest_version:'False'})",
+            "CREATE (n0:node {handle:'file',model:'TEST',version:'1.2.3',"
+            "_commit:'_COMMIT_123'})",
+            "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3',"
+            "_commit:'_COMMIT_123'})",
+            "MERGE (n0:concept {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
+            "CREATE (n0:tag {key:'mapping_source',value:'TEST',nanoid:''})",
+            "MERGE (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
+            " ON CREATE SET n0._commit = '_COMMIT_123'",
+            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
+            "MERGE (n0:term {handle:'bam',value:'bam',origin_name:'TEST'})",
+            "MERGE (n0:term {handle:'cram',value:'cram',origin_name:'TEST'})",
+            "MERGE (n0:term {handle:'dict',value:'dict',origin_name:'TEST'})",
+            "CREATE (n0:node {handle:'other_file',model:'TEST',version:'1.2.3',"
+            "_commit:'_COMMIT_123'})",
+            "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3',"
+            "_commit:'_COMMIT_123'})",
+            "MERGE (n0:value_set {nanoid:''})",
+            "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}), "
+            "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:has_property]->(n1)",
+            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}), "
+            "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:has_concept]->(n1)",
+            "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
+            "(n1:tag {key:'mapping_source',value:'TEST',nanoid:''}) "
+            "MERGE (n0)-[r0:has_tag]->(n1)",
+            "MATCH (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
+            ", (n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:represents]->(n1)",
+            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}), "
+            "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'cram',value:'cram',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MATCH (n0:node {handle:'other_file',model:'TEST',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}), "
+            "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:has_property]->(n1)",
+            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3',"
+            "_commit:'_COMMIT_123'}), "
+            "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:has_concept]->(n1)",
+            "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
+            "(n1:tag {key:'mapping_source',value:'TEST',nanoid:''}) "
+            "MERGE (n0)-[r0:has_tag]->(n1)",
+            "MATCH (n0:term {handle:'file_type',value:'File Type',"
+            "origin_name:'caDSR'}), (n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
+            "MERGE (n0)-[r0:represents]->(n1)",
+            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
+            "value_domain:'value_set',is_required:'False',is_key:'False',"
+            "is_nullable:'False',is_strict:'True',version:'1.2.3'"
+            ",_commit:'_COMMIT_123'}), "
+            "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'cram',value:'cram',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
+            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
+        ]
+        print("ACTUAL", *actual, sep="\n")
+        print("EXPECTED", *expected, sep="\n")
+        assert actual == expected
