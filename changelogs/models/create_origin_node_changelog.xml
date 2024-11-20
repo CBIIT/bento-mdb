@@ -30,4 +30,199 @@
   <changeSet id="43" author="MAJ">
     <neo4j:cypher>MERGE (:origin {name: 'HTAN', desc: 'Human Tumor Atlas Network', url:'https://humantumoratlas.org/'})</neo4j:cypher>
   </changeSet>
+  <changeSet id="44" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'http://hl7.org/fhir/us/mcode/CodeSystem/snomed-requested-cs', desc: 'mCODE SNOMED Staging', url:'http://hl7.org/fhir/us/mcode/CodeSystem/snomed-requested-cs'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="45" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'http://creativecommons.org/licenses/by/4.0/', desc: 'Creative Commons 4.0', url:'http://creativecommons.org/licenses/by/4.0/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="46" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'http://creativecommons.org/licenses/by/3.0/', desc: 'Creative Commons 3.0', url:'http://creativecommons.org/licenses/by/3.0/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="47" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR-NCI Standard', desc: 'caDSR-NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="48" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR- CTDC', desc: 'caDSR- CTDC', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="49" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR- CSAERS/NCI Standard', desc: 'caDSR- CSAERS/NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="50" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - TCGA', desc: 'caDSR - TCGA', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="51" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - PCDC', desc: 'caDSR - PCDC', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="52" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - OMB/NCI Standard', desc: 'caDSR - OMB/NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="53" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NMDP', desc: 'caDSR - NMDP', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="54" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCIP', desc: 'caDSR - NCIP', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="55" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCI Standards (NCIP)', desc: 'caDSR - NCI Standards (NCIP)', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="56" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCI Standards', desc: 'caDSR - NCI Standards', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="57" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCI Standard', desc: 'caDSR - NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="58" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCI CRF Stds', desc: 'caDSR - NCI CRF Stds', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="59" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - NCI CRF Standards', desc: 'caDSR - NCI CRF Standards', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="60" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - MCL', desc: 'caDSR - MCL', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="61" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - DICOM', desc: 'caDSR - DICOM', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="62" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - DCP', desc: 'caDSR - DCP', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="63" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CTEP', desc: 'caDSR - CTEP', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="64" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CTDC', desc: 'caDSR - CTDC', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="65" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CSAERS/NCI Standard', desc: 'caDSR - CSAERS/NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="66" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CRDC', desc: 'caDSR - CRDC', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="67" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CDS', desc: 'caDSR - CDS', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="68" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - CCR', desc: 'caDSR - CCR', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="69" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caDSR - BPV', desc: 'caDSR - BPV', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="70" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'caBIG', desc: 'caBIG', url:'https://pubmed.ncbi.nlm.nih.gov/17911733/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="71" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'THERADEX', desc: 'THERADEX', url:'https://www.theradex.com/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="72" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'SpecimenType (HL7)', desc: 'SpecimenType (HL7)', url:'https://terminology.hl7.org/2.1.0/CodeSystem-v2-0487.html'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="73" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'SNOMEDCT_US', desc: 'SNOMEDCT_US', url:'https://www.snomed.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="74" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'SNOMED CT', desc: 'SNOMED CT', url:'https://www.snomed.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="75" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'RADLEX', desc: 'RADLEX', url:'https://radlex.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="76" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'RAC39299LEX', desc: 'RADLEX?', url:'https://radlex.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="77" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'PSI MS', desc: 'PSI MS', url:'https://fairsharing.org/1179'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="78" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'PDC', desc: 'PDC', url:'https://proteomic.datacommons.cancer.gov/pdc/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="79" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'PDC', desc: 'PDC', url:'https://proteomic.datacommons.cancer.gov/pdc/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="80" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'NCIT', desc: 'NCI Thesaurus', url:'https://ncit.nci.nih.gov'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="81" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'NCI', desc: 'National Cancer Institute', url:'https://www.cancer.gov/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="82" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'NCBI', desc: 'National Center for Biotechnology Information', url:'https://www.ncbi.nlm.nih.gov/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="83" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'MED-RT', desc: 'Medication Reference Terminology', url:'https://evs.nci.nih.gov/ftp1/MED-RT/MED-RT%20Documentation.pdf'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="84" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'MDR', desc: 'Medical Device Regulation', url:'https://www.medical-device-regulation.eu/2019/07/10/mdr-article-2-definitions/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="85" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'LNC', desc: 'Logical Observation Identifiers Names and Codes?', url:'https://loinc.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="86" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'JAX', desc: 'JAX', url:'https://www.jax.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="87" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'Illumina', desc: 'Illumina', url:'https://www.illumina.com/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="88" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICDO', desc: 'International Classification of Diseases for Oncology', url:'https://www.who.int/standards/classifications/other-classifications/international-classification-of-diseases-for-oncology'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="89" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICDC', desc: 'Integrated Canine Data Commons', url:'https://caninecommons.cancer.gov/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="90" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICD9CM', desc: 'The International Classification of Diseases, Ninth Revision, Clinical Modification', url:'https://archive.cdc.gov/www_cdc_gov/nchs/icd/icd9cm.htm'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="91" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICD10PCS', desc: 'The International Classification of Diseases, Tenth Revision, Procedure Coding System', url:'https://www.cms.gov/medicare/coding-billing/icd-10-codes'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="92" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICD10CM', desc: 'The International Classification of Diseases, Tenth Revision, Clinical Modification', url:'https://www.cdc.gov/nchs/icd/icd-10-cm/index.html'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="93" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICD10', desc: 'The International Classification of Diseases, Tenth Revision', url:'https://www.cms.gov/medicare/coding-billing/icd-10-codes'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="94" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ICD-10 CM', desc: 'The International Classification of Diseases, Tenth Revision, Clinical Modification', url:'https://www.cdc.gov/nchs/icd/icd-10-cm/index.html'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="95" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'HTAN Guidelines for reporting single-cell RNA-Seq experiments', desc: 'HTAN Guidelines for reporting single-cell RNA-Seq experiments', url:'https://humantumoratlas.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="96" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'HPO', desc: 'The Human Phenotype Ontology', url:'https://hpo.jax.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="97" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'HGNC', desc: 'The HUGO Gene Nomenclature Committee', url:'https://www.genenames.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="98" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'HCPCS', desc: 'Healthcare Common Procedure Coding System', url:'https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="99" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'GO', desc: 'The Gene Ontology Resource', url:'https://geneontology.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="100" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'GATK', desc: 'Genome Analysis Toolkit', url:'https://gatk.broadinstitute.org/hc/en-us'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="101" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'FastQC', desc: 'FastQC ', url:'https://www.bioinformatics.babraham.ac.uk/projects/fastqc/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="102" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'EMBL OLS OBI', desc: 'Ontology for Biomedical Investigations', url:'https://www.ebi.ac.uk/ols4/ontologies/obi'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="103" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'CancerModels.org', desc: 'CancerModels.org', url:'https://www.cancermodels.org/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="104" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'CTDC', desc: 'Clinical and Translational Data Commons', url:'https://datacommons.cancer.gov/repository/clinical-and-translational-data-commons'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="105" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'CSAERS/NCI Standard', desc: 'CSAERS/NCI Standard', url:'https://cadsr.cancer.gov/onedata/Home.jsp'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="106" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'CNVKit', desc: 'CNVkit: Genome-wide copy number from high-throughput sequencing', url:'https://cnvkit.readthedocs.io/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="107" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'C3DC', desc: 'Childhood Cancer Clinical Data Commons', url:'https://clinicalcommons.ccdi.cancer.gov/'})</neo4j:cypher>
+  </changeSet>
+  <changeSet id="108" author="NWM">
+    <neo4j:cypher>MERGE (:origin {name: 'ADEERS', desc: 'Adverse Event Expedited Reporting System (old name, now called CTEP-AERS)', url:'https://ctep.cancer.gov/protocoldevelopment/adverse_effects.htm'})</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
