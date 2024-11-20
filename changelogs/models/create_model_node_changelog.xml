@@ -33,4 +33,7 @@
   <changeSet id="27" author="NWM">
     <neo4j:cypher>MATCH (m:model {handle: 'CRDCSearch'}) SET m.repository = 'https://github.com/pihltd/CRDCSearchModel'</neo4j:cypher>
   </changeSet>
+  <changeSet id="28" author="NWM">
+    <neo4j:cypher>MATCH (m:model) SET m.is_latest_version = m.latest_version REMOVE m.latest_version</neo4j:cypher>
+  </changeSet>
 </databaseChangeLog>
