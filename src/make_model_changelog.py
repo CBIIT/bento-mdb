@@ -15,6 +15,15 @@ from bento_mdf.mdf import MDF
 from bento_meta.mdb.mdb import make_nanoid
 from bento_meta.objects import Concept, Property, Tag, Term, ValueSet
 from bento_meta.objects import Model as ModelEnt
+from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
+from minicypher.clauses import (
+    Create,
+    Match,
+    Merge,
+    OnCreateSet,
+)
+from minicypher.entities import N, R, T
+
 from changelog_utils import (
     Delete,
     DetachDelete,
@@ -24,14 +33,6 @@ from changelog_utils import (
     reset_pg_ent_counter,
     update_config_changeset_id,
 )
-from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
-from minicypher.clauses import (
-    Create,
-    Match,
-    Merge,
-    OnCreateSet,
-)
-from minicypher.entities import N, R, T
 
 if TYPE_CHECKING:
     from bento_meta.entity import Entity
@@ -50,6 +51,7 @@ class ModelToChangelogConverter:
         add_rollback: bool = True,
         terms_only: bool = False,
     ) -> None:
+        """Initialize converter and structures to hold cypher stmts & added entities."""
         self.add_rollback = add_rollback
         self.terms_only = terms_only
         self.model = model
