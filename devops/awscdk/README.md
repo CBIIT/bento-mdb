@@ -27,6 +27,7 @@ In order to build the bento cdk files you will need to get the required python m
 pip3 install --ignore-installed --break-system-packages -r requirements.txt
 ```
 
+https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-customizing.html
 
 ## Configure the config.ini file
 

@@ -50,8 +50,7 @@ class neo4jService:
         image=ecs.ContainerImage.from_registry(config[service]['image']),
         cpu=config.getint(service, 'cpu'),
         memory_limit_mib=config.getint(service, 'memory'),
-        port_mappings=[ecs.PortMapping(container_port=config.getint(service, 'port'), name=service)],
-        # user="root",
+        port_mappings=[ecs.PortMapping(container_port=config.getint(service, 'bolt_port'), name="bolt-{}".format(service))],
         entry_point=entry_point,
         # secrets=secrets,
         environment=environment,
@@ -98,25 +97,21 @@ class neo4jService:
     )
     NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
     NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.any_ipv4(),
-        connection=ec2.Port.tcp(config.getint(service, 'port')),
+        connection=ec2.Port.tcp(config.getint(service, 'bolt_port')),
     )
     self.NLB.add_security_group(NLBSecurityGroup)
     ecsService.connections.security_groups[0].add_ingress_rule(
         NLBSecurityGroup,
-        ec2.Port.tcp(config.getint(service, 'port'))
+        ec2.Port.tcp(config.getint(service, 'bolt_port'))
     )
 
     nlbTargetGroup = elbv2.NetworkTargetGroup(self,
         id="nlbTargetGroup",
         target_type=elbv2.TargetType.IP,
         protocol=elbv2.Protocol.TCP,
-        port=config.getint(service, 'port'),
+        port=config.getint(service, 'bolt_port'),
         vpc=self.VPC
     )
-    # nlbTargetGroup.configure_health_check(
-    #    interval=aws_cdk.Duration.seconds(60),
-    #    timeout=aws_cdk.Duration.seconds(45),
-    # )
-    nlbListener = self.NLB.add_listener("Listener", port=config.getint(service, 'port'),)
-    nlbListener.add_target_groups("target", nlbTargetGroup)
+    nlbListenerBolt = self.NLB.add_listener("ListenerBolt", port=config.getint(service, 'bolt_port'),)
+    nlbListenerBolt.add_target_groups("targetBolt", nlbTargetGroup)
     nlbTargetGroup.add_target(ecsService)

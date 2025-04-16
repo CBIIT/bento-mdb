@@ -8,6 +8,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_kms as kms
 from aws_cdk import aws_efs as efs
+from aws_cdk import aws_secretsmanager as secretsmanager
 
 from services import neo4j
 
