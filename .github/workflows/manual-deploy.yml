@@ -46,7 +46,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # install stack Python dependencies
-        cd awscdk/bento && pip3 install --ignore-installed --break-system-packages -r requirements.txt
+        cd devops/awscdk/mdb && pip3 install --ignore-installed --break-system-packages -r requirements.txt
         npm install -g aws-cdk@2.155.0
 
     - name: AWS OIDC Authentication
@@ -91,7 +91,7 @@ jobs:
         CDK_CMD: ${{ inputs.cdk_command }}
       run: |
 
-        cd awscdk/bento && cdk $CDK_CMD --require-approval=never --force
+        cd devops/awscdk/mdb && cdk $CDK_CMD --require-approval=never --force
 
     # - name: Update versions file
     #   env:
