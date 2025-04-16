@@ -1,4 +1,4 @@
-name: Bento MDB Manual Workflow
+name: Bento MDB Manual Deployment
 permissions: 
   contents: write
   id-token: write
