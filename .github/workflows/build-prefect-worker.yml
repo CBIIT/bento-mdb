@@ -32,17 +32,19 @@ jobs:
     - name: Set Image Tag
       env:
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      shell: bash
       run: |
         # Get all tags for the repo and find the latest tag for the branch being built
         # git fetch --tags --force --quiet
         
         ###################################################################
         git fetch --tags --force
-        git tag -l $BRANCH_NAME*
-        git tag -l $BRANCH_NAME* | tail -1
+        git tag -l | grep $BRANCH_NAME
+        git tag -l | grep $BRANCH_NAME | tail -1
         ###################################################################
 
-        tag=$(git tag -l $BRANCH_NAME* | tail -1)
+        # tag=$(git tag -l $BRANCH_NAME* | tail -1)
+        tag=$(git tag -l | grep $BRANCH_NAME | tail -1)
         if  [ ! -z "$tag" ];
         then
           # Increment the build number if a tag is found
