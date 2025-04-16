@@ -41,10 +41,12 @@ jobs:
           # Increment the build number if a tag is found
           build_num=$(echo "${tag##*.}")
           build_num=$((build_num+1))
+          echo "Image is: $BRANCH_NAME.$build_num"
           echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
         else
           # If no tag is found create a new tag name
           build_num=1
+          echo "Image is: $BRANCH_NAME.$build_num"
           echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
         fi
     
