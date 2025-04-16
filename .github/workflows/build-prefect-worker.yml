@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-        ECR_REPOSITORY: mdb-prefect
+        ECR_REPOSITORY: mdb-prefect-worker
         # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
