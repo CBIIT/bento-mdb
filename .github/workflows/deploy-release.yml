@@ -59,7 +59,7 @@ jobs:
         cdk diff --app ${{ inputs.environment }}.${{ inputs.release_number }}
 
   mdb-deploy:
-    name: Show MDB Release Changeset
+    name: Deploy MDB App
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     needs: mdb-diff
