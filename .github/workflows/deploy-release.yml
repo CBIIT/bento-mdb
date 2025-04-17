@@ -15,7 +15,7 @@ on:
       release_number:
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('CDK_Release_Deploy-{0}.{1}', inputs.release_number, inputs.environment) || '' }}
 jobs:
-  bento-diff:
+  mdb-diff:
     name: Show MDB Release Changeset
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
@@ -58,10 +58,12 @@ jobs:
       run: |
         cdk diff --app ${{ inputs.environment }}.${{ inputs.release_number }}
 
-  to-diff:
+  mdb-deploy:
     name: Show MDB Release Changeset
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    needs: mdb-diff
+    if: success() # Only proceed if diff job succeeds
     steps:
     - name: Set up Node
       id: node-setup
