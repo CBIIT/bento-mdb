@@ -49,13 +49,13 @@ variable "clusters" {
   }))
 }
 
-variable "prefect_s3_bucket_arns" {
-  description = "A list of bucket ARNs that will need to be accessed by the job"
-  type        = list(string)
-}
+# variable "prefect_s3_bucket_arns" {
+#   description = "A list of bucket ARNs that will need to be accessed by the job"
+#   type        = list(string)
+# }
 
-variable "prefect_s3_bucket_arns_full_access" {
-  description = "A list of bucket ARNs that will need to be granted full access for the job"
-  type        = list(string)
-  default     = []
-}
+# variable "prefect_s3_bucket_arns_full_access" {
+#   description = "A list of bucket ARNs that will need to be granted full access for the job"
+#   type        = list(string)
+#   default     = []
+# }

@@ -20,8 +20,8 @@ data "aws_iam_policy_document" "ecs_trust_policy" {
 # combine all policy docs defined below for the task_role
 data "aws_iam_policy_document" "prefect_ecs_task_role_policy_doc" {
   source_policy_documents = [
-    data.aws_iam_policy_document.prefect_s3_policy.json,
-    data.aws_iam_policy_document.prefect_s3_full_policy.json,
+    # data.aws_iam_policy_document.prefect_s3_policy.json,
+    # data.aws_iam_policy_document.prefect_s3_full_policy.json,
     data.aws_iam_policy_document.prefect_parameter_policy.json,
     data.aws_iam_policy_document.prefect_secrets_policy.json,
     data.aws_iam_policy_document.prefect_cloudwatch_policy.json,
@@ -39,38 +39,38 @@ data "aws_iam_policy_document" "prefect_ecs_task_role_policy_doc" {
 # }
 
 # Prefect S3
-data "aws_iam_policy_document" "prefect_s3_policy" {
-  statement {
-    sid    = "allows3limited"
-    effect = "Allow"
-    actions   = [
-      "s3:ListBucket",
-      "s3:ListBucketVersions",
-      "s3:GetObject",
-      "s3:GetObjectTagging",
-      "s3:GetObjectVersion",
-      "s3:PutObject"
-    ]
-    resources = var.prefect_s3_bucket_arns
-  }
-}
+# data "aws_iam_policy_document" "prefect_s3_policy" {
+#   statement {
+#     sid    = "allows3limited"
+#     effect = "Allow"
+#     actions   = [
+#       "s3:ListBucket",
+#       "s3:ListBucketVersions",
+#       "s3:GetObject",
+#       "s3:GetObjectTagging",
+#       "s3:GetObjectVersion",
+#       "s3:PutObject"
+#     ]
+#     resources = var.prefect_s3_bucket_arns
+#   }
+# }
 
-data "aws_iam_policy_document" "prefect_s3_full_policy" {
-  statement {
-    sid    = "allows3full"
-    effect = "Allow"
-    actions   = [
-      "s3:ListBucket",
-      "s3:ListBucketVersions",
-      "s3:GetObject",
-      "s3:GetObjectTagging",
-      "s3:GetObjectVersion",
-      "s3:PutObject",
-      "s3:DeleteObject"
-    ]
-    resources = var.prefect_s3_bucket_arns_full_access
-  }
-}
+# data "aws_iam_policy_document" "prefect_s3_full_policy" {
+#   statement {
+#     sid    = "allows3full"
+#     effect = "Allow"
+#     actions   = [
+#       "s3:ListBucket",
+#       "s3:ListBucketVersions",
+#       "s3:GetObject",
+#       "s3:GetObjectTagging",
+#       "s3:GetObjectVersion",
+#       "s3:PutObject",
+#       "s3:DeleteObject"
+#     ]
+#     resources = var.prefect_s3_bucket_arns_full_access
+#   }
+# }
 
 # Prefect Parameter Store
 data "aws_iam_policy_document" "prefect_parameter_policy" {
@@ -95,7 +95,7 @@ data "aws_iam_policy_document" "prefect_secrets_policy" {
 # combine all policy docs defined below for the service_role
 data "aws_iam_policy_document" "prefect_ecs_service_role_policy_doc" {
   source_policy_documents = [
-    data.aws_iam_policy_document.prefect_s3_policy.json,
+    # data.aws_iam_policy_document.prefect_s3_policy.json,
     data.aws_iam_policy_document.prefect_parameter_policy.json,
     data.aws_iam_policy_document.prefect_secrets_policy.json,
     data.aws_iam_policy_document.prefect_ecs_policy.json,
