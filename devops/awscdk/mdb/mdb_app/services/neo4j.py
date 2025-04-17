@@ -47,7 +47,7 @@ class neo4jService:
 
     dbContainer = taskDefinition.add_container(
         service,
-        image=ecs.ContainerImage.from_registry(config[service]['image']),
+        image=ecs.ContainerImage.from_registry("{}:{}".format(config[service]['repo'], config[service]['image'])),
         cpu=config.getint(service, 'cpu'),
         memory_limit_mib=config.getint(service, 'memory'),
         port_mappings=[ecs.PortMapping(container_port=config.getint(service, 'bolt_port'), name="bolt-{}".format(service))],
