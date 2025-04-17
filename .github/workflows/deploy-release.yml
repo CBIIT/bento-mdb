@@ -47,7 +47,7 @@ jobs:
         app_version="${ver_string%.*}"
         echo "app version:  $app_version"
       
-        cd devops/awscdk/mdb/
+        # cd devops/awscdk/mdb/
 
         aws s3api get-object --bucket bento-mdb-cdk --key $app_version/${{ inputs.environment }}.${{ inputs.release_number }}.zip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
         unzip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
@@ -59,7 +59,7 @@ jobs:
         AWS_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT }}
         AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
       run: |
-        cd devops/awscdk/mdb/
+        # cd devops/awscdk/mdb/
         cdk diff --app ${{ inputs.environment }}.${{ inputs.release_number }}
 
   # bento-deploy:
