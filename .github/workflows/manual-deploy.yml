@@ -76,7 +76,7 @@ jobs:
         fi
 
         vars=$(python3 devops/awscdk/scripts/readYML.py devops/awscdk/versions.yaml)
-        for v in $vars; echo v; do command="export $v"; eval $command;  done
+        for v in $vars; do command="export $v"; echo $v; eval $command;  done
 
         # API_IMAGE="${API_IMAGE:-$IMAGE_API}"
         # echo "API_IMAGE=$API_IMAGE" >> $GITHUB_ENV
