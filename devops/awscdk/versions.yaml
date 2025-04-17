@@ -1,0 +1,5 @@
+Notes: Service Versions
+project: mdn
+services:
+  neo4j:
+    version: 4.4.25-community
