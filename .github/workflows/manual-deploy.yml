@@ -76,14 +76,12 @@ jobs:
         fi
 
         vars=$(python3 devops/awscdk/scripts/readYML.py devops/awscdk/versions.yaml)
-        for v in $vars; do command="export $v"; echo $v; eval $command;  done
+        for v in $vars; do command="export $v"; eval $command;  done
 
         # API_IMAGE="${API_IMAGE:-$IMAGE_API}"
         # echo "API_IMAGE=$API_IMAGE" >> $GITHUB_ENV
         NEO4J_IMAGE="${NEO4J_IMAGE:-$IMAGE_NEO4J}"
         echo "NEO4J_IMAGE=$NEO4J_IMAGE" >> $GITHUB_ENV
-
-        echo "NEO4J_IMAGE=$NEO4J_IMAGE"
 
         cd devops/awscdk/mdb/
         aws s3api get-object --bucket bento-mdb-cdk --key config.ini.$ENV_NAME ./config.ini.$ENV_NAME
