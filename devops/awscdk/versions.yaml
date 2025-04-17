@@ -2,6 +2,6 @@ Notes: Service Versions
 project: mdn
 services:
   api:
-    version: 1.0.0
+    version: 9.9.9
   neo4j:
     version: 4.4.25-community
