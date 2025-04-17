@@ -62,7 +62,7 @@ jobs:
           CONFIG_ENV=$tier
           echo "Creating Config File for $CONFIG_ENV"
 
-          aws s3api get-object --bucket bento-mdb-cdk --key config.ini.$CONFIG_ENV ./config.ini.$CONFIG_ENV
+          aws s3api get-object --bucket bento-mdb-cdk --key config/config.ini.$CONFIG_ENV ./config.ini.$CONFIG_ENV
 
           envsubst < config.ini.$CONFIG_ENV > config.ini.$CONFIG_ENV.edited
         done

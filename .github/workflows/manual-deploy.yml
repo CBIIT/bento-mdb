@@ -84,7 +84,7 @@ jobs:
         echo "NEO4J_IMAGE=$NEO4J_IMAGE" >> $GITHUB_ENV
 
         cd devops/awscdk/mdb/
-        aws s3api get-object --bucket bento-mdb-cdk --key config.ini.$ENV_NAME ./config.ini.$ENV_NAME
+        aws s3api get-object --bucket bento-mdb-cdk --key config/config.ini.$ENV_NAME ./config.ini.$ENV_NAME
         
         envsubst < config.ini.$ENV_NAME > config.ini
 

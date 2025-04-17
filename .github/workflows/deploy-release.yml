@@ -46,7 +46,8 @@ jobs:
       
         cd devops/awscdk/mdb/
 
-        aws s3api get-object --bucket bento-mdb-cdk --key $app_version/${{ inputs.environment }}.${{ inputs.release_number }} ./${{ inputs.environment }}.${{ inputs.release_number }}
+        aws s3api get-object --bucket bento-mdb-cdk --key $app_version/${{ inputs.environment }}.${{ inputs.release_number }}.zip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
+        unzip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
         echo "Retreived CDK App: ${{ inputs.environment }}.${{ inputs.release_number }}"
 
     - name: Diff Stack Resources
