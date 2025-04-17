@@ -12,6 +12,8 @@ on:
         default: dev
         options:
           - dev
+      # api_image:
+      neo4j_image:
       cdk_command:
         description: 'Which CDK Command To Run'
         required: true
@@ -62,6 +64,8 @@ jobs:
       env:
         ENV_NAME: ${{ inputs.environment }}
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        # API_IMAGE: ${{ inputs.frontend_image }}
+        NEO4J_IMAGE: ${{ inputs.backend_image }}
       run: |
         if [[ "$ENV_NAME" =~ ^(dev|qa|stage|prod)$ ]]; then
           echo "Environment is $ENV_NAME"
@@ -71,14 +75,16 @@ jobs:
           echo "Updated branch name is $BRANCH_NAME"
         fi
 
-        # vars=$(python3 scripts/readYML.py versions.yaml)
-        # for v in $vars; do command="export $v"; eval $command;  done
+        vars=$(python3 devops/awscdk/scripts/readYML.py devops/awscdk/versions.yaml)
+        for v in $vars; do command="export $v"; eval $command;  done
 
-        # FRONTEND_IMAGE="${FRONTEND_IMAGE:-$IMAGE_FRONTEND}"
-        # echo "FRONTEND_IMAGE=$FRONTEND_IMAGE" >> $GITHUB_ENV
+        # API_IMAGE="${API_IMAGE:-$IMAGE_API}"
+        # echo "API_IMAGE=$API_IMAGE" >> $GITHUB_ENV
+        NEO4j_IMAGE="${API_IMAGE:-$IMAGE_NEO4J}"
+        echo "NEO4J_IMAGE=$NEO4J_IMAGE" >> $GITHUB_ENV
 
         cd devops/awscdk/mdb/
-        aws s3api get-object --bucket bento-mdb-cdk-config --key config.ini.$ENV_NAME ./config.ini.$ENV_NAME
+        aws s3api get-object --bucket bento-mdb-cdk --key config.ini.$ENV_NAME ./config.ini.$ENV_NAME
         
         envsubst < config.ini.$ENV_NAME > config.ini
 
@@ -93,25 +99,25 @@ jobs:
 
         cd devops/awscdk/mdb && cdk $CDK_CMD --require-approval=never --force
 
-    # - name: Update versions file
-    #   env:
-    #     CDK_CMD: ${{ inputs.cdk_command }}
-    #     ENV_NAME: ${{ inputs.environment }}
-    #   run: |
-    #     if [ "${CDK_CMD}" == "deploy" ] && [ "${ENV_NAME}" == "dev" ]; then
-    #       echo "Updating versions.yaml file"
-    #       python3 scripts/writeYML.py versions.yaml
-    #     else
-    #       echo "Skipping versions.yaml file update"
-    #     fi
+    - name: Update versions file
+      env:
+        CDK_CMD: ${{ inputs.cdk_command }}
+        ENV_NAME: ${{ inputs.environment }}
+      run: |
+        if [ "${CDK_CMD}" == "deploy" ] && [ "${ENV_NAME}" == "dev" ]; then
+          echo "Updating versions.yaml file"
+          python3 devops/awscdk/scripts/writeYML.py devops/awscdk/versions.yaml
+        else
+          echo "Skipping versions.yaml file update"
+        fi
 
-    #     git config --local user.name actions-user
-    #     git config --local user.email "actions@github.com"
-    #     if ! git diff --exit-code; then
-    #         git add versions.yaml
-    #         git commit -am "GH Action - Versions File updated $(date)"
-    #         git push -f origin ${{ github.head_ref || github.ref_name }}
-    #     fi
+        git config --local user.name actions-user
+        git config --local user.email "actions@github.com"
+        if ! git diff --exit-code; then
+            git add versions.yaml
+            git commit -am "GH Action - Versions File updated $(date)"
+            git push -f origin ${{ github.head_ref || github.ref_name }}
+        fi
   
     # - name: Slack Notification
     #   env:
