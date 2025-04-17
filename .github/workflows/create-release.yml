@@ -116,7 +116,9 @@ jobs:
 
         for tier in qa
         do
-          aws s3api put-object --bucket bento-mdb-cdk --key ${{ env.API_IMAGE }}/$tier.$VERSION_TAG --body ./$tier.$VERSION_TAG
+          zip -r $tier.$VERSION_TAG.zip $tier.$VERSION_TAG
+        
+          aws s3api put-object --bucket bento-mdb-cdk --key ${{ env.API_IMAGE }}/$tier.$VERSION_TAG --body $tier.$VERSION_TAG.zip
           echo "Archived CDK App to S3: $tier.$VERSION_TAG"
         done
 
