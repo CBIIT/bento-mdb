@@ -1,4 +1,4 @@
-name: Bento Deploy Release
+name: Bento Deploy MDB Release
 permissions: 
   contents: write
   id-token: write
