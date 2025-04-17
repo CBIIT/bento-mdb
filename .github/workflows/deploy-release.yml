@@ -8,8 +8,10 @@ on:
     inputs:
       environment:
         description: 'Which Tier to Deploy'
-        type: environment
-        default: dev
+        type: choice
+        default: qa
+        options:
+          - qa
       release_number:
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('CDK_Release_Deploy-{0}.{1}', inputs.release_number, inputs.environment) || '' }}
 jobs:
@@ -41,7 +43,8 @@ jobs:
       id: get-artifacts
       shell: bash
       run: |
-        app_version="${${{ inputs.release_number }}%.*}"
+        ver_string=${{ inputs.release_number }}
+        app_version="${ver_string%.*}"
         echo "app version:  $app_version"
       
         cd devops/awscdk/mdb/
