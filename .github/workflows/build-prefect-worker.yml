@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-        ECR_REPOSITORY: mdb-prefect
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        ECR_REPOSITORY: mdb-prefect-worker
+        # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
         
@@ -32,10 +32,12 @@ jobs:
     - name: Set Image Tag
       env:
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      shell: bash
       run: |
         # Get all tags for the repo and find the latest tag for the branch being built
         git fetch --tags --force --quiet
-        tag=$(git tag -l $BRANCH_NAME* | tail -1)
+
+        tag=$(git tag -l | grep $BRANCH_NAME | tail -1)
         if  [ ! -z "$tag" ];
         then
           # Increment the build number if a tag is found
@@ -98,9 +100,9 @@ jobs:
         docker tag  $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Slack Notification
-      uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08     # v1.6.0
-      with:
-        status: ${{ job.status }}
-        steps: ${{ toJson(steps) }}
-      if: always()
+    # - name: Slack Notification
+    #   uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08     # v1.6.0
+    #   with:
+    #     status: ${{ job.status }}
+    #     steps: ${{ toJson(steps) }}
+    #   if: always()

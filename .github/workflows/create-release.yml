@@ -29,7 +29,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # install stack Python dependencies
+<<<<<<< HEAD
+        cd devops/awscdk/mdb && pip3 install --ignore-installed --break-system-packages -r requirements.txt
+=======
         cd awscdk/bento && pip3 install --ignore-installed --break-system-packages -r requirements.txt
+>>>>>>> main
         npm install -g aws-cdk@2.155.0
 
     - name: AWS OIDC Authentication
@@ -62,18 +66,18 @@ jobs:
           CONFIG_ENV=$tier
           echo "Creating Config File for $CONFIG_ENV"
 
-          aws s3api get-object --bucket bento-mdb-cdk --key config.ini.$CONFIG_ENV ./config.ini.$CONFIG_ENV
+          aws s3api get-object --bucket bento-mdb-cdk --key config/config.ini.$CONFIG_ENV ./config.ini.$CONFIG_ENV
 
           envsubst < config.ini.$CONFIG_ENV > config.ini.$CONFIG_ENV.edited
         done
 
     - name: Set Version Tag
+      shell: bash
       run: |
         # Get all tags for the repo and find the latest tag for the version being built
         git fetch --tags --force --quiet
 
         tag=$(git tag -l | grep ${{ env.API_IMAGE }} | tail -1)
-        # tag=$(git tag -l ${{ env.API_IMAGE }}* | tail -1)
         if  [ ! -z "$tag" ];
         then
           # Increment the build number if a tag is found
@@ -116,7 +120,9 @@ jobs:
 
         for tier in qa
         do
-          aws s3api put-object --bucket bento-mdb-cdk --key ${{ env.API_IMAGE }}/$tier.$VERSION_TAG --body $tier.$VERSION_TAG
+          zip -r $tier.$VERSION_TAG.zip $tier.$VERSION_TAG
+        
+          aws s3api put-object --bucket bento-mdb-cdk --key ${{ env.API_IMAGE }}/$tier.$VERSION_TAG.zip --body $tier.$VERSION_TAG.zip
           echo "Archived CDK App to S3: $tier.$VERSION_TAG"
         done
 

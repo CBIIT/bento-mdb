@@ -1,0 +1,7 @@
+Notes: Service Versions
+project: mdn
+services:
+  api:
+    version: cloudone
+  neo4j:
+    version: 4.4.25-community

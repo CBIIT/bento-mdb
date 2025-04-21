@@ -8,24 +8,24 @@ on:
     inputs:
       environment:
         description: 'Which Tier to Deploy'
-        type: environment
-        default: dev
+        type: choice
+        default: qa
+        options:
+          - qa
       release_number:
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('CDK_Release_Deploy-{0}.{1}', inputs.release_number, inputs.environment) || '' }}
 jobs:
-  bento-diff:
+  mdb-diff:
     name: Show MDB Release Changeset
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
     - name: Set up Node
-      id: node-setup
       uses: actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7     # v3.8.2
       with:
         node-version: "20"
  
     - name: Install CDK
-      id: install-cdk
       run: |
         npm install -g aws-cdk@2.155.0
 
@@ -41,10 +41,8 @@ jobs:
       id: get-artifacts
       shell: bash
       run: |
-        app_version="${${{ inputs.release_number }}%.*}"
-        echo "app version:  $app_version"
-      
-        cd devops/awscdk/mdb/
+        ver_string=${{ inputs.release_number }}
+        app_version="${ver_string%.*}"
 
         aws s3api get-object --bucket bento-mdb-cdk --key $app_version/${{ inputs.environment }}.${{ inputs.release_number }}.zip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
         unzip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
@@ -56,67 +54,50 @@ jobs:
         AWS_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT }}
         AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
       run: |
-        cd devops/awscdk/mdb/
         cdk diff --app ${{ inputs.environment }}.${{ inputs.release_number }}
 
-  # bento-deploy:
-  #   name: Bento CDK Deploy
-  #   runs-on: ubuntu-latest
-  #   environment: ${{ inputs.environment }}
-  #   needs: bento-diff
-  #   if: success() # Only proceed if diff job succeeds
+  mdb-deploy:
+    name: Deploy MDB App
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: mdb-diff
+    if: success() # Only proceed if diff job succeeds
+    steps:
+    - name: Set up Node
+      uses: actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7     # v3.8.2
+      with:
+        node-version: "20"
+ 
+    - name: Install CDK
+      run: |
+        npm install -g aws-cdk@2.155.0
 
-  #   steps:
-  #   - name: Set up Node
-  #     id: node-setup
-  #     uses: actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7     # v3.8.2
-  #     with:
-  #       node-version: "20"
-  
-  #   - name: Install CDK
-  #     id: install-cdk
-  #     run: |
-  #       npm install -g aws-cdk@2.155.0
+    - name: AWS OIDC Authentication
+      id: aws-auth
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502     # v4.0.2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        role-session-name: ${{ github.actor }}
 
-  #   - name: Find artifact
-  #     id: find-artifact
-  #     shell: bash
-  #     run: |
-  #       cdk_app=${{ inputs.environment }}.${{ inputs.release_number }}
+    - name: Get Artifacts From S3
+      id: get-artifacts
+      shell: bash
+      run: |
+        ver_string=${{ inputs.release_number }}
+        app_version="${ver_string%.*}"
 
-  #       response=$(curl -L \
-  #       -H "Accept: application/vnd.github+json" \
-  #       -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-  #       -H "X-GitHub-Api-Version: 2022-11-28" \
-  #       https://api.github.com/repos/CBIIT/fnl-bento-deployments/actions/artifacts)
+        aws s3api get-object --bucket bento-mdb-cdk --key $app_version/${{ inputs.environment }}.${{ inputs.release_number }}.zip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
+        unzip ./${{ inputs.environment }}.${{ inputs.release_number }}.zip
+        echo "Retreived CDK App: ${{ inputs.environment }}.${{ inputs.release_number }}"
 
-  #       run_id=$(echo "$response" | jq ".artifacts[] | select(.name == \"$cdk_app\") | .workflow_run.id")
-  #       echo "run_id=$run_id" >> $GITHUB_OUTPUT
-
-  #   - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e     # v4.2.1
-  #     id: get-cdk-app
-  #     with:
-  #       name: ${{ inputs.environment }}.${{ inputs.release_number }}
-  #       path: ${{ inputs.environment }}.${{ inputs.release_number }}
-  #       repository: CBIIT/fnl-bento-deployments
-  #       run-id: ${{ steps.find-artifact.outputs.run_id }}
-  #       github-token: ${{ github.token }}
-
-  #   - name: AWS OIDC Authentication
-  #     id: aws-auth
-  #     uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502     # v4.0.2
-  #     with:
-  #       role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-  #       aws-region: ${{ secrets.AWS_REGION }}
-  #       role-session-name: ${{ github.actor }}
-
-  #   - name: Deploy Stack Resources
-  #     id: deploy
-  #     env:
-  #       AWS_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT }}
-  #       AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-  #     run: |
-  #       cdk deploy --app ${{ inputs.environment }}.${{ inputs.release_number }} --require-approval=never --force
+    - name: Deploy Stack Resources
+      id: deploy-cdk-stack
+      env:
+        AWS_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      run: |
+        cdk deploy --app ${{ inputs.environment }}.${{ inputs.release_number }} --require-approval=never --force
 
   #   - name: Slack Notification
   #     env:
