@@ -7,7 +7,11 @@ on:
     inputs:
       environment:
         description: 'Which account the ECR repository is in'
-        type: environment
+        type: choice
+        default: fnl-leidos
+        options:
+          - fnl-leidos
+          - fnl-cloudone
       ignore_trivy_scan:
         type: boolean
         description: ignore vulnerabilities if they are found
