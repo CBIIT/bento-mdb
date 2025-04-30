@@ -9,9 +9,13 @@ imports/*
 .env
 */test.py
 cdk.out
-cdk.context.json
 *.ini*
 *.pem
+*.swp
+package-lock.json
+__pycache__
+.pytest_cache
+.venv
 
 # Ignore debug
 *.bak
