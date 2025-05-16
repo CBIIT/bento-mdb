@@ -1,4 +1,4 @@
-name: Build Prefect Image
+name: Build STS Image
 permissions: 
   contents: write
   id-token: write
