@@ -63,7 +63,7 @@ jobs:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
         STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
+        docker build -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
         
     - name: Run Trivy vulnerability scanner
       id: trivy-scan
