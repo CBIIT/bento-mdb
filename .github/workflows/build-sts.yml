@@ -36,6 +36,7 @@ jobs:
       with:
 #       ref: ${{ env.CODE_BRANCH }}
         ref: ${{ github.ref_name }}
+        submodules: true
 
     - name: Extract branch name and set tag image
       id: extract_branch
