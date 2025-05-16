@@ -5,8 +5,10 @@ ENV NEO4J_MDB_URI=bolt://localhost:7687 \
     NEO4J_MDB_PASS=neo4j1 \
     STS_PORT=5000 \
     STS_LOGLEVEL=info
-ADD app /app
-WORKDIR /app
+#ADD app /app
+ADD app /usr/src/app
+#WORKDIR /app
+WORKDIR /usr/src/app
 RUN pip install bento-sts
 RUN pip list | grep bento-sts > STS-VERSION
 ENTRYPOINT ["gunicorn"]
