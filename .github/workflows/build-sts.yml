@@ -60,7 +60,7 @@ jobs:
       id: build-image
       env:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/$${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
         docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
         
@@ -69,7 +69,7 @@ jobs:
       if: github.event.inputs.trivy_scan == 'true'
       env:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/$${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: '${{ env.STS_IMAGE_NAME }}'
@@ -100,7 +100,7 @@ jobs:
       if: success()
       env:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/$${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
         echo "Pushing: $STS_IMAGE_NAME"
         docker push $STS_IMAGE_NAME
