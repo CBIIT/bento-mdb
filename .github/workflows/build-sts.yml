@@ -35,7 +35,7 @@ jobs:
       uses: actions/checkout@v4
       with:
 #       ref: ${{ env.CODE_BRANCH }}
-        ref: ${{ github.ref_name }}
+#       ref: ${{ github.ref_name }}
         submodules: true
 
     - name: Extract branch name and set tag image
@@ -45,7 +45,7 @@ jobs:
         echo "branch=$BRANCH_NAME" >> "$GITHUB_ENV"
         echo "Current branch is: $BRANCH_NAME"
         git fetch --tags --force --quiet
-        tag=$(git tag -l $BRANCH_NAME* | tail -1)
+        tag=$(git tag -l $BRANCH_NAME* | sort -V | tail -1)
         if  [ ! -z "$tag" ];
         then
           # Increment the build number if a tag is found
@@ -63,7 +63,7 @@ jobs:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
         STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        docker build -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
+        cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
         
     - name: Run Trivy vulnerability scanner
       id: trivy-scan
