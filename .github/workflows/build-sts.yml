@@ -24,6 +24,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
         ECR_REPOSITORY: crdc-mdb-sts
+        REGION: "us-east-1"
         # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
