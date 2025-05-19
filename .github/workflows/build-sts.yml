@@ -16,7 +16,7 @@ on:
         type: boolean
         description: "Run Trivy Test Scan"
         required: true 
-        default: false
+        default: true
 jobs:
   build:
     name: Build Image
