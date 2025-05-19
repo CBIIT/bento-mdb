@@ -1,4 +1,4 @@
-FROM python:3
+FROM 3.13.3-alpine3.21 AS fnl_base_image
 EXPOSE 5000/tcp
 ENV NEO4J_MDB_URI=bolt://localhost:7687 \
     NEO4J_MDB_USER=neo4j \
