@@ -7,11 +7,11 @@ from aws_cdk import aws_ecr as ecr
 #from datetime import date
 from aws_cdk import aws_secretsmanager as secretsmanager
 
-class apiService:
+class stsapiService:
   def createService(self, config):
 
     ### STS API Service ###############################################################################################################
-    service = "api"
+    service = "stsapi"
 
     # Set container configs
     if config.has_option(service, 'entry_point'):
@@ -20,21 +20,23 @@ class apiService:
         entry_point = None
 
     environment={
-        "NEO4J_AUTH":"{}/{}".format(config['db']['neo4j_user'], config['db']['neo4j_password']),
-        "NEO4J_dbms_connector_bolt_advertised__address":"0.0.0.0",
-        "NEO4J_dbms_connector_http_advertised__address":"0.0.0.0",
+        "NEO4J_MDB_URI":"bolt://{}:{}".format(self.NLB.load_balancer_dns_name, config.getint('neo4j', 'bolt_port)),
+#        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
+#        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
     }
 
-    # secrets={
-    # }
+    secrets={
+        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
+        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
+        #"NEO4J_MDB_URI":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_uri'),
+    }
 
 
     taskDefinition = ecs.FargateTaskDefinition(self,
         "{}-{}-taskDef".format(self.namingPrefix, service),
         family=f"{config['main']['resource_prefix']}-{config['main']['tier']}-sts-api",
         cpu=config.getint(service, 'cpu'),
-        memory_limit_mib=config.getint(service, 'memory'),
-        volumes=[dbVolume]
+        memory_limit_mib=config.getint(service, 'memory')
     )
 
     taskDefinition.add_container(

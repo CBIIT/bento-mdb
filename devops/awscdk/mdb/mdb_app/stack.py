@@ -13,7 +13,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_certificatemanager as cfm
 from aws_cdk import aws_secretsmanager as secretsmanager
 
-from services import neo4j api
+from services import neo4j stsapi
 
 class Stack(Stack):
     def __init__(self, scope: Construct, **kwargs) -> None:
@@ -31,13 +31,13 @@ class Stack(Stack):
         )
 
         ### Secrets
-        self.secret = secretsmanager.Secret(self, "Secret",
-            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
-            secret_object_value={
-                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
-                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
-            }
-        )
+#        self.secret = secretsmanager.Secret(self, "Secret",
+#            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
+#            secret_object_value={
+#                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
+#                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
+#            }
+#        )
 
         ### EFS - Neo4j
         EFSSecurityGroup = ec2.SecurityGroup(self, "EFSSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
@@ -137,9 +137,20 @@ class Stack(Stack):
 
         # Neo4j Service
         neo4j.neo4jService.createService(self, config)
+    
+        neo4j_uri = "bolt://{}:{}".format(self.NLB.load_balancer_dns_name, config.getint('neo4j', 'bolt_port))"
 
+        ### Secrets
+        self.secret = secretsmanager.Secret(self, "Secret",
+            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
+            secret_object_value={
+                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
+                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
+                "neo4j_uri": SecretValue.unsafe_plain_text(neo4j_uri)
+            }
+        )
         # API service
-        api.apiService.createService(self, config)
+        stsapi.stsapiService.createService(self, config)
 
         # Add a fixed error message when browsing an invalid URL
         self.listener.add_action("ECS-Content-Not-Found",
