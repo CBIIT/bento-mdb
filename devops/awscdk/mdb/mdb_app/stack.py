@@ -12,6 +12,7 @@ from aws_cdk import aws_kms as kms
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_certificatemanager as cfm
+from aws_cdk import aws_s3 as s3
 from aws_cdk import Fn
 
 from services import neo4j, stsapi
@@ -140,9 +141,9 @@ class Stack(Stack):
         neo4j.neo4jService.createService(self, config)
     
         #neo4j_uri = "bolt://{}:{}".format(self.NLB.load_balancer_dns_name, config.getint('neo4j', 'bolt_port))"
-        nlb_dns_name = Fn.import_value("Neo4jNlbDnsNameExport")
-        bolt_port = config.getint('neo4j', 'bolt_port')
-        neo4j_uri = f"bolt://{nlb_dns_name}:{bolt_port}"
+        #nlb_dns_name = Fn.import_value("Neo4jNlbDnsNameExport")
+        #bolt_port = config.getint('neo4j', 'bolt_port')
+        #neo4j_uri = f"bolt://{nlb_dns_name}:{bolt_port}"
 
         ### Secrets
         self.secret = secretsmanager.Secret(self, "Secret",
@@ -150,7 +151,7 @@ class Stack(Stack):
             secret_object_value={
                 "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
                 "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
-                "neo4j_uri": SecretValue.unsafe_plain_text(neo4j_uri)
+                #"neo4j_uri": SecretValue.unsafe_plain_text(neo4j_uri)
             }
         )
         # API service
