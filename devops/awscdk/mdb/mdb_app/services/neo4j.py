@@ -4,7 +4,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_secretsmanager as secretsmanager
-from aws_cdk import CfnOutput
+#from aws_cdk import CfnOutput
 
 class neo4jService:
   def createService(self, config):
@@ -118,7 +118,7 @@ class neo4jService:
     nlbListenerBolt.add_target_groups("targetBolt", nlbTargetGroup)
     nlbTargetGroup.add_target(ecsService)
 
-    CfnOutput(self, "Neo4jNlbDnsName",
-        value=self.NLB.load_balancer_dns_name,
-        export_name="Neo4jNlbDnsNameExport"
-    )
+    #CfnOutput(self, "Neo4jNlbDnsName",
+    #    value=self.NLB.load_balancer_dns_name,
+    #    export_name="Neo4jNlbDnsNameExport"
+    #)
