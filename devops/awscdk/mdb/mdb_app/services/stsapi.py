@@ -21,15 +21,15 @@ class stsapiService:
 
     bolt_port = config.getint('neo4j', 'bolt_port') 
     environment={
-        "NEO4J_MDB_URI":f"bolt://{self.NLB.load_balancer_dns_name}:{bolt_port}",
+        "NEO4J_BOLT_URI":f"bolt://{self.NLB.load_balancer_dns_name}:{bolt_port}",
 #        "NEO4J_MDB_URI":"bolt://{}:{}".format(self.NLB.load_balancer_dns_name, config.getint('neo4j', 'bolt_port)),
 #        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
 #        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
     }
 
     secrets={
-        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
-        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
+        "NEO4J_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
+        "NEO4J_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
 #        "NEO4J_MDB_URI":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_uri'),
     }
 
