@@ -13,7 +13,7 @@ from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_certificatemanager as cfm
 from aws_cdk import aws_s3 as s3
-from aws_cdk import Fn
+#from aws_cdk import Fn
 
 from services import neo4j, stsapi
 
@@ -150,7 +150,7 @@ class Stack(Stack):
             secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
             secret_object_value={
                 "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
-                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
+                "neo4j_pass": SecretValue.unsafe_plain_text(config['db']['neo4j_pass']),
                 #"neo4j_uri": SecretValue.unsafe_plain_text(neo4j_uri)
             }
         )

@@ -29,7 +29,7 @@ class stsapiService:
 
     secrets={
         "NEO4J_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
-        "NEO4J_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
+        "NEO4J_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_pass'),
 #        "NEO4J_MDB_URI":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_uri'),
     }
 
