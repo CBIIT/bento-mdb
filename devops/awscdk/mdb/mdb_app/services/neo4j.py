@@ -19,7 +19,7 @@ class neo4jService:
         entry_point = None
 
     environment={
-        "NEO4J_AUTH":"{}/{}".format(config['db']['neo4j_user'], config['db']['neo4j_pass']),
+        "NEO4J_AUTH":"{}/{}".format(config['db']['neo4j_user'], config['db']['neo4j_password']),
         "NEO4J_dbms_connector_bolt_advertised__address":"0.0.0.0",
         "NEO4J_dbms_connector_http_advertised__address":"0.0.0.0",
     }
