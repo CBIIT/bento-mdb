@@ -1,5 +1,5 @@
 Notes: Service Versions
-project: mdn
+project: mdb
 services:
   api:
     version: main.5
