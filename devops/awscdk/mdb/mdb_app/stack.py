@@ -33,13 +33,13 @@ class Stack(Stack):
         )
 
         ### Secrets
-#        self.secret = secretsmanager.Secret(self, "Secret",
-#            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
-#            secret_object_value={
-#                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
-#                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
-#            }
-#        )
+        self.secret = secretsmanager.Secret(self, "Secret",
+            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
+            secret_object_value={
+                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
+                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
+            }
+        )
 
         ### EFS - Neo4j
         EFSSecurityGroup = ec2.SecurityGroup(self, "EFSSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
@@ -146,14 +146,14 @@ class Stack(Stack):
         #neo4j_uri = f"bolt://{nlb_dns_name}:{bolt_port}"
 
         ### Secrets
-        self.secret = secretsmanager.Secret(self, "Secret",
-            secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
-            secret_object_value={
-                "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
-                "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
+        #self.secret = secretsmanager.Secret(self, "Secret",
+        #    secret_name="{}/{}".format(config['main']['resource_prefix'], config['main']['tier']),
+        #    secret_object_value={
+        #        "neo4j_user": SecretValue.unsafe_plain_text(config['db']['neo4j_user']),
+        #        "neo4j_password": SecretValue.unsafe_plain_text(config['db']['neo4j_password']),
                 #"neo4j_uri": SecretValue.unsafe_plain_text(neo4j_uri)
-            }
-        )
+        #    }
+        #)
         # API service
         stsapi.stsapiService.createService(self, config)
 

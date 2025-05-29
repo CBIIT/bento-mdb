@@ -27,11 +27,11 @@ class stsapiService:
         "NEO4J_MDB_PASS":config['db']['neo4j_password'],
     }
 
-    secrets={
-        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
-        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
+#    secrets={
+#        "NEO4J_MDB_USER":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_user'),
+#        "NEO4J_MDB_PASS":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_password'),
 #        "NEO4J_MDB_URI":ecs.Secret.from_secrets_manager(self.secret, 'neo4j_uri'),
-    }
+#    }
 
 
     taskDefinition = ecs.FargateTaskDefinition(self,
