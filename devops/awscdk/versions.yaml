@@ -2,6 +2,6 @@ Notes: Service Versions
 project: mdb
 services:
   api:
-    version: main.5
+    version: main.7
   neo4j:
     version: 4.4.43-community
