@@ -93,6 +93,7 @@ class neo4jService:
 
     self.NLB = elbv2.NetworkLoadBalancer(self,
         "nlb",
+        load_balancer_name = f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb",
         vpc=self.VPC,
         internet_facing=config.getboolean('nlb', 'internet_facing'),
         vpc_subnets=subnets,
