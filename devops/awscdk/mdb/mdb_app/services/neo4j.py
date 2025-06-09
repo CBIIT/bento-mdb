@@ -22,6 +22,9 @@ class neo4jService:
         "NEO4J_AUTH":"{}/{}".format(config['db']['neo4j_user'], config['db']['neo4j_password']),
         "NEO4J_dbms_connector_bolt_advertised__address":"0.0.0.0",
         "NEO4J_dbms_connector_http_advertised__address":"0.0.0.0",
+        "apoc.trigger.enabled":config['db']['apoc_trigger_enabled'],
+        "NEO4JLABS_PLUGINS":config['db']['neo4j_labs_plugins'],
+        "dbms.security.procedures.unrestricted":config['db']'[dbms_sec_proc_unrestricted'],
     }
 
     # secrets={
