@@ -25,6 +25,9 @@ class neo4jService:
         "NEO4J_apoc_trigger_enabled":config['db']['apoc_trigger_enabled'],
         "NEO4JLABS_PLUGINS":config['db']['neo4j_labs_plugins'],
         "dbms.security.procedures.unrestricted":config['db']['dbms_sec_proc_unrestricted'],
+        "NEO4J_apoc_export_file_enabled":config['db']['apoc_export_file_enabled'],
+        "NEO4J_apoc_import_file_enabled":config['db']['apoc_import_file_enabled'],
+        "NEO4J_apoc_import_file_use__neo4j__config":config['db']['apoc_file_use_config'],
     }
 
     # secrets={
