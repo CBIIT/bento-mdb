@@ -72,6 +72,14 @@ class neo4jService:
         source_volume=dbVolume.name
     )
     dbContainer.add_mount_points(containerVolumeMountPoint)
+
+    pluginMountPoint = ecs.MountPoint(
+        read_only=False,
+        container_path="/plugin",
+        source_volume=dbVolume.name
+    )
+    dbContainer.add_mount_points(pluginMountPoint)
+
     self.fileSystem.grant_root_access(taskDefinition.task_role)
 
     ecsService = ecs.FargateService(self,
