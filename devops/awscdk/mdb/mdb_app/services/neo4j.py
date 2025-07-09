@@ -82,6 +82,26 @@ class neo4jService:
 
     self.fileSystem.grant_root_access(taskDefinition.task_role)
 
+    #roles attached to ecs
+    bucket_name = config['main']['mdb_bucket']
+    bucket_policy = iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        actions=[
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:ListBucket",
+            "s3:DeleteObject"
+        ],
+        resources=[
+            f"arn:aws:s3:::{bucket_name}",
+            f"arn:aws:s3:::{bucket_name}/*"
+        ]
+    )
+
+    # attach the policy to the task role
+    taskDefinition.task_role.add_to_policy(bucket_policy)
+    taskDefinition.execution_role.add_to_policy(bucket_policy)
+
     ecsService = ecs.FargateService(self,
         "{}-{}-service".format(self.namingPrefix, service),
         cluster=self.ECSCluster,
