@@ -75,7 +75,7 @@ class neo4jService:
 
     pluginMountPoint = ecs.MountPoint(
         read_only=False,
-        container_path="/plugin",
+        container_path="/extra-plugin",
         source_volume=dbVolume.name
     )
     dbContainer.add_mount_points(pluginMountPoint)
