@@ -32,6 +32,7 @@ class neo4jService:
         "NEO4J_apoc_import_file_enabled":config['db']['apoc_import_file_enabled'],
         "NEO4J_apoc_import_file_use__neo4j__config":config['db']['apoc_file_use_config'],
         "NEO4J_dbms_security_procedures_unrestricted":config['db']['apoc_sec_proc'],
+        "NEO4J_dbms_directories_plugins":config['db']['neo4j_plugin'],
     }
 
     # secrets={
