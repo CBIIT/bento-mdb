@@ -4,4 +4,4 @@ services:
   api:
     version: main.11
   neo4j:
-    version: 4.4.43-community
+    version: 4.4.44-community
