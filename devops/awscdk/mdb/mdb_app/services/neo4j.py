@@ -88,7 +88,14 @@ class neo4jService:
     self.fileSystem.grant_root_access(taskDefinition.task_role)
 
     #roles attached to ecs
-    bucket_name = config['main']['mdb_bucket']
+    #bucket_name = config['main']['mdb_bucket']
+    bucket_names = [name.strip() for name in config['main']['mdb_buckets'].split(',')]
+    bucket_arns = []  
+    for bucket_name in bucket_names:
+        bucket_arns.append(f"arn:aws:s3:::{bucket_name}")
+        bucket_arns.append(f"arn:aws:s3:::{bucket_name}/*")
+        
+        
     bucket_policy = iam.PolicyStatement(
         effect=iam.Effect.ALLOW,
         actions=[
@@ -97,10 +104,7 @@ class neo4jService:
             "s3:ListBucket",
             "s3:DeleteObject"
         ],
-        resources=[
-            f"arn:aws:s3:::{bucket_name}",
-            f"arn:aws:s3:::{bucket_name}/*"
-        ]
+        resources=bucket_arns
     )
 
     # attach the policy to the task role
