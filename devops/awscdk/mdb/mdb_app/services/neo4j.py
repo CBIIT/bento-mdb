@@ -111,6 +111,16 @@ class neo4jService:
     taskDefinition.task_role.add_to_policy(bucket_policy)
     taskDefinition.execution_role.add_to_policy(bucket_policy)
 
+    # Extract DB subnet IDs
+    subnet_db1 = config.get('Subnets', 'subnet_db1')
+    subnet_db2 = config.get('Subnets', 'subnet_db2')
+    subnets_db = ec2.SubnetSelection(
+        subnets=[
+            ec2.Subnet.from_subnet_id(self, "Subnet_db1", subnet_db1),
+            ec2.Subnet.from_subnet_id(self, "Subnet_db2", subnet_db2)
+        ]
+    )
+
     ecsService = ecs.FargateService(self,
         "{}-{}-service".format(self.namingPrefix, service),
         cluster=self.ECSCluster,
@@ -121,25 +131,36 @@ class neo4jService:
         circuit_breaker=ecs.DeploymentCircuitBreaker(
             enable=True,
             rollback=True
-        )
+        ),
+        vpc_subnets=subnets_db
     )
 
     ### NLB - Neo4j ###############################################################################################################
-    if config.getboolean('nlb', 'internet_facing'):
-        subnets=ec2.SubnetSelection(
-            subnets=self.VPC.select_subnets(one_per_az=True,subnet_type=ec2.SubnetType.PUBLIC).subnets
-        )
-    else:
-        subnets=ec2.SubnetSelection(
-            subnets=self.VPC.select_subnets(one_per_az=True,subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS).subnets
-        )
+    #if config.getboolean('nlb', 'internet_facing'):
+        #subnets=ec2.SubnetSelection(
+            #subnets=self.VPC.select_subnets(one_per_az=True,subnet_type=ec2.SubnetType.PUBLIC).subnets
+        #)
+    #else:
+        #subnets=ec2.SubnetSelection(
+            #subnets=self.VPC.select_subnets(one_per_az=True,subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS).subnets
+        #)
+
+    # Extract subnet IDs
+    subnet_nlb1 = config.get('Subnets', 'subnet_nlb1')
+    subnet_nlb2 = config.get('Subnets', 'subnet_nlb2')
+    subnets_nlb = ec2.SubnetSelection(
+        subnets=[
+            ec2.Subnet.from_subnet_id(self, "Subnet_nlb1", subnet_nlb1),
+            ec2.Subnet.from_subnet_id(self, "Subnet_nlb2", subnet_nlb2)
+        ]
+    )
 
     self.NLB = elbv2.NetworkLoadBalancer(self,
         "nlb",
         load_balancer_name = f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb",
         vpc=self.VPC,
         internet_facing=config.getboolean('nlb', 'internet_facing'),
-        vpc_subnets=subnets,
+        vpc_subnets=subnets_nlb,
     )
     NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
     NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.any_ipv4(),

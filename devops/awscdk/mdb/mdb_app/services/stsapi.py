@@ -57,6 +57,16 @@ class stsapiService:
         )
     )
 
+    # Extract ECS subnet IDs
+    subnet_ecs1 = config.get('Subnets', 'subnet_ecs1')
+    subnet_ecs2 = config.get('Subnets', 'subnet_ecs2')
+    subnets_ecs = ec2.SubnetSelection(
+        subnets=[
+            ec2.Subnet.from_subnet_id(self, "Subnet_ecs1", subnet_ecs1),
+            ec2.Subnet.from_subnet_id(self, "Subnet_ecs2", subnet_ecs2)
+        ]
+    )
+
     ecsService = ecs.FargateService(self,
         "{}-{}-service".format(self.namingPrefix, service),
         service_name=f"{config['main']['resource_prefix']}-{config['main']['tier']}-sts-api",
@@ -68,7 +78,8 @@ class stsapiService:
         circuit_breaker=ecs.DeploymentCircuitBreaker(
             enable=True,
             rollback=True
-        )
+        ),
+        vpc_subnets=subnets_ecs
     )
 
 
