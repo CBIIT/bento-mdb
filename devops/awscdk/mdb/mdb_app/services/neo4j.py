@@ -166,7 +166,7 @@ class neo4jService:
         vpc=self.VPC,
         internet_facing=config.getboolean('nlb', 'internet_facing'),
         vpc_subnets=ec2.SubnetSelection(
-            subnets=vpc.select_subnets(one_per_az=True, subnet_type=ec2.SubnetType.PUBLIC_WITH_EGRESS).subnets
+            subnets=self.VPC.select_subnets(one_per_az=True, subnet_type=ec2.SubnetType.PUBLIC_WITH_EGRESS).subnets
         )
     )
     NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
