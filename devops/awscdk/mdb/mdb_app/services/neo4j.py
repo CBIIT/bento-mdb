@@ -146,11 +146,11 @@ class neo4jService:
         #)
 
     # Extract subnet IDs
-    subnet_nlb1 = config.get('Subnets', 'subnet_nlb1')
+    #subnet_nlb1 = config.get('Subnets', 'subnet_nlb1')
     subnet_nlb2 = config.get('Subnets', 'subnet_nlb2')
     subnets_nlb = ec2.SubnetSelection(
         subnets=[
-            ec2.Subnet.from_subnet_id(self, "Subnet_nlb1", subnet_nlb1),
+            #ec2.Subnet.from_subnet_id(self, "Subnet_nlb1", subnet_nlb1),
             ec2.Subnet.from_subnet_id(self, "Subnet_nlb2", subnet_nlb2)
         ]
     )
