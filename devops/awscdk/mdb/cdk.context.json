@@ -56,7 +56,7 @@
             "cidr": "10.208.4.0/24",
             "availabilityZone": "us-east-1b",
             "routeTableId": "rtb-011fb6446fa6ffeec"
-          },
+          }
         ]
       }    
     ]
