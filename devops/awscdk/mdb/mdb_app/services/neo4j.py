@@ -147,20 +147,22 @@ class neo4jService:
 
     # Extract subnet IDs
     #subnet_nlb1 = config.get('Subnets', 'subnet_nlb1')
-    subnet_nlb2 = config.get('Subnets', 'subnet_nlb2')
-    subnets_nlb = ec2.SubnetSelection(
-        subnets=[
+    #subnet_nlb2 = config.get('Subnets', 'subnet_nlb2')
+    #subnets_nlb = ec2.SubnetSelection(
+        #subnets=[
             #ec2.Subnet.from_subnet_id(self, "Subnet_nlb1", subnet_nlb1),
-            ec2.Subnet.from_subnet_id(self, "Subnet_nlb2", subnet_nlb2)
-        ]
-    )
+            #ec2.Subnet.from_subnet_id(self, "Subnet_nlb2", subnet_nlb2)
+        #]
+    #)
 
     self.NLB = elbv2.NetworkLoadBalancer(self,
         "nlb",
         load_balancer_name = f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb",
         vpc=self.VPC,
         internet_facing=config.getboolean('nlb', 'internet_facing'),
-        vpc_subnets=subnets_nlb,
+        vpc_subnets=ec2.SubnetSelection(
+            subnets=vpc.select_subnets(one_per_az=True, subnet_type=ec2.SubnetType.PUBLIC_WITH_EGRESS).subnets
+        )
     )
     NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
     NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.any_ipv4(),

@@ -69,11 +69,11 @@ class Stack(Stack):
         ### ALB
         # Extract subnet IDs
         subnet1 = config.get('Subnets', 'subnet1')
-        #subnet2 = config.get('Subnets', 'subnet2')
+        subnet2 = config.get('Subnets', 'subnet2')
         selected_subnets = ec2.SubnetSelection(
             subnets=[
-                ec2.Subnet.from_subnet_id(self, "Subnet1", subnet1)
-                #ec2.Subnet.from_subnet_id(self, "Subnet2", subnet2)
+                ec2.Subnet.from_subnet_id(self, "Subnet1", subnet1),
+                ec2.Subnet.from_subnet_id(self, "Subnet2", subnet2)
             ]
         )
 
