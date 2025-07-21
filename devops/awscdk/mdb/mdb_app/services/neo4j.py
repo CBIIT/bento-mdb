@@ -155,6 +155,11 @@ class neo4jService:
         #]
     #)
 
+    # lookup VPC
+    self.VPC = ec2.Vpc.from_lookup(self, "VPCa",
+            vpc_id = config['main']['vpc_id']
+        )
+
     self.NLB = elbv2.NetworkLoadBalancer(self,
         "nlb",
         load_balancer_name = f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb",
