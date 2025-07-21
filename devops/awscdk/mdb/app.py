@@ -40,7 +40,7 @@ if __name__=="__main__":
   #else:
    #synthesizer = cdk.DefaultStackSynthesizer()
   
-  Initialize CDK app
+  #Initialize CDK app
   app = cdk.App()
 
   # create main stack using default synthesizer
