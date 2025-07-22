@@ -164,7 +164,7 @@ class neo4jService:
         #vpc_subnets=ec2.SubnetSelection(
             #subnets=self.VPC.select_subnets(subnet_type=ec2.SubnetType.PUBLIC).subnets
         #)
-        vpc_subnets=subnets,
+        vpc_subnets=subnets_nlb,
     )
     NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
     NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.any_ipv4(),
