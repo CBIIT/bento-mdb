@@ -20,13 +20,7 @@
             "cidr": "10.208.6.0/23",
             "availabilityZone": "us-east-1b",
             "routeTableId": "rtb-011fb6446fa6ffeec"
-          }
-        ]
-      },
-      {
-        "name": "Isolated",
-        "type": "Isolated",
-        "subnets": [
+          },
           {
             "subnetId": "subnet-df30f482",
             "cidr": "10.208.1.0/24",
@@ -40,25 +34,7 @@
             "routeTableId": "rtb-011fb6446fa6ffeec"
           }
         ]
-      },
-      {
-        "name": "Public",
-        "type": "Public",
-        "subnets": [
-          {
-            "subnetId": "subnet-cb3df996",
-            "cidr": "10.208.0.0/24",
-            "availabilityZone": "us-east-1a",
-            "routeTableId": "rtb-011fb6446fa6ffeec"
-          },
-          {
-            "subnetId": "subnet-329d0356",
-            "cidr": "10.208.4.0/24",
-            "availabilityZone": "us-east-1b",
-            "routeTableId": "rtb-011fb6446fa6ffeec"
-          }
-        ]
-      }    
+      }
     ]
   },
   "vpc-provider:account=593793038232:filter.vpc-id=vpc-dca724a4:region=us-east-1:returnAsymmetricSubnets=true": {
