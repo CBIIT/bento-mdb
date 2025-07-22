@@ -48,18 +48,6 @@
         "type": "Private",
         "subnets": [
           {
-            "subnetId": "subnet-819c02e5",
-            "cidr": "10.208.14.0/23",
-            "availabilityZone": "us-east-1b",
-            "routeTableId": "rtb-0b974edf5a9728a34"
-          },
-          {
-            "subnetId": "subnet-8832f6d5",
-            "cidr": "10.208.10.0/23",
-            "availabilityZone": "us-east-1a",
-            "routeTableId": "rtb-0b974edf5a9728a34"
-          },
-          {
             "subnetId": "subnet-1a34f047",
             "cidr": "10.208.9.0/24",
             "availabilityZone": "us-east-1a",
@@ -69,6 +57,18 @@
             "subnetId": "subnet-db9f01bf",
             "cidr": "10.208.13.0/24",
             "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0b974edf5a9728a34"
+          },
+          {
+            "subnetId": "subnet-819c02e5",
+            "cidr": "10.208.14.0/23",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0b974edf5a9728a34"
+          },
+          {
+            "subnetId": "subnet-8832f6d5",
+            "cidr": "10.208.10.0/23",
+            "availabilityZone": "us-east-1a",
             "routeTableId": "rtb-0b974edf5a9728a34"
           }
         ]
