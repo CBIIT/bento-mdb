@@ -32,14 +32,16 @@ resource "aws_ecs_cluster" "prefect_worker_cluster" {
 
 resource "aws_ecs_cluster_capacity_providers" "prefect_worker_cluster_capacity_providers" {
   for_each = var.clusters
-  cluster_name       = "${each.value.name}-${var.tier}"
+  #cluster_name       = "${each.value.name}-${var.tier}"
+  cluster_name       = aws_ecs_cluster.prefect_worker_cluster[each.key].name
   capacity_providers = ["FARGATE"]
 }
 
 resource "aws_ecs_service" "prefect-worker-service" {
   for_each = var.clusters
   name                   = "${each.value.name}-${var.tier}"
-  cluster                = "${each.value.name}-${var.tier}"
+  #cluster                = "${each.value.name}-${var.tier}"
+  cluster                = aws_ecs_cluster.prefect_worker_cluster[each.key].id
   task_definition        = aws_ecs_task_definition.prefect_worker_task_definition[each.key].arn
   desired_count          = each.value.worker_desired_count
   launch_type            = "FARGATE"
