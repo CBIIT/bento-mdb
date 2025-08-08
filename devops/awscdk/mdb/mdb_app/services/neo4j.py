@@ -156,6 +156,10 @@ class neo4jService:
     )
 
 
+    # read CIDRs and port from config.ini
+    restricted_cidrs = config.get(service, 'allowed_cidrs').split(',')
+
+    # create NLB
     self.NLB = elbv2.NetworkLoadBalancer(self,
         "nlb",
         load_balancer_name = f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb",
@@ -166,11 +170,19 @@ class neo4jService:
         #)
         vpc_subnets=subnets_nlb,
     )
-    NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True,)
-    NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.any_ipv4(),
-        connection=ec2.Port.tcp(config.getint(service, 'bolt_port')),
-    )
+
+    #Create Security Group for NLB
+    NLBSecurityGroup = ec2.SecurityGroup(self, "NLBSecurityGroup", vpc=self.VPC, allow_all_outbound=True, security_group_name=f"{config['main']['resource_prefix']}-{config['main']['tier']}-nlb-sg",)
+
+    # add ingress rules for each CIDR
+    for cidr in restricted_cidrs:
+        NLBSecurityGroup.add_ingress_rule(peer=ec2.Peer.ipv4(cidr.strip()),
+            connection=ec2.Port.tcp(config.getint(service, 'bolt_port')),
+        )
+    # Attach SG to NLB
     self.NLB.add_security_group(NLBSecurityGroup)
+
+    # Allow ECS service to accept traffic from the NLB
     ecsService.connections.security_groups[0].add_ingress_rule(
         NLBSecurityGroup,
         ec2.Port.tcp(config.getint(service, 'bolt_port'))
