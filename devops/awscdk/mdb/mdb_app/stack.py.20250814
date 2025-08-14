@@ -95,10 +95,19 @@ class Stack(Stack):
             target_port=443)
 
         # Get certificate ARN for specified domain name
+        client = boto3.client('acm')
+        response = client.list_certificates(
+            CertificateStatuses=[
+                'ISSUED',
+            ],
+        )
 
-        cert_arn = config['alb']['certificate_arn']
-        alb_cert = acm.Certificate.from_certificate_arn(self, "alb-cert",
-            certificate_arn=cert_arn)
+        for cert in response["CertificateSummaryList"]:
+            if ('*.{}'.format(config['main']['domain']) in cert.values()):
+                certARN = cert['CertificateArn']
+
+        alb_cert = cfm.Certificate.from_certificate_arn(self, "alb-cert",
+            certificate_arn=certARN)
 
         self.listener = self.ALB.add_listener("PublicListener",
             certificates=[
