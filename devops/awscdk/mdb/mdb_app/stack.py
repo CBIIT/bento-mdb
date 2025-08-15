@@ -86,7 +86,7 @@ class Stack(Stack):
             vpc_subnets=selected_subnets
         )
 
-        self.ALB.set_attribute("idle_timeout.timeout_seconds", "300")
+        #self.ALB.set_attribute("idle_timeout.timeout_seconds", "300")
 
         self.ALB.add_redirect(
             source_protocol=elbv2.ApplicationProtocol.HTTP,
