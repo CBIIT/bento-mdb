@@ -123,6 +123,7 @@ class neo4jService:
 
     ecsService = ecs.FargateService(self,
         "{}-{}-service".format(self.namingPrefix, service),
+        service_name=f"{config['main']['resource_prefix']}-{config['main']['tier']}-neo4j",
         cluster=self.ECSCluster,
         task_definition=taskDefinition,
         enable_execute_command=True,
