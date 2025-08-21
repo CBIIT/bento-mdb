@@ -15,8 +15,8 @@ from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_s3 as s3
 #from aws_cdk import Fn
 
-from services import neo4j, stsapi
-#from services import neo4j
+#from services import neo4j, stsapi
+from services import stsapi
 
 class Stack(Stack):
     def __init__(self, scope: Construct, **kwargs) -> None:
@@ -131,7 +131,7 @@ class Stack(Stack):
         ### Fargate
 
         # Neo4j Service
-        neo4j.neo4jService.createService(self, config)
+        #neo4j.neo4jService.createService(self, config)
     
         #neo4j_uri = "bolt://{}:{}".format(self.NLB.load_balancer_dns_name, config.getint('neo4j', 'bolt_port))"
         #nlb_dns_name = Fn.import_value("Neo4jNlbDnsNameExport")
