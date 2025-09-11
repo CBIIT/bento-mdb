@@ -1,0 +1,109 @@
+name: Update MDB and Data Hub Terms
+
+on:
+  workflow_call:
+    inputs:
+      changelog_files:
+        description: "JSON array of changelog files to update"
+        required: true
+        type: string
+      mdb_id:
+        description: "ID of MDB to update"
+        required: true
+        type: string
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      PREFECT_API_KEY:
+        required: true
+      PREFECT_API_URL:
+        required: true
+      GH_PAT:
+        required: true
+
+jobs:
+  update-mdb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with: # latest version of branch to get files committed in prev job
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Run liquibase update on changelog files
+        id: liquibase-update
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+        run: |
+          echo "Processing the following changelog files:"
+          echo '${{ inputs.changelog_files }}' | jq -r '.[]'
+          
+          RUN_IDS=()
+
+          for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
+            echo "Queueing $file"
+
+            if [ ! -f "$file" ]; then
+              echo "Warning: Changelog file $file does not exist, skipping"
+              continue
+            fi
+
+            PARAMS=$(jq -n \
+            --arg file "$file" \
+            --arg id "${{ inputs.mdb_id }}" \
+            --arg log_level "${{ inputs.log_level || 'info' }}" \
+            --argjson dry_run "${{ inputs.dry_run || false }}" \
+            '{
+              "changelog_file": $file,
+              "mdb_id": $id,
+              "log_level": $log_level,
+              "dry_run": $dry_run
+            }')
+
+            OUTPUT=$(prefect deployment run liquibase-update/liquibase-update \
+              --params "$PARAMS" 2>&1)
+
+            RUN_ID=$(echo "$OUTPUT" | grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" | head -n1)
+
+            if [ -n "$RUN_ID" ]; then
+              echo "Created flow run $RUN_ID for $file"
+              RUN_IDS+=("$RUN_ID:$file")
+            else
+              echo "Failed to create flow run for $file"
+            fi
+          done
+
+          echo "Successfully queued ${#RUN_IDS[@]} flow runs:"
+          for run_info in "${RUN_IDS[@]}"; do
+            IFS=':' read -r run_id file <<< "$run_info"
+            echo "  - Flow run $run_id for $file"
+          done
+          
+          echo ""
+          echo "All flow runs have been queued successfully!"
+          echo "Monitor their progress in the Prefect UI or set up notifications for completion status."

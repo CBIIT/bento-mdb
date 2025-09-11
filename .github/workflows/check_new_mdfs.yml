@@ -1,0 +1,67 @@
+name: Check New MDFs
+
+on:
+  schedule:
+    - cron: "12 22 * * *" # runs daily 22:12 UTC/6:12 PM ET
+  workflow_dispatch:
+    inputs:
+      models_yaml_path:
+        description: "Path to YAML files with models & refs their MDFs."
+        required: false
+        default: "config/mdb_models.yml"
+        type: string
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        default: false
+        type: boolean
+      new_only:
+        description: "Only update if tag is newer than latest version."
+        required: false
+        default: true
+        type: boolean
+
+
+jobs:
+  check_new_mdfs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Run MDF Check Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          MODEL_SPECS_YAML: "${{ github.event.inputs.models_yaml_path || 'config/mdb_models.yml' }}"
+          NO_COMMIT: "${{ github.event.inputs.no_commit || 'false' }}"
+          NEW_ONLY: "${{ github.event.inputs.new_only || 'true' }}"
+        run: |
+          check_new_mdfs \
+          --model_specs_yaml "$MODEL_SPECS_YAML" \
+          --no_commit "$NO_COMMIT" \
+          --new_only "$NEW_ONLY"
