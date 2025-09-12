@@ -7,9 +7,9 @@ from pathlib import Path
 
 from prefect import flow
 
-from bento_mdb_updates.constants import MDB_IDS_WITH_PRERELEASES
-from bento_mdb_updates.mdb_utils import init_mdb_connection
-from bento_mdb_updates.model_cdes import (
+from bento_mdb.constants import MDB_IDS_WITH_PRERELEASES
+from bento_mdb.mdb_utils import init_mdb_connection
+from bento_mdb.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
     load_model_specs_from_yaml,

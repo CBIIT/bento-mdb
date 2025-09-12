@@ -11,20 +11,20 @@ from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
-from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
-from bento_mdb_updates.clients import CADSRClient, NCItClient
-from bento_mdb_updates.constants import (
+from bento_mdb.cde_cypher import convert_model_cdes_to_changelog
+from bento_mdb.clients import CADSRClient, NCItClient
+from bento_mdb.constants import (
     GITHUB_TOKEN_SECRET,
     MDB_UPDATES_GH_REPO,
 )
-from bento_mdb_updates.mdb_utils import init_mdb_connection
-from bento_mdb_updates.model_cdes import (
+from bento_mdb.mdb_utils import init_mdb_connection
+from bento_mdb.model_cdes import (
     add_ncit_synonyms_to_model_cde_spec,
     get_cdes_from_mdb,
 )
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec
+    from bento_mdb.datatypes import MDBCDESpec, ModelCDESpec
 
 
 def make_changelog_output_more_visible(changelog_file: Path) -> None:

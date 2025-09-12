@@ -6,7 +6,7 @@ from bento_meta.mdb import MDB
 from bento_meta.mdb.writeable import WriteableMDB
 from prefect.blocks.system import Secret
 
-from bento_mdb_updates.constants import VALID_MDB_IDS
+from bento_mdb.constants import VALID_MDB_IDS
 
 
 def init_mdb_connection(

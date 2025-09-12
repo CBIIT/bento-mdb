@@ -1,6 +1,6 @@
 """Tests for cde changelog generation script."""
 
-from bento_mdb_updates.cde_cypher import (
+from bento_mdb.cde_cypher import (
     convert_annotation_to_changesets,
     convert_model_cdes_to_changelog,
 )

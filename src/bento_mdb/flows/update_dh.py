@@ -6,12 +6,12 @@ from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
-from bento_mdb_updates.constants import (
+from bento_mdb.constants import (
     DH_TERMS_GH_REPO,
     GITHUB_TOKEN_SECRET,
     VALID_TIERS,
 )
-from bento_mdb_updates.mdb_utils import init_mdb_connection
+from bento_mdb.mdb_utils import init_mdb_connection
 
 QUERY = (
     "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "

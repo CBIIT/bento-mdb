@@ -15,7 +15,7 @@ from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
-from bento_mdb_updates.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
+from bento_mdb.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
 
 # liquibase constants
 DRIVER_PATH = "/app/drivers"

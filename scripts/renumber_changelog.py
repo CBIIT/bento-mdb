@@ -8,9 +8,12 @@ Starts with n and increments by 1. Saves the resulting changelog at the given pa
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 NAMESPACE = "http://www.liquibase.org/xml/ns/dbchangelog"
 XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"

@@ -10,7 +10,7 @@ from bento_meta.objects import Concept, Tag
 from bento_meta.objects import Model as ModelEnt
 from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
 
-from bento_mdb_updates.cypher_utils import (
+from bento_mdb.cypher_utils import (
     Statement,
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,

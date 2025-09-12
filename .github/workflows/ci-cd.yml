@@ -27,4 +27,4 @@ jobs:
       - name: Test with pytest
         run: |
           source .venv/bin/activate
-          pytest --cov=bento_mdb_updates --cov-report=xml
+          pytest tests --cov=bento_mdb --cov-report=xml

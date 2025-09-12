@@ -6,7 +6,7 @@ from bento_mdf.mdf import MDF
 from bento_meta.model import Model
 from bento_meta.objects import Node, Property
 
-from bento_mdb_updates.model_cypher import ModelToChangelogConverter
+from bento_mdb.model_cypher import ModelToChangelogConverter
 from tests.test_utils import assert_equal, remove_nanoids_from_str
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent

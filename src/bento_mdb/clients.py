@@ -19,10 +19,10 @@ import stamina
 import yaml
 from tqdm import tqdm
 
-from bento_mdb_updates.constants import NCIM_TSV_NAME
+from bento_mdb.constants import NCIM_TSV_NAME
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
+    from bento_mdb.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
 
 
 RESPONSE_200 = 200

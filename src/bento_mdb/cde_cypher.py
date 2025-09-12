@@ -10,7 +10,7 @@ from bento_meta.objects import Term, ValueSet
 from liquichange.changelog import Changelog, Changeset, CypherChange
 from tqdm import tqdm
 
-from bento_mdb_updates.cypher_utils import (
+from bento_mdb.cypher_utils import (
     DEFAULT_AUTHOR,
     DEFAULT_COMMIT,
     create_entity_cypher_stmt,
@@ -19,8 +19,8 @@ from bento_mdb_updates.cypher_utils import (
 )
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.cypher_utils import Statement
-    from bento_mdb_updates.datatypes import AnnotationSpec, ModelCDESpec
+    from bento_mdb.cypher_utils import Statement
+    from bento_mdb.datatypes import AnnotationSpec, ModelCDESpec
 
 logger = logging.getLogger(__name__)
 

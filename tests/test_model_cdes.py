@@ -7,8 +7,8 @@ import pytest
 import yaml
 from bento_mdf.mdf import MDFReader
 
-from bento_mdb_updates.datatypes import ModelSpec
-from bento_mdb_updates.model_cdes import (
+from bento_mdb.datatypes import ModelSpec
+from bento_mdb.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
     load_model_specs_from_yaml,

@@ -5,9 +5,7 @@ import re
 import zipfile
 from typing import Any
 
-import pytest
-
-from bento_mdb_updates.datatypes import (
+from bento_mdb.datatypes import (
     AnnotationSpec,
     MDBCDESpec,
     ModelCDESpec,

@@ -9,8 +9,8 @@ from zoneinfo import ZoneInfo
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
 
-from bento_mdb_updates.constants import DEFAULT_S3_ENDPOINT, MDB_REL_TYPES
-from bento_mdb_updates.mdb_utils import init_mdb_connection
+from bento_mdb.constants import DEFAULT_S3_ENDPOINT, MDB_REL_TYPES
+from bento_mdb.mdb_utils import init_mdb_connection
 
 if TYPE_CHECKING:
     from bento_meta.mdb import MDB

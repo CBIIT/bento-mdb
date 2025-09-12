@@ -13,11 +13,11 @@ from dotenv import load_dotenv
 from packaging.version import Version
 from packaging.version import parse as parse_version
 
-from bento_mdb_updates.clients import GitHubClient
-from bento_mdb_updates.model_cdes import dump_to_yaml, load_model_specs_from_yaml
+from bento_mdb.clients import GitHubClient
+from bento_mdb.model_cdes import dump_to_yaml, load_model_specs_from_yaml
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.datatypes import ModelSpec
+    from bento_mdb.datatypes import ModelSpec
 
 
 load_dotenv(Path("config/.env"))

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import click
 
-from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
-from bento_mdb_updates.model_cdes import (
+from bento_mdb.cde_cypher import convert_model_cdes_to_changelog
+from bento_mdb.model_cdes import (
     load_model_cde_spec,
 )
 

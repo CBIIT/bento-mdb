@@ -13,7 +13,7 @@ from pathlib import Path
 import click
 from bento_mdf.mdf import MDF
 
-from bento_mdb_updates.model_cypher import ModelToChangelogConverter
+from bento_mdb.model_cypher import ModelToChangelogConverter
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@
 from prefect import flow, get_run_logger
 from prefect.deployments import run_deployment
 
-from bento_mdb_updates.flows.mdb_s3 import get_current_date
+from bento_mdb.flows.mdb_s3 import get_current_date
 
 
 @flow(name="update-c1-lower")

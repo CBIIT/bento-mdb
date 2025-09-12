@@ -17,7 +17,7 @@ dependencies = [
     "liquichange>=0.2.1",
     "minicypher>=0.1.1",
     "packaging>=24.2",
-    "prefect==3.3.4",
+    "prefect>=3.3.4",
     "prefect-shell>=0.3.1",
     "pygithub>=2.6.1",
     "pyliquibase>=2.4.0",
@@ -27,17 +27,13 @@ dependencies = [
 
 [project.scripts]
 check_new_mdfs = "scripts.check_new_mdfs:main"
-filter_datahub_models = "scripts.filter_datahub_models:main"
-generate_model_version_matrix = "scripts.generate_model_version_matrix:main"
 get_pvs_and_synonyms = "scripts.get_pvs_and_synonyms:main"
-get_pvs_json = "scripts.get_pvs_json:main"
 make_model_cde_changelog = "scripts.make_model_cde_changelog:main"
 make_model_changelog = "scripts.make_model_changelog:main"
-update_mdb = "scripts.update_mdb:main"
-update_terms = "scripts.update_terms:main"
+renumber_changelog = "scripts.renumber_changelog:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bento_mdb_updates", "scripts"]
+packages = ["src/bento_mdb", "scripts"]
 
 [dependency-groups]
 dev = [

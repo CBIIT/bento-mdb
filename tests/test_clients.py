@@ -7,9 +7,9 @@ import pytest
 import requests
 from requests.exceptions import HTTPError
 
-from bento_mdb_updates.clients import CADSRClient, NCItClient
-from bento_mdb_updates.constants import NCIM_TSV_NAME
-from bento_mdb_updates.datatypes import AnnotationSpec
+from bento_mdb.clients import CADSRClient, NCItClient
+from bento_mdb.constants import NCIM_TSV_NAME
+from bento_mdb.datatypes import AnnotationSpec
 from tests.test_utils import (
     TEST_ANNOTATION_SPEC_NCIM,
     TEST_CADSR_RESPONSE_MDB_CDES,
@@ -328,7 +328,7 @@ class TestNCItClient:
             lambda: datetime.datetime(2025, 3, 1),
         )
         monkeypatch.setattr(
-            "bento_mdb_updates.clients.get_last_sync_date",
+            "bento_mdb.clients.get_last_sync_date",
             lambda x: datetime.datetime(2025, 2, 1),
         )
         monkeypatch.setattr(
@@ -350,7 +350,7 @@ class TestNCItClient:
             lambda: datetime.datetime(2025, 2, 1),
         )
         monkeypatch.setattr(
-            "bento_mdb_updates.clients.get_last_sync_date",
+            "bento_mdb.clients.get_last_sync_date",
             lambda x: datetime.datetime(2025, 2, 1),
         )
 

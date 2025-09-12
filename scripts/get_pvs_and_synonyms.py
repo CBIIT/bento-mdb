@@ -9,8 +9,8 @@ from pathlib import Path
 import click
 from bento_mdf.mdf import MDF
 
-from bento_mdb_updates.clients import CADSRClient, NCItClient
-from bento_mdb_updates.model_cdes import (
+from bento_mdb.clients import CADSRClient, NCItClient
+from bento_mdb.model_cdes import (
     add_cde_pvs_to_model_cde_spec,
     add_ncit_synonyms_to_model_cde_spec,
     count_model_cdes,

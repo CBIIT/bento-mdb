@@ -2,7 +2,7 @@
 
 from bento_meta.objects import Node, Property, Term
 
-from bento_mdb_updates.cypher_utils import (
+from bento_mdb.cypher_utils import (
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
     escape_quotes_in_attr,
@@ -61,7 +61,7 @@ class TestCreateRelationshipCypherStmt:
 
     def test_create_relationship_cypher(self) -> None:
         actual = str(
-            create_relationship_cypher_stmt(self.node, "has_prop", self.prop)[0]
+            create_relationship_cypher_stmt(self.node, "has_prop", self.prop)[0],
         )
         expected = (
             "MATCH (n0:node {handle:'test_node'}), (n1:property {handle:'test_prop'}) "
@@ -79,8 +79,11 @@ class TestGenerateCypherToLinkTermSynonyms:
     def test_generate_cypher_to_link_term_synonyms(self) -> None:
         actual = str(
             generate_cypher_to_link_term_synonyms(
-                self.term1, self.term2, "NCIt", "CDEPV-TEST"
-            )
+                self.term1,
+                self.term2,
+                "NCIt",
+                "CDEPV-TEST",
+            ),
         )
         expected = (
             "MATCH (n0:term {value:'test_term1'}), (n1:term {value:'test_term2'}) "

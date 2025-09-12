@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from bento_meta.mdb.mdb import MDB
     from bento_meta.model import Model
 
-    from bento_mdb_updates.clients import CADSRClient, NCItClient
-    from bento_mdb_updates.datatypes import (
+    from bento_mdb.clients import CADSRClient, NCItClient
+    from bento_mdb.datatypes import (
         MDBCDESpec,
         ModelCDESpec,
         ModelSpec,

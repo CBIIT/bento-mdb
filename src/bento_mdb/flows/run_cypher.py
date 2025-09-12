@@ -10,7 +10,7 @@ from bento_meta.mdb import MDB
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import INPUTS
 
-from bento_mdb_updates.mdb_utils import init_mdb_connection
+from bento_mdb.mdb_utils import init_mdb_connection
 
 if TYPE_CHECKING:
     from bento_meta.mdb import MDB
