@@ -1,5 +1,8 @@
 name: Update MDB and Data Hub Terms
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
     inputs:
