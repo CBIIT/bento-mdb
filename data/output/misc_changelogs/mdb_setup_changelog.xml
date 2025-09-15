@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd" changeLogId="59ec3fb3-82b2-4643-9c33-7d08cceac30d">
+  <changeSet id="1" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:node) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="2" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:relationship) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="3" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:property) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="4" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:value_set) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="5" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:term) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="6" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:origin) on (n.nanoid)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="7" author="NWM">
+    <neo4j:cypher>create index if not exists for (n:tag) on (n.key, n.value)</neo4j:cypher>
+  </changeSet>
+  <changeSet id="8" author="NWM">
+    <neo4j:cypher>create fulltext index termDefn if not exists for (t:term) on each [t.origin_definition]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="9" author="NWM">
+    <neo4j:cypher>create fulltext index termValue if not exists for (t:term) on each [t.value]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="10" author="NWM">
+    <neo4j:cypher>create fulltext index termValueDefn if not exists for (t:term) on each [t.value, t.origin_defintion]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="11" author="NWM">
+    <neo4j:cypher>create fulltext index tagKeyValue if not exists for (g:tag) on each [g.key, g.value]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="12" author="NWM">
+    <neo4j:cypher>create fulltext index nodeHandle if not exists for (n:node) on each [n.handle]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="13" author="NWM">
+    <neo4j:cypher>create fulltext index edgeHandle if not exists for (n:relationship) on each [n.handle]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="14" author="NWM">
+    <neo4j:cypher>create fulltext index propHandle if not exists for (n:property) on each [n.handle]</neo4j:cypher>
+  </changeSet>
+  <changeSet id="15" author="NWM">
+	<!--Only looks at node's first label-->
+    <neo4j:cypher><![CDATA[
+      CALL apoc.trigger.add('add-nanoid-property',
+      '
+      UNWIND $createdNodes AS node
+      WITH node
+      WHERE ANY(label IN labels(node) WHERE label IN ["node", "relationship", "property", "value_set", "concept", "predicate", "term", "origin", "model", "tag"])
+        AND NOT exists(node.nanoid)
+      SET node.nanoid = apoc.text.random(6, "abcdefghijkmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789")
+      ',
+      { phase: "afterAsync" })
+    ]]></neo4j:cypher>
+  </changeSet>
+</databaseChangeLog>
