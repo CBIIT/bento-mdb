@@ -1,5 +1,10 @@
 name: Generate and Commit FNL Model Updates Changelogs
 
+permissions:
+  contents: read
+  actions: write
+
+
 on:
   push:
     branches:
