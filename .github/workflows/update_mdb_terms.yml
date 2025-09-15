@@ -1,4 +1,6 @@
 name: Generate and Commit Term Update Changelog
+permissions:
+  contents: write
 
 on:
   schedule:
