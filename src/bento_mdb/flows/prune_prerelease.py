@@ -14,7 +14,6 @@ from bento_mdb.mdb_utils import init_mdb_connection
 if TYPE_CHECKING:
     from bento_meta.mdb.writeable import WriteableMDB
 
-DEFAULT_S3_ENDPOINT = "s3.us-east-1.amazonaws.com"
 
 PRUNE_PRERELEASE_DRY_RUN_STMT = (
     "MATCH (n) "

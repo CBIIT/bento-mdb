@@ -140,7 +140,7 @@ TEST_ANNOTATION_SPEC_MIN = AnnotationSpec(
             "origin_version": "1",
             "origin_id": "11524542",
             "origin_definition": (
-                "A person of legal age to consent to a procedure as specifed by local regulation."
+                "A person of legal age to consent to a procedure as specified by local regulation."
             ),
             "origin_name": "caDSR",
             "ncit_concept_codes": [],

@@ -64,8 +64,8 @@ class TestConvertAnnotationToChangesets:
             "MERGE (n0:value_set {handle:'11524549|',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/11524549'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
             "MERGE (n0:term {value:'Pediatric',origin_id:'2597927',origin_version:'1',origin_definition:'Having to do with children.',origin_name:'caDSR'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
             "MATCH (n0:value_set {handle:'11524549|',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/11524549'}), (n1:term {value:'Pediatric',origin_id:'2597927',origin_version:'1',origin_definition:'Having to do with children.',origin_name:'caDSR'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MERGE (n0:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specifed by local regulation.',origin_name:'caDSR'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (n0:value_set {handle:'11524549|',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/11524549'}), (n1:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specifed by local regulation.',origin_name:'caDSR'}) MERGE (n0)-[r0:has_term]->(n1)",
+            "MERGE (n0:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specified by local regulation.',origin_name:'caDSR'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
+            "MATCH (n0:value_set {handle:'11524549|',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/11524549'}), (n1:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specified by local regulation.',origin_name:'caDSR'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
         assert_equal(actual, expected)
 

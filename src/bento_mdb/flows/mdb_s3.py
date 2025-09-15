@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 def get_current_date() -> str:
-    """Get current date in YYYYMMDD format."""
+    """Get current date in YYYY-MM-DD format."""
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
 
 
