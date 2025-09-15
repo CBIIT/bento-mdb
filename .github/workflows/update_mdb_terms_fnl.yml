@@ -1,4 +1,6 @@
 name: Generate and Commit Term Update Changelog for FNL-MDB-DEV
+permissions:
+  contents: write
 
 on:
   schedule:
