@@ -1,4 +1,7 @@
 name: Generate and Commit Model Updates Changelogs
+permissions:
+  contents: read
+  actions: write
 
 on:
   push:
