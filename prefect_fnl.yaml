@@ -5,10 +5,10 @@ pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
     branch: main
-    repository: https://github.com/nelsonwmoore/bento-mdb-updates.git   # will change to CBIIT/bento-mdb
+    repository: https://github.com/CBIIT/bento-mdb.git
 - prefect.deployments.steps.run_shell_script:
     id: install-dependencies
-    script: sh -c "cd bento-mdb-updates-main && uv pip install --system . && uv sync
+    script: sh -c "cd bento-mdb-main && uv pip install --system . && uv sync
       --frozen"
 - prefect.deployments.steps.run_shell_script:
     id: install-aws-cli

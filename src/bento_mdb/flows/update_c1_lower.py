@@ -49,13 +49,3 @@ def update_c1_lower_flow(
         timeout=None,
         as_subflow=True,
     )
-    logger.info("Pruning prerelease data from cloud-one-mdb-qa")
-    run_deployment(
-        name="mdb-prune-prerelease/prune-prerelease",
-        parameters={
-            "mdb_id": "cloud-one-mdb-qa",
-            "dry_run": False,
-        },
-        timeout=None,
-        as_subflow=True,
-    )
