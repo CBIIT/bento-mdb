@@ -1,0 +1,518 @@
+name: Generate and Commit Model Updates Changelogs
+permissions:
+  contents: read
+  actions: write
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - config/mdb_models.yml
+  workflow_dispatch: # update an mdb with a certain model version
+    inputs:
+      models_spec_path:
+        description: "Path to YAML files with models & refs their MDFs."
+        required: false
+        default: "config/mdb_models.yml"
+      model:
+        description: "Specific model handle to process"
+        required: false
+        default: ""
+      version:
+        description: "Specific version to process"
+        required: false
+        default: ""
+      mdf_files:
+        description: "Path or URL to specific MDF files to process"
+        required: false
+        default: ""
+      datahub_only:
+        description: "Only include datahub models"
+        required: false
+        type: boolean
+        default: false
+      mdb_id:
+        description: "ID of MDB to update"
+        required: true
+        type: string
+      dh_tier:
+        description: "Data Hub tier to update"
+        required: true
+        type: choice
+        options:
+          - "upper"
+          - "lower"
+          - "both"
+        default: "both"
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  determine-models:
+    runs-on: ubuntu-latest
+    outputs:
+      affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
+      affected_models_upper: ${{ steps.set-matrix.outputs.model_matrix_upper }}
+      affected_models_lower: ${{ steps.set-matrix.outputs.model_matrix_lower }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Generate Model Version Matrix
+        id: set-matrix
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+        run: |
+          set -xeuo pipefail
+          trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
+
+          IS_AUTOMATIC="false"
+          if [ "${{ github.event_name }}" == "push" ]; then
+            IS_AUTOMATIC="true"
+          fi
+
+          if [ "$IS_AUTOMATIC" == "true" ]; then
+            TIER="both"
+            UPPER_MDB_ID="og-mdb-dev"
+            LOWER_MDB_ID="og-mdb-nightly"
+          else
+            TIER="${{ github.event.inputs.dh_tier }}"
+            MDB_ID="${{ github.event.inputs.mdb_id }}"
+            if [ "$MDB_ID" == "og-mdb-dev" ]; then
+              UPPER_MDB_ID="og-mdb-dev"
+              LOWER_MDB_ID=""
+              TIER="upper"
+            elif [ "$MDB_ID" == "og-mdb-nightly" ]; then
+              UPPER_MDB_ID=""
+              LOWER_MDB_ID="og-mdb-nightly"
+              TIER="lower"
+            fi
+          fi
+
+          # If specific model/version/mdfs provided, use them
+          if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
+            MODEL_INFO="{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}"
+            if [ -n "$UPPER_MDB_ID" ]; then
+              echo "{\"include\": [$MODEL_INFO]}" > matrix_upper.json
+            else
+              echo "{\"include\": []}" > matrix_upper.json
+            fi            
+            if [ -n "$LOWER_MDB_ID" ]; then
+              echo "{\"include\": [$MODEL_INFO]}" > matrix_lower.json
+            else
+              echo "{\"include\": []}" > matrix_lower.json
+            fi
+          else
+            # otherwise, generate the full matrix for both tiers
+            if [ -n "$UPPER_MDB_ID" ]; then
+              UPPER_PARAMS=$(jq -n \
+              --arg mdb_id "$UPPER_MDB_ID" \
+              --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+              --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
+              '{
+                "mdb_id": $mdb_id,
+                "model_specs_yaml": $model_specs_yaml,
+                "datahub_only": $datahub_only
+              }')
+              echo "Running Prefect deployment for upper tier with params: $UPPER_PARAMS"
+
+              watch_out_upper=$(
+                prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+                  --params "$UPPER_PARAMS" \
+                  --watch \
+                  --watch-interval 30 2>&1 | tee watch_upper.log
+              )
+              echo "watch_out_upper=$watch_out_upper"
+              
+              UPPER_RUN_ID=$(
+                grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch_upper.log \
+                | head -n1
+              )
+              echo "Upper tier run ID: $UPPER_RUN_ID"
+
+              echo "Waiting for logs to be available..."
+              sleep 10
+
+              UPPER_LOG_FILE="${UPPER_RUN_ID}_run.log"
+              prefect flow-run logs "$UPPER_RUN_ID" > "$UPPER_LOG_FILE"
+              
+              echo "Checking for MATRIX_JSON in upper tier logs:"
+              grep -a "MATRIX_JSON" "$UPPER_LOG_FILE" || echo "No MATRIX_JSON found in upper tier logs"
+              
+              MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$UPPER_LOG_FILE" \
+                | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+                || echo "")
+              
+              if [ -n "$MATRIX_OUTPUT" ]; then
+                echo "$MATRIX_OUTPUT" > matrix_upper.json
+                echo "Upper tier matrix extracted successfully"
+              else
+                echo "Warning: Could not extract matrix from upper tier deployment output"
+                echo "{\"include\": []}" > matrix_upper.json
+              fi
+            else
+              echo "{\"include\": []}" > matrix_upper.json
+            fi
+
+            if [ -n "$LOWER_MDB_ID" ]; then
+              LOWER_PARAMS=$(jq -n \
+                --arg mdb_id "$LOWER_MDB_ID" \
+                --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+                --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
+                '{
+                  "mdb_id": $mdb_id,
+                  "model_specs_yaml": $model_specs_yaml,
+                  "datahub_only": $datahub_only
+                }')
+              
+              echo "Running Prefect deployment for lower tier with params: $LOWER_PARAMS"
+
+              watch_out_lower=$(
+                prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+                  --params "$LOWER_PARAMS" \
+                  --watch \
+                  --watch-interval 30 2>&1 | tee watch_lower.log
+              )
+              echo "watch_out_lower=$watch_out_lower"
+              
+              LOWER_RUN_ID=$(
+                grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch_lower.log \
+                | head -n1
+              )
+              echo "Lower tier run ID: $LOWER_RUN_ID"
+
+              echo "Waiting for logs to be available..."
+              sleep 10
+
+              LOWER_LOG_FILE="${LOWER_RUN_ID}_run.log"
+              prefect flow-run logs "$LOWER_RUN_ID" > "$LOWER_LOG_FILE"
+              
+              echo "Checking for MATRIX_JSON in lower tier logs:"
+              grep -a "MATRIX_JSON" "$LOWER_LOG_FILE" || echo "No MATRIX_JSON found in lower tier logs"
+              
+              MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOWER_LOG_FILE" \
+                | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+                || echo "")
+
+              if [ -n "$MATRIX_OUTPUT" ]; then
+                echo "$MATRIX_OUTPUT" > matrix_lower.json
+                echo "Lower tier matrix extracted successfully"
+              else
+                echo "Warning: Could not extract matrix from lower tier deployment output"
+                echo "{\"include\": []}" > matrix_lower.json
+              fi
+            else
+              echo "{\"include\": []}" > matrix_lower.json
+            fi
+          fi
+
+          # validate json
+          if ! jq . matrix_upper.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON in matrix_upper.json"
+            exit 1
+          fi
+          
+          if ! jq . matrix_lower.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON in matrix_lower.json"
+            exit 1
+          fi
+
+          UPPER_MATRIX=$(cat matrix_upper.json)
+          LOWER_MATRIX=$(cat matrix_lower.json)
+
+          COMBINED_INCLUDE=$(jq -s '.[0].include + .[1].include | unique_by(.model + .version)' matrix_upper.json matrix_lower.json)
+          COMBINED_MATRIX="{\"include\": $COMBINED_INCLUDE}"
+
+          COMBINED_MATRIX_COMPACT=$(echo "$COMBINED_MATRIX" | jq -c .)
+          UPPER_MATRIX_COMPACT=$(echo "$UPPER_MATRIX" | jq -c .)
+          LOWER_MATRIX_COMPACT=$(echo "$LOWER_MATRIX" | jq -c .)
+          
+          echo "model_matrix=$COMBINED_MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          echo "model_matrix_upper=$UPPER_MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          echo "model_matrix_lower=$LOWER_MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          
+          echo "Combined matrix: $COMBINED_MATRIX"
+          echo "Upper tier matrix: $UPPER_MATRIX"
+          echo "Lower tier matrix: $LOWER_MATRIX"
+
+  generate-changelogs:
+    needs: determine-models
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
+      fail-fast: false
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Make Model Changelog
+        run: |
+          set -e
+
+          MDF_FILES_ARRAY=()
+          if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
+            for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
+            done
+          fi
+
+          mkdir -p data/output/model_changelogs/${{ matrix.model }}/
+
+          make_model_changelog \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          "${MDF_FILES_ARRAY[@]}" \
+          --output_file_path "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
+          --author "GitHub Actions" \
+          --_commit "${{ github.sha }}" \
+          --latest_version ${{ fromJson('true') }} \
+          --add_rollback ${{ fromJson('false') }}
+
+      - name: Get Model PVs and Synonyms
+        run: |
+          set -e
+
+          MDF_FILES_ARRAY=()
+          if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
+            for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
+            done
+          fi
+
+          mkdir -p data/output/model_cde_pvs/${{ matrix.model }}/
+
+          get_pvs_and_synonyms \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          "${MDF_FILES_ARRAY[@]}"
+
+      - name: Make Model CDE Changelog
+        run: |
+          set -e
+
+          make_model_cde_changelog \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          --author "GitHub Actions" \
+          --_commit "${{ github.sha }}"
+
+      - name: Upload Generated Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-${{ matrix.model }}-${{ matrix.version }}
+          path: |
+            data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml
+            data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml
+            data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
+          retention-days: 1
+
+      - name: Report Status
+        if: always()
+        run: |
+          echo "## Changelog Generation Status for ${{ matrix.model }} v${{ matrix.version }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **Success**: Generated all changelog files" >> $GITHUB_STEP_SUMMARY
+            echo "- Model changelog: ${{ matrix.model }}_changelog_${{ matrix.version }}.xml" >> $GITHUB_STEP_SUMMARY
+            echo "- CDE PVs: ${{ matrix.model }}_${{ matrix.version }}_cdes.yml" >> $GITHUB_STEP_SUMMARY
+            echo "- CDE changelog: ${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Failed**: Error generating changelog files" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the logs for model ${{ matrix.model }} version ${{ matrix.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  commit-all-changelogs:
+    needs: [determine-models, generate-changelogs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Download changelog artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: changelog-*
+        continue-on-error: true
+
+      - name: Move files to proper structure
+        run: |
+          for artifact_dir in changelog-*; do
+            if [ -d "$artifact_dir" ]; then
+              echo "Processing $artifact_dir"
+              
+              if [ -d "$artifact_dir/model_changelogs" ]; then
+                cp -rn "$artifact_dir/model_changelogs" data/output/
+              fi
+              
+              if [ -d "$artifact_dir/model_cde_pvs" ]; then
+                cp -rn "$artifact_dir/model_cde_pvs" data/output/
+              fi
+              
+              rm -rf "$artifact_dir"
+            fi
+          done
+          
+          echo "Final structure:"
+          find data/output -type f \( -name "*.xml" -o -name "*.yml" \) | head -20
+
+      - name: Commit Generated Files
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          git add data/output/model_changelogs/
+          git add data/output/model_cde_pvs/
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            MODEL_COUNT=$(echo '${{ needs.determine-models.outputs.affected_models }}' | jq -r '.include | length')
+            MODELS_LIST=$(echo '${{ needs.determine-models.outputs.affected_models }}' | jq -r '.include[] | "- \(.model) v\(.version)"' | sort)
+            COMMIT_MSG=$(printf "Add changelogs for %s model versions\n\nGenerated changelogs for:\n%s\n\nGenerated by workflow run: %s/%s/actions/runs/%s" \
+              "$MODEL_COUNT" \
+              "$MODELS_LIST" \
+              "${{ github.server_url }}" \
+              "${{ github.repository }}" \
+              "${{ github.run_id }}")
+            
+            git commit -m "$COMMIT_MSG"
+            git push origin ${{ github.ref_name }}
+          else
+            echo "No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  collect-changelogs:
+    needs: [determine-models, generate-changelogs]
+    runs-on: ubuntu-latest
+    outputs:
+      changelog_files_upper: ${{ steps.collect-changelogs.outputs.changelog_files_upper }}
+      changelog_files_lower: ${{ steps.collect-changelogs.outputs.changelog_files_lower }}
+
+    steps:
+      - name: Collect All Changelog Files by Tier
+        id: collect-changelogs
+        run: |
+          UPPER_MATRIX='${{ needs.determine-models.outputs.affected_models_upper }}'
+          LOWER_MATRIX='${{ needs.determine-models.outputs.affected_models_lower }}'
+          UPPER_CHANGELOGS="[]"
+          LOWER_CHANGELOGS="[]"
+          if [ "$UPPER_MATRIX" != "" ] && [ "$UPPER_MATRIX" != "null" ] && [ "$UPPER_MATRIX" != "{\"include\": []}" ]; then
+            MODEL_COUNT=$(echo "$UPPER_MATRIX" | jq '.include | length')
+            
+            if [ "$MODEL_COUNT" -gt 0 ]; then
+              UPPER_FILES="[]"
+              
+              while IFS= read -r model_version; do
+                IFS=':' read -r model version <<< "$model_version"
+                CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_changelog_${version}.xml"
+                CDE_CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_${version}_cde_changelog.xml"
+                
+                UPPER_FILES=$(echo "$UPPER_FILES" | jq --arg cf "$CHANGELOG_FILE" --arg cdf "$CDE_CHANGELOG_FILE" '. + [$cf, $cdf]')
+              done < <(echo "$UPPER_MATRIX" | jq -r '.include[] | "\(.model):\(.version)"')
+              
+              UPPER_CHANGELOGS="$UPPER_FILES"
+            fi
+          fi
+          
+          if [ "$LOWER_MATRIX" != "" ] && [ "$LOWER_MATRIX" != "null" ] && [ "$LOWER_MATRIX" != "{\"include\": []}" ]; then
+            MODEL_COUNT=$(echo "$LOWER_MATRIX" | jq '.include | length')
+            
+            if [ "$MODEL_COUNT" -gt 0 ]; then
+              LOWER_FILES="[]"
+              while IFS= read -r model_version; do
+                IFS=':' read -r model version <<< "$model_version"
+                CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_changelog_${version}.xml"
+                CDE_CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_${version}_cde_changelog.xml"
+                
+                LOWER_FILES=$(echo "$LOWER_FILES" | jq --arg cf "$CHANGELOG_FILE" --arg cdf "$CDE_CHANGELOG_FILE" '. + [$cf, $cdf]')
+              done < <(echo "$LOWER_MATRIX" | jq -r '.include[] | "\(.model):\(.version)"')
+              
+              LOWER_CHANGELOGS="$LOWER_FILES"
+            fi
+          fi
+          
+          echo "changelog_files_upper=$(echo $UPPER_CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT
+          echo "changelog_files_lower=$(echo $LOWER_CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT          
+          echo "Upper tier changelog files: $(echo $UPPER_CHANGELOGS | jq .)"
+          echo "Lower tier changelog files: $(echo $LOWER_CHANGELOGS | jq .)"
+
+  update-og-mdb-nightly-and-dh-lower:
+    needs: [determine-models, collect-changelogs, commit-all-changelogs]
+    if: ${{ needs.collect-changelogs.outputs.changelog_files_lower != '' && needs.collect-changelogs.outputs.changelog_files_lower != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
+    uses: ./.github/workflows/update_mdb_and_dh.yml
+    secrets: inherit
+    with:
+      mdb_id: og-mdb-nightly
+      dh_tier: lower
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_lower }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+
+  update-og-mdb-dev-and-dh-upper:
+    needs: [determine-models, collect-changelogs, commit-all-changelogs]
+    if: ${{ needs.collect-changelogs.outputs.changelog_files_upper != '' && needs.collect-changelogs.outputs.changelog_files_upper != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
+    uses: ./.github/workflows/update_mdb_and_dh.yml
+    secrets: inherit
+    with:
+      mdb_id: og-mdb-dev
+      dh_tier: upper
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_upper }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}

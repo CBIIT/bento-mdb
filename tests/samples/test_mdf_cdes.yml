@@ -1,0 +1,22 @@
+# sample mdf file for testing
+Handle: TEST
+Version: 1.2.3
+Nodes:
+  study:
+    Props:
+      - organism_species
+Relationships: {}
+PropDefinitions:
+  organism_species:
+    Desc: "Species binomial of study participants"
+    Req: Preferred
+    Strict: true
+    Enum:
+      - Mouse
+      - Human
+      - Dog
+    Term:
+      - Origin: caDSR
+        Value: Sample Organism Type
+        Code: "6118266"
+        Version: "1.00"

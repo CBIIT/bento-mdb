@@ -1,0 +1,173 @@
+name: mdb-updates-c1-dev
+prefect-version: 3.1.15
+
+pull:
+- prefect.deployments.steps.git_clone:
+    id: clone-step
+    branch: main
+    repository: https://github.com/nelsonwmoore/bento-mdb-updates.git   # will change to CBIIT/bento-mdb
+- prefect.deployments.steps.run_shell_script:
+    id: install-dependencies
+    script: sh -c "cd bento-mdb-updates-main && uv pip install --system . && uv sync
+      --frozen"
+- prefect.deployments.steps.run_shell_script:
+    id: install-aws-cli
+    script: sh -c "apt-get update && apt-get install -y --no-install-recommends curl unzip && cd /tmp && curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' && unzip awscliv2.zip && ./aws/install --update && curl 'https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb' -o 'session-manager-plugin.deb' && dpkg -i session-manager-plugin.deb && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/awscliv2.zip /tmp/aws/ /tmp/session-manager-plugin.deb"
+
+deployments:
+- name: liquibase-update
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database.
+  entrypoint: src/bento_mdb/flows/update_mdb.py:liquibase_update_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: liquibase-queue
+    job_variables: {}
+- name: liquibase-update-upper
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database (upper tier).
+  entrypoint: src/bento_mdb/flows/update_mdb.py:liquibase_update_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: liquibase-upper-queue
+    job_variables: {}
+- name: liquibase-update-lower
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database (lower tier).
+  entrypoint: src/bento_mdb/flows/update_mdb.py:liquibase_update_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: liquibase-lower-queue
+    job_variables: {}
+- name: update-mdb-and-dh
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database and datahub terms repo.
+  entrypoint: src/bento_mdb/flows/update_mdb_and_dh.py:update_mdb_and_dh_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: update-datahub
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update datahub terms repo.
+  entrypoint: src/bento_mdb/flows/update_dh.py:update_datahub_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: update-terms
+  version:
+  tags: []
+  concurrency_limit:
+  description: Check for term source updates and update MDB and DH
+  entrypoint: src/bento_mdb/flows/update_terms.py:update_terms
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: generate-model-version-matrix
+  version:
+  tags: []
+  concurrency_limit:
+  description: Generate matrix with models/versions to be added to MDB.
+  entrypoint: src/bento_mdb/flows/generate_model_version_matrix.py:model_matrix_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: mdb-export-s3
+  version:
+  tags: []
+  concurrency_limit:
+  description: Export MDB data from Neo4j into S3.
+  entrypoint: src/bento_mdb/flows/mdb_s3.py:mdb_export_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: mdb-import-s3
+  version:
+  tags: []
+  concurrency_limit:
+  description: Import MDB data from S3 into Neo4j.
+  entrypoint: src/bento_mdb/flows/mdb_s3.py:mdb_import_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: mdb-clear-database
+  version:
+  tags: []
+  concurrency_limit:
+  description: Clear all nodes and relationships from MDB.
+  entrypoint: src/bento_mdb/flows/mdb_s3.py:mdb_clear_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: prune-prerelease
+  version:
+  tags: []
+  concurrency_limit:
+  description: Prune prerelease data from MDB.
+  entrypoint: src/bento_mdb/flows/prune_prerelease.py:prune_prerelease_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: run-cypher
+  version:
+  tags: []
+  concurrency_limit:
+  description: Run arbitrary Cypher queries on MDB.
+  entrypoint: src/bento_mdb/flows/run_cypher.py:run_cypher_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: update-c1-lower
+  version:
+  tags: []
+  concurrency_limit:
+  description: Orchestrate update of Cloud One Dev and QA MDBs from graphml file.
+  entrypoint: src/bento_mdb/flows/update_c1_lower.py:update_c1_lower_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}

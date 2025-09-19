@@ -1,0 +1,26 @@
+version: "3"
+services:
+  mdb-versioned:
+    image: "maj1/mdb-test-versioned"
+    ports:
+      - "7474"
+      - "7473"
+      - "7687"
+    networks:
+      - test-network
+  prefect-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "7475"
+    volumes:
+      - ..:/app
+    depends_on:
+      - mdb-versioned
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
