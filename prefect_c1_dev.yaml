@@ -1,5 +1,5 @@
 name: mdb-updates-c1-dev
-prefect-version: 3.1.15
+prefect-version: 3.3.4
 
 pull:
 - prefect.deployments.steps.git_clone:
