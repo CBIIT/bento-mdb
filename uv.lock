@@ -167,7 +167,7 @@ requires-dist = [
     { name = "liquichange", specifier = ">=0.2.1" },
     { name = "minicypher", specifier = ">=0.1.1" },
     { name = "packaging", specifier = ">=24.2" },
-    { name = "prefect", specifier = ">=3.3.4" },
+    { name = "prefect", specifier = "~=3.3.4" },
     { name = "prefect-shell", specifier = ">=0.3.1" },
     { name = "pygithub", specifier = ">=2.6.1" },
     { name = "pyliquibase", specifier = ">=2.4.0" },
