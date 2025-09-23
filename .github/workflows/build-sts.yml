@@ -17,6 +17,7 @@ on:
         description: "Run Trivy Test Scan"
         required: true 
         default: true
+run-name: "Build & Deploy to ${{ inputs.environment }} (Trivy: ${{ inputs.trivy_scan }})"
 jobs:
   build:
     name: Build Image
