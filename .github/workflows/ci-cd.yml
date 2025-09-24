@@ -1,7 +1,11 @@
 name: ci-cd
 permissions:
   contents: read
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
 
 jobs:
   ci:
