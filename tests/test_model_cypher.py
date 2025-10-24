@@ -116,7 +116,7 @@ class TestMakeModelChangelog:
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
             "_commit:'_COMMIT_123'})",
-            "MERGE (n0:value_set {nanoid:''})",
+            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
             "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
             ",_commit:'_COMMIT_123'}), "
             "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
