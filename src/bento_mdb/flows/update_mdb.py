@@ -24,8 +24,8 @@ LIQUIBASE_VERSION = "4.31.1"
 DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
 
 # configure jvm
-JVM_HEAP_MIN = "1g"
-JVM_HEAP_MAX = "3g"
+JVM_HEAP_MIN = "2g"
+JVM_HEAP_MAX = "6g"
 
 
 @task
