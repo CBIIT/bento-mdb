@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog xmlns:ns0="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ns1="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd">
+  <ns0:changeSet id="1" author="GitHub Actions">
+    <ns1:cypher>MATCH (n0:model {handle: 'CDS'}) WHERE n0.is_latest_version = true SET n0.is_latest_version = false</ns1:cypher>
+  </ns0:changeSet>
+  </databaseChangeLog>
