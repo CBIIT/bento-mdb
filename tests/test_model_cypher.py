@@ -20,6 +20,7 @@ _COMMIT = "_COMMIT_123"
 
 class TestMakeModelChangelog:
     """Tests for model changelog generation script."""
+    # Test comment
 
     def test_make_model_changelog_length(self) -> None:
         """Test for length of changelog generated from model MDF."""
