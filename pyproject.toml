@@ -10,13 +10,13 @@ authors = [{name="Nelson Moore", email="nelson.moore@essential-soft.com"}]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "bento-mdf==0.11.11",
-    "bento-meta>=0.2.19",
+    "bento-mdf>=0.11.3",
+    "bento-meta>=0.2.12",
     "boto3>=1.38.36",
     "click>=8.1.8",
     "liquichange>=0.2.1",
     "minicypher>=0.1.1",
-    "neo4j>=4.4,<6.0",
+    "neo4j>=4.0,<5.0",
     "packaging>=24.2",
     "prefect==3.3.4",
     "prefect-shell>=0.3.1",
