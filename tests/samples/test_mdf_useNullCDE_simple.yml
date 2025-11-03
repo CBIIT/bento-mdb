@@ -1,0 +1,12 @@
+Handle: TEST_NULLCDE
+Version: 1.0.0
+Nodes:
+  clinical_measure:
+    Props:
+      - clinical_status
+Relationships: {}
+PropDefinitions:
+  clinical_status:
+    ValueDomain: string
+    Tags:
+      useNullCDE: "Yes"
