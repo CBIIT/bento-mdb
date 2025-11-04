@@ -724,7 +724,7 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                     "entity_has_enum": True,
                 },
                 "annotation": {
-                    "key": ("sample_organism_type", "caDSR"),
+                    "key": ("sample_organism_type", "caDSR", "6118266", "1.00"),
                     "attrs": {
                         "handle": "sample_organism_type",
                         "value": "Sample Organism Type",
