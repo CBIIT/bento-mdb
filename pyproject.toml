@@ -11,9 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "bento-mdf==0.11.11",
-    "bento-meta>=0.2.19",
-    "bento-mdf>=0.11.3",
-    "bento-meta>=0.2.12",
+    "bento-meta==0.2.19",
     "boto3>=1.38.36",
     "click>=8.1.8",
     "liquichange>=0.2.1",

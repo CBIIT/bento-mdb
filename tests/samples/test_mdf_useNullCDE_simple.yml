@@ -3,10 +3,27 @@ Version: 1.0.0
 Nodes:
   clinical_measure:
     Props:
-      - clinical_status
+      - imaging_software
+      - second-imaging_software
 Relationships: {}
 PropDefinitions:
-  clinical_status:
-    ValueDomain: string
-    Tags:
-      useNullCDE: "Yes"
+  imaging_software:
+    Desc: The name of the software package that was used to capture, generate, and process the image.
+    Type: string
+    Term:
+      - Origin: caDSR
+        Original Source: NCI Standard
+        Code: '2413278'
+        Value: Equipment Software Version Text
+        Version: '1.20'
+        useNullCDE: Yes
+  second-imaging_software:
+    Desc: The name of the software package that was used to capture, generate, and process the image.
+    Type: string
+    Term:
+      - Origin: caDSR
+        Original Source: NCI Standard
+        Code: '2413278'
+        Value: Equipment Software Version Text
+        Version: '1.20'
+        useNullCDE: true
