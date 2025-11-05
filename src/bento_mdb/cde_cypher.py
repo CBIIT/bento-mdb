@@ -25,6 +25,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def create_delete_pv_cypher(
+    pv_value: str,
+    cde_id: str,
+    cde_ver: str,
+) -> str:
+    """Create Cypher DELETE statement for a removed PV.
+    
+    Deletes only the relationship between PV and ValueSet, not the PV node itself.
+    This is safer in case the PV is used by other ValueSets.
+    """
+    return (
+        f"MATCH (pv:term {{value: '{pv_value}'}})"
+        f"-[r:has_term]-"
+        f"(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
+        f"DELETE r"
+    )
+
+
 def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
     changeset_id: int,
@@ -50,6 +68,15 @@ def convert_annotation_to_changesets(
         },
     )
     statements.append(create_entity_cypher_stmt(cde_vs)[0])
+    
+    # Handle removed PVs (delete relationship from the value set)
+    removed_pvs = annotation.get("removed_pvs", [])
+    if removed_pvs:
+        logger.info("Removing %d PVs from %s", len(removed_pvs), cde_id)
+        for pv_value in removed_pvs:
+            delete_stmt = create_delete_pv_cypher(pv_value, cde_id, cde_ver)
+            statements.append(delete_stmt)  # type: ignore
+    
     for pv in tqdm(
         annotation["value_set"],
         desc="PVs",

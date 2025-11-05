@@ -83,6 +83,31 @@ class TestConvertAnnotationToChangesets:
         expected = []
         assert_equal(actual, expected)
 
+    def test_convert_annotation_to_changesets_with_removed_pvs(self) -> None:
+        """Test that removed PVs generate DELETE statements for relationships only."""
+        # Create annotation with removed_pvs
+        annotation_with_removed_pvs = TEST_ANNOTATION_SPEC.copy()
+        annotation_with_removed_pvs["removed_pvs"] = ["Mouse", "Dog"]  # type: ignore
+        
+        changesets = convert_annotation_to_changesets(
+            annotation_with_removed_pvs,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
+            for x in changesets
+        ]
+        
+        # Check that DELETE statements are present for removed PVs (deletes relationship only)
+        delete_statements = [stmt for stmt in actual if "DELETE r" in stmt and "value:" in stmt]
+        assert len(delete_statements) >= 2
+        assert any("value: 'Mouse'" in stmt for stmt in delete_statements)
+        assert any("value: 'Dog'" in stmt for stmt in delete_statements)
+        # Verify it's not deleting the node itself
+        assert not any("DELETE r, pv" in stmt for stmt in delete_statements)
+
 
 class TestConvertModelCDES:
     def test_convert_model_cdes_to_changelog_id(self):
