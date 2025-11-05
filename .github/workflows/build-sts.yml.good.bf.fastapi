@@ -80,27 +80,6 @@ jobs:
         exit-code: 1
         severity: 'CRITICAL,HIGH'
 
-    - name: Build STS FAST API image
-      id: build-sts-fast-api-image
-      env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-      run: |
-        cd devops/dockerfiles/sts-fast-api/ && docker build -t $STS_FAST_API_IMAGE_NAME .
-
-    - name: Run Trivy vulnerability scanner
-      id: trivy-fast-api-scan
-      if: github.event.inputs.trivy_scan == 'true'
-      env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: '${{ env.STS_FAST_API_IMAGE_NAME }}'
-        format: 'table'
-        exit-code: 1
-        severity: 'CRITICAL,HIGH'
-
     - name: Create git tag for image
       run: |
         git config user.name "GitHub Actions"
@@ -125,8 +104,6 @@ jobs:
       env:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
         STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        echo "Pushing: $STS_IMAGE_NAMEi and $STS_FAST_API_IMAGE_NAME"
+        echo "Pushing: $STS_IMAGE_NAME"
         docker push $STS_IMAGE_NAME
-        docker push $STS_FAST_API_IMAGE_NAME
