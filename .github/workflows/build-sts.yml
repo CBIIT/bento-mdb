@@ -65,7 +65,8 @@ jobs:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
         STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
+        #cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
+        docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
         
     - name: Run Trivy vulnerability scanner
       id: trivy-scan
@@ -86,7 +87,8 @@ jobs:
         REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
         STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        cd devops/dockerfiles/sts-fast-api/ && docker build -t $STS_FAST_API_IMAGE_NAME .
+        #cd devops/dockerfiles/sts-fast-api/ && docker build -t $STS_FAST_API_IMAGE_NAME .
+        docker build --no-cache -t $STS_FAST_API_IMAGE_NAME -f devops/dockerfiles/sts-fast-api/Dockerfile .
 
     - name: Run Trivy vulnerability scanner
       id: trivy-fast-api-scan
