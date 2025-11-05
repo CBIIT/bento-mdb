@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext"
-                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
     <!-- Include all split changelog parts -->
-    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part1.xml"/>
-    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part2.xml"/>
-    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part3.xml"/>
-    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part4.xml"/>
-    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part5.xml"/>
-
+    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part1.xml" relativeToChangelogFile="true"/>
+    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part2.xml" relativeToChangelogFile="true"/>
+    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part3.xml" relativeToChangelogFile="true"/>
+    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part4.xml" relativeToChangelogFile="true"/>
+    <include file="CDS_changelog_11.0.0-f55f79e-null-CDE_part5.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
