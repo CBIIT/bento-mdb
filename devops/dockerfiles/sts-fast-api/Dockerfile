@@ -4,6 +4,9 @@ EXPOSE 8000/tcp
 
 WORKDIR /app
 
+# Install Java JDK for pyjnius build (required by bento-mdf dependency)
+RUN apk add --no-cache openjdk11
+
 COPY pyproject.toml ./
 COPY README.md ./
 COPY src ./src
