@@ -25,11 +25,12 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
         ECR_REPOSITORY: crdc-mdb-sts
+        ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
         REGION: "us-east-1"
-        # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
-        AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         
     steps:
 
@@ -62,8 +63,12 @@ jobs:
     - name: Build STS image
       id: build-image
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        ECR_REPOSITORY: "crdc-mdb-sts"
+        REGION: "us-east-1"
+        AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
+        AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
         cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
         #docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
@@ -72,8 +77,8 @@ jobs:
       id: trivy-scan
       if: github.event.inputs.trivy_scan == 'true'
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: '${{ env.STS_IMAGE_NAME }}'
@@ -84,8 +89,12 @@ jobs:
     - name: Build STS FAST API image
       id: build-sts-fast-api-image
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
+        REGION: "us-east-1"
+        AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
+        AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
         #cd devops/dockerfiles/sts-fast-api/ && docker build -t $STS_FAST_API_IMAGE_NAME .
         docker build --no-cache -t $STS_FAST_API_IMAGE_NAME -f devops/dockerfiles/sts-fast-api/Dockerfile .
@@ -94,8 +103,8 @@ jobs:
       id: trivy-fast-api-scan
       if: github.event.inputs.trivy_scan == 'true'
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: '${{ env.STS_FAST_API_IMAGE_NAME }}'
@@ -122,13 +131,31 @@ jobs:
       run:  |
         aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY_URL
 
-    - name: Push docker Image
+    - name: Push STS docker Image
       if: success()
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+        ECR_REPOSITORY: "crdc-mdb-sts"
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
+        STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
       run: |
-        echo "Pushing: $STS_IMAGE_NAMEi and $STS_FAST_API_IMAGE_NAME"
+        echo "Pushing: $STS_IMAGE_NAME"
         docker push $STS_IMAGE_NAME
-        docker push $STS_FAST_API_IMAGE_NAME
+
+    - name: Push STS FAST API docker Image
+      if: success()
+      env:
+        ECR_STS_REPOSITORY: "crdc-mdb-sts-fast-api"
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
+        STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
+      run: |
+        echo "Pushing: $STS_FAST_API_IMAGE_NAME"
+        docker push $STS_FAST_API_IMAGE_NAME        
+
+    - name: Slack Notification
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08     # v1.6.0
+      with:
+        status: ${{ job.status }}
+        steps: ${{ toJson(steps) }}
+      if: always()
