@@ -4,14 +4,11 @@ EXPOSE 8000/tcp
 
 WORKDIR /app
 
-# Install Java JDK for pyjnius build (required by bento-mdf dependency)
-RUN apk add --no-cache openjdk11
+# Install git for pip to clone from GitHub
+RUN apk add --no-cache git
 
-COPY pyproject.toml ./
-COPY README.md ./
-COPY src ./src
-
-RUN pip install --no-cache-dir .
+# Install bento-sts-fastapi from GitHub (unreleased)
+RUN pip install --no-cache-dir git+https://github.com/CBIIT/bento-sts-fastapi.git@main
 
 ENV PYTHONUNBUFFERED=1
 ENTRYPOINT ["uvicorn"]
