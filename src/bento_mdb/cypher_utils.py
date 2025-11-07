@@ -250,6 +250,96 @@ def create_relationship_cypher_stmt(
     )
 
 
+def generate_cypher_to_link_term_alternates(
+    pv_term: Entity,
+    alt_term: Entity,
+    _commit: str | None = DEFAULT_COMMIT,
+) -> Statement:
+    """
+    Generate cypher statement to link PV term to alternate name term via Concept node.
+    
+    Similar to generate_cypher_to_link_term_synonyms but creates a separate tag structure
+    for alternate names using key='alternate_name' instead of mapping_source.
+    """
+    reset_pg_ent_counter()
+    cypher_pv = cypherize_entity(pv_term)
+    cypher_alt = cypherize_entity(alt_term)
+    cypher_concept_1 = N(label="concept")
+    cypher_concept_2 = N(label="concept")
+    pv_trip = T(cypher_pv.plain_var(), R(Type="represents"), cypher_concept_1)
+    alt_trip = T(cypher_alt.plain_var(), R(Type="represents"), cypher_concept_2)
+    
+    # Tag structure for alternates: key='alternate_name', value=alternate name value
+    concept_tag_trip_1 = T(
+        cypher_concept_1,
+        R(Type="has_tag"),
+        N(
+            label="tag",
+            props={"key": "alternate_name", "value": alt_term.value, "_commit": _commit},
+        ),
+    )
+    concept_tag_trip_2 = T(
+        cypher_concept_2,
+        R(Type="has_tag"),
+        N(
+            label="tag",
+            props={"key": "alternate_name", "value": alt_term.value, "_commit": _commit},
+        ),
+    )
+    pv_concept_path = G(pv_trip, concept_tag_trip_1)
+    alt_concept_path = G(alt_trip, concept_tag_trip_2)
+    cypher_pv_var = cypher_pv.plain_var().pattern()
+    cypher_alt_var = cypher_alt.plain_var().pattern()
+    cypher_concept_1_var = cypher_concept_1.plain_var().pattern()
+    cypher_concept_2_var = cypher_concept_2.plain_var().pattern()
+    new_concept = N(label="concept", props={"_commit": _commit})
+    for cypher_ent in (cypher_pv, cypher_alt):
+        if "_commit" in cypher_ent.props:
+            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+    return Statement(
+        Match(cypher_pv, cypher_alt),
+        Where(cypher_pv_var, "<>", cypher_alt_var, op=""),
+        With(cypher_pv_var, cypher_alt_var),
+        OptionalMatch(pv_concept_path),
+        With(cypher_pv_var, cypher_alt_var, cypher_concept_1_var),
+        "LIMIT 1",
+        OptionalMatch(alt_concept_path),
+        With(
+            cypher_pv_var,
+            cypher_alt_var,
+            cypher_concept_1_var,
+            cypher_concept_2_var,
+        ),
+        "LIMIT 1",
+        With(cypher_pv_var, cypher_alt_var),
+        ",",
+        f"{Case()}{When(cypher_concept_1_var)} IS NOT NULL THEN {cypher_concept_1_var}",
+        f"{When(cypher_concept_2_var)} IS NOT NULL THEN {cypher_concept_2_var}",
+        "ELSE NULL END AS existing_concept ",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NOT NULL THEN [1] ELSE [] END |",
+        Merge(f"{cypher_pv_var}-[:represents]->(existing_concept)"),
+        Merge(f"{cypher_alt_var}-[:represents]->(existing_concept)"),
+        ")",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NULL THEN [1] ELSE [] END |",
+        Create(new_concept),
+        Create(
+            T(
+                new_concept.plain_var(),
+                R("has_tag"),
+                N(
+                    label="tag",
+                    props={"key": "alternate_name", "value": alt_term.value, "_commit": _commit},
+                ),
+            ),
+        ),
+        Create(T(cypher_pv.plain_var(), R("represents"), new_concept.plain_var())),
+        Create(T(cypher_alt.plain_var(), R("represents"), new_concept.plain_var())),
+        ")",
+    )
+
+
 def generate_cypher_to_link_term_synonyms(
     entity_1: Entity,
     entity_2: Entity,

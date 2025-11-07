@@ -64,15 +64,20 @@ class CADSRClient:
         """Get value set from JSON response."""
         try:
             vs = []
-            cde_pvs = json_response["DataElement"]["ValueDomain"].get(
+            data_element = json_response["DataElement"]
+            
+            # Extract AlternateNames from CDE
+            alternate_names = data_element.get("AlternateNames", [])
+            
+            cde_pvs = data_element["ValueDomain"].get(
                 "PermissibleValues",
                 [],
             )
             if not cde_pvs:
                 logger.warning(
                     "No permissible values found for CDE %s v%s",
-                    json_response["DataElement"]["publicId"],
-                    json_response["DataElement"]["version"],
+                    data_element["publicId"],
+                    data_element["version"],
                 )
                 return vs
             for pv in cde_pvs:
@@ -84,6 +89,7 @@ class CADSRClient:
                     "origin_name": "caDSR",
                     "ncit_concept_codes": [],
                     "synonyms": [],
+                    "alternates": [],
                 }
                 vm_concepts = pv["ValueMeaning"].get("Concepts", [])
                 for concept in vm_concepts:
@@ -107,6 +113,20 @@ class CADSRClient:
                             "origin_name": "NCIt",
                         },
                     )
+                
+                # Add alternate names separately from synonyms
+                for alt_name in alternate_names:
+                    # Only add if it's a name-based alternate (not just context info)
+                    if alt_name.get("name") and alt_name.get("type") not in ["USED_BY"]:
+                        pv_dict["alternates"].append(
+                            {
+                                "value": alt_name["name"],
+                                "origin_name": "caDSR",
+                                "origin_id": alt_name.get("name"),
+                                "origin_version": alt_name.get("type"),
+                            },
+                        )
+                
                 vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}"
