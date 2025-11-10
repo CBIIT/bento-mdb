@@ -134,6 +134,7 @@ class TestCADSRClient:
                         "origin_name": "NCIt",
                     },
                 ],
+                "alternates": [],
             },
         ]
         assert_equal(actual, expected)
