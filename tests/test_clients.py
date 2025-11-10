@@ -200,7 +200,7 @@ def cadsr_response_with_new_pv():
             "synonyms": [],
         },
         {
-            "value": "Data Redacted",  # 새 PV
+            "value": "Data Redacted",
             "origin_id": "2181621",
             "origin_definition": "Data suppressed",
             "origin_version": "1",
