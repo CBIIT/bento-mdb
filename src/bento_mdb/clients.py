@@ -187,25 +187,34 @@ class CADSRClient:
         self,
         cadsr_cde_details: dict,
         cadsr_pvs: list[PermissibleValue | None],
-        mdb_pvs: list[str],
+        mdb_pv_objects: list[PermissibleValue],
         cde_spec: MDBCDESpec,
         annotation_spec: AnnotationSpec
     ) -> bool:
         """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
         is_updated = False
 
-        # Check for removed PVs
-        cadsr_pv_values = [pv["value"] for pv in cadsr_pvs if pv]
-        removed_pvs = [pv for pv in mdb_pvs if pv not in cadsr_pv_values]
-        if removed_pvs:
+        # Check for removed PVs - compare by origin_id for accuracy
+        cadsr_pv_ids = {pv["origin_id"] for pv in cadsr_pvs if pv}
+        removed_pv_objects = [
+            {
+                "value": pv["value"], 
+                "origin_id": pv["origin_id"],
+                "origin_version": pv.get("origin_version", ""),
+            }
+            for pv in mdb_pv_objects 
+            if pv["origin_id"] not in cadsr_pv_ids
+        ]
+        if removed_pv_objects:
+            removed_values = [pv["value"] for pv in removed_pv_objects]
             logger.info(
-                "Removed PVs from caDSR for %sv%s: %s",
+                "Removed PVs (by origin_id) from caDSR for %sv%s: %s",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
-                removed_pvs,
+                removed_values,
             )
             is_updated = True
-            annotation_spec["removed_pvs"] = removed_pvs  # type: ignore
+            annotation_spec["removed_pvs"] = removed_pv_objects  # type: ignore
 
         # Check name change
         if cadsr_cde_details.get("CDEFullName") != cde_spec["CDEFullName"]:
@@ -216,6 +225,18 @@ class CADSRClient:
                 cadsr_cde_details.get("CDEFullName"),
             )
             is_updated = True
+            annotation_spec["CDEFullName"] = cadsr_cde_details["CDEFullName"]
+
+        # Check CDEVersion change
+        if cadsr_cde_details.get("CDEVersion") and cadsr_cde_details.get("CDEVersion") != cde_spec.get("CDEVersion"):
+            logger.info(
+                "CDE version changed for %s: '%s' -> '%s'",
+                cde_spec["CDECode"],
+                cde_spec.get("CDEVersion"),
+                cadsr_cde_details.get("CDEVersion"),
+            )
+            is_updated = True
+            annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
 
         # For DRAFT NEW CDEs, log the status only if changes found
         if is_updated:
@@ -235,6 +256,7 @@ class CADSRClient:
         result = []
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
+            mdb_pv_objects = cde_spec["permissibleValues"]
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
@@ -283,7 +305,7 @@ class CADSRClient:
                 update_annotation |= self._check_draft_new_cde_changes(
                     cadsr_cde_details,
                     cadsr_pvs,
-                    mdb_pvs,
+                    mdb_pv_objects,
                     cde_spec,
                     annotation_spec,
                 )

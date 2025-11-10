@@ -310,6 +310,12 @@ class TestCADSRClient:
             "fetch_cde_valueset",
             lambda cde_id, cde_version: TEST_CADSR_RESPONSE_MDB_CDES,
         )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
+        )
 
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         assert_equal(annotations, [])
@@ -345,6 +351,12 @@ class TestCADSRClient:
             "fetch_cde_valueset",
             lambda cde_id, cde_version: test_response_new_pv,
         )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
+        )
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         expected_annotations = [
             AnnotationSpec(
@@ -373,6 +385,12 @@ class TestCADSRClient:
             client,
             "fetch_cde_valueset",
             lambda cde_id, cde_version: [],
+        )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
         )
         with caplog.at_level(logging.ERROR):
             result = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
@@ -547,10 +565,13 @@ class TestNCItClient:
             with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_draft_new):
                 annotations = client.check_cdes_against_mdb(mdb_cde_with_three_pvs)
 
-        # Verify removed PVs are detected
+        # Verify removed PVs are detected (now includes origin_id and origin_version)
         assert len(annotations) > 0
         assert "removed_pvs" in annotations[0]
-        assert annotations[0]["removed_pvs"] == ["Bone"]
+        assert len(annotations[0]["removed_pvs"]) == 1
+        assert annotations[0]["removed_pvs"][0]["value"] == "Bone"
+        assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
+        assert "origin_version" in annotations[0]["removed_pvs"][0]
 
     def test_check_cdes_against_mdb_detect_metadata_change(
         self,
@@ -562,9 +583,7 @@ class TestNCItClient:
         This test verifies that when a DRAFT NEW CDE name is updated:
         - MDB has old name: "Disease Primary Anatomic Site"
         - caDSR has new name: "Disease Primary Anatomic Site Category"
-        - Result: annotation is returned (indicating update detected)
-        
-        Note: Metadata changes are logged but not stored in annotation_spec.
+        - Result: annotation is returned with CDEFullName field set
         """
         # Get the Breast PV from the fixture for caDSR response
         cadsr_pvs = [mdb_cde_with_changed_name[0]["permissibleValues"][0]]
@@ -582,3 +601,54 @@ class TestNCItClient:
         assert len(annotations) > 0
         assert annotations[0]["entity"] == {}
         assert annotations[0]["annotation"]["key"] == ('Disease Primary Anatomic Site', 'caDSR')
+        # Verify CDEFullName is stored in annotation_spec
+        assert "CDEFullName" in annotations[0]
+        assert annotations[0]["CDEFullName"] == "Disease Primary Anatomic Site Category"
+    
+    def test_check_cdes_against_mdb_detect_version_change(self) -> None:
+        """Test detection of CDE version changes when DRAFT NEW CDE version updates.
+        
+        This test verifies that when a DRAFT NEW CDE version is updated:
+        - MDB has version: "1"
+        - caDSR has version: "2"
+        - Result: annotation is returned with CDEVersion field set
+        """
+        mdb_cde_old_version = [
+            {
+                "CDECode": "15260691",
+                "CDEVersion": "1",
+                "CDEFullName": "Disease Primary Anatomic Site Category",
+                "CDEOrigin": "caDSR",
+                "models": [],
+                "permissibleValues": [
+                    {
+                        "value": "Breast",
+                        "origin_id": "2561089",
+                        "origin_definition": "Breast definition",
+                        "origin_version": "1",
+                        "origin_name": "caDSR",
+                        "ncit_concept_codes": ["C12971"],
+                        "synonyms": [],
+                    },
+                ],
+            }
+        ]
+        
+        cadsr_pvs = [mdb_cde_old_version[0]["permissibleValues"][0]]
+        cadsr_cde_details_new_version = {
+            "CDECode": "15260691",
+            "CDEVersion": "2",  # New version
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEWorkflowStatus": "DRAFT NEW",
+        }
+        
+        client = CADSRClient()
+        import unittest.mock as mock
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_new_version):
+                annotations = client.check_cdes_against_mdb(mdb_cde_old_version)
+        
+        # Verify version change is detected
+        assert len(annotations) > 0
+        assert "CDEVersion" in annotations[0]
+        assert annotations[0]["CDEVersion"] == "2"
