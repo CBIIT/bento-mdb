@@ -108,12 +108,14 @@ def convert_annotation_to_changesets(
 
         if cde_full_name:
             logger.info("Updating CDE name for %s to: %s", cde_id, cde_full_name)
-            set_clauses.append(f"t.value = '{cde_full_name.replace("'", "\\'")}'")
+            escaped_name = cde_full_name.replace("'", "\\'")
+            set_clauses.append(f"t.value = '{escaped_name}'")
 
         if cde_version:
             old_ver = cde_attrs.get("origin_version", "")
             logger.info("Updating CDE version for %s: '%s' -> '%s'", cde_id, old_ver, cde_version)
-            set_clauses.append(f"t.origin_version = '{cde_version}'")
+            escaped_version = cde_version.replace("'", "\\'")
+            set_clauses.append(f"t.origin_version = '{escaped_version}'")
 
         if set_clauses:
             update_term_stmt = match_clause + "SET " + ", ".join(set_clauses)
