@@ -64,12 +64,15 @@ class CADSRClient:
         """Get value set from JSON response."""
         try:
             vs = []
-            data_element = json_response["DataElement"]
-            
-            # Extract AlternateNames from CDE
-            alternate_names = data_element.get("AlternateNames", [])
-            
-            cde_pvs = data_element["ValueDomain"].get(
+            data_element = json_response.get("DataElement")
+            if not data_element:
+                logger.warning("No DataElement found in JSON response")
+                return vs
+            value_domain = data_element.get("ValueDomain")
+            if not value_domain:
+                logger.warning("No ValueDomain found for CDE %s v%s", data_element.get("publicId"), data_element.get("version"))
+                return vs
+            cde_pvs = value_domain.get(
                 "PermissibleValues",
                 [],
             )
@@ -114,18 +117,15 @@ class CADSRClient:
                         },
                     )
                 
-                # Add alternate names separately from synonyms
-                for alt_name in alternate_names:
-                    # Only add if it's a name-based alternate (not just context info)
-                    if alt_name.get("name") and alt_name.get("type") not in ["USED_BY"]:
-                        pv_dict["alternates"].append(
-                            {
-                                "value": alt_name["name"],
-                                "origin_name": "caDSR",
-                                "origin_id": alt_name.get("name"),
-                                "origin_version": alt_name.get("type"),
-                            },
-                        )
+                # Extract alternate names from PV (without duplicates)
+                alt_names = pv["ValueMeaning"].get("Designations", [])
+                if alt_names:
+                    alternates_name_set = set()
+                    for alt_name in alt_names:
+                        alt_value = alt_name.get("name", "")
+                        if alt_value and alt_value not in alternates_name_set:
+                            alternates_name_set.add(alt_value)
+                            pv_dict["alternates"].append({"value": alt_value})
                 
                 vs.append(pv_dict)
         except Exception as e:

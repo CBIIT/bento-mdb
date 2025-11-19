@@ -173,6 +173,128 @@ class TestCADSRClient:
         actual = self.client.fetch_cde_valueset("11524549", "1")
         assert_equal(actual, [])
 
+    def test_missing_valuedomain(self, fake_requests_get) -> None:
+        """Test that no PVs are returned when ValueDomain key is missing."""
+        missing_valuedomain_response = {
+            "DataElement": {"publicId": "11524549", "version": "1"},
+        }
+        fake_requests_get(missing_valuedomain_response)
+        actual = self.client.fetch_cde_valueset("11524549", "1")
+        assert_equal(actual, [])
+
+    def test_get_valueset_from_json_with_alternates(self) -> None:
+        """Test that alternates are extracted from Designations in Valueset."""
+        response_with_alternates = {
+            "DataElement": {
+                "publicId": "11524549",
+                "version": "1",
+                "ValueDomain": {
+                    "PermissibleValues": [
+                        {
+                            "value": "Yes",
+                            "ValueMeaning": {
+                                "version": "1",
+                                "publicId": "2597927",
+                                "definition": "Affirmative response.",
+                                "Concepts": [
+                                    {
+                                        "longName": "Yes",
+                                        "conceptCode": "C25554",
+                                        "definition": "Affirmative response.",
+                                        "evsSource": "NCI_CONCEPT_CODE",
+                                        "primaryIndicator": "Yes",
+                                        "displayOrder": "0",
+                                    },
+                                ],
+                                "Designations": [
+                                    {"name": "Affirmative"},
+                                    {"name": "True"},
+                                    {"name": ""},  # Empty name should be skipped
+                                    {"name": "Affirmative"},  # Duplicate should be skipped
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+        actual = self.client.get_valueset_from_json(response_with_alternates)
+        expected = [
+            {
+                "value": "Yes",
+                "origin_version": "1",
+                "origin_id": "2597927",
+                "origin_definition": "Affirmative response.",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C25554"],
+                "synonyms": [
+                    {
+                        "value": "Yes",
+                        "origin_id": "C25554",
+                        "origin_definition": "Affirmative response.",
+                        "origin_name": "NCIt",
+                    },
+                ],
+                "alternates": [
+                    {"value": "Affirmative"},
+                    {"value": "True"},
+                ],
+            },
+        ]
+        assert_equal(actual, expected)
+
+    def test_get_valueset_from_json_without_designations(self) -> None:
+        """Test that alternates are empty when no Designations field present."""
+        response_without_designations = {
+            "DataElement": {
+                "publicId": "11524549",
+                "version": "1",
+                "ValueDomain": {
+                    "PermissibleValues": [
+                        {
+                            "value": "No",
+                            "ValueMeaning": {
+                                "version": "1",
+                                "publicId": "2597928",
+                                "definition": "Negative response.",
+                                "Concepts": [
+                                    {
+                                        "longName": "No",
+                                        "conceptCode": "C25555",
+                                        "definition": "Negative response.",
+                                        "evsSource": "NCI_CONCEPT_CODE",
+                                        "primaryIndicator": "Yes",
+                                        "displayOrder": "0",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+        actual = self.client.get_valueset_from_json(response_without_designations)
+        expected = [
+            {
+                "value": "No",
+                "origin_version": "1",
+                "origin_id": "2597928",
+                "origin_definition": "Negative response.",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C25555"],
+                "synonyms": [
+                    {
+                        "value": "No",
+                        "origin_id": "C25555",
+                        "origin_definition": "Negative response.",
+                        "origin_name": "NCIt",
+                    },
+                ],
+                "alternates": [],
+            },
+        ]
+        assert_equal(actual, expected)
+
     def test_check_cdes_against_mdb_no_updates(self, monkeypatch) -> None:
         client = CADSRClient()
         monkeypatch.setattr(
