@@ -362,7 +362,7 @@ def generate_cypher_to_link_term_alternates(
     """
     Generate cypher statement to link PV term to alternate name term via shared Concept node.
     
-    Both terms share the same concept (unlike synonyms which may have different source concepts).
+    Both terms are linked to the same concept node using the mapping_source tag alternate_name.
     """
     reset_pg_ent_counter()
     cypher_pv = cypherize_entity(pv_term)
