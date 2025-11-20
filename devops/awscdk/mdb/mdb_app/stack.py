@@ -15,7 +15,7 @@ from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_s3 as s3
 #from aws_cdk import Fn
 
-from services import neo4j, stsapi
+from services import neo4j, stsapi, stsfastapi
 #from services import stsapi
 
 class Stack(Stack):
@@ -149,6 +149,7 @@ class Stack(Stack):
         #)
         # API service
         stsapi.stsapiService.createService(self, config)
+        stsfastapi.stsfastapiService.createService(self, config)
 
         # Add a fixed error message when browsing an invalid URL
         self.listener.add_action("ECS-Content-Not-Found",
