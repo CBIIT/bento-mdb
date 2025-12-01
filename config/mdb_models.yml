@@ -237,15 +237,17 @@ ICDC:
   in_data_hub: true
   versions:
   - version: 1.0.0
+  - version: 1.1.0
+    tag: 1.1.0
   - version: 2.0.0
     tag: v2.0.0
     ignore: true
   - version: 3.8.7
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
-  latest_version: 1.0.0
-  latest_prerelease_commit: a0d484e308055f1441e858559769c8c5b1967776
-  latest_prerelease_version: 1.0.0
+  latest_version: 1.1.0
+  latest_prerelease_commit: f9e74025ef75d91c3f542b4e6effdfb93f72232c
+  latest_prerelease_version: 1.1.0
 PDC:
   repository: CBIIT/pdc-model
   mdf_directory: model-desc
