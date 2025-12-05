@@ -19,8 +19,8 @@ from services import neo4j, stsapi, stsfastapi
 #from services import stsapi
 
 class Stack(Stack):
-    def __init__(self, scope: Construct, **kwargs) -> None:
-        super().__init__(scope, **kwargs)
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
 
         ### Read config
         config = ConfigParser()
