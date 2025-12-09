@@ -1,4 +1,4 @@
-FROM python:3.13.7-alpine3.22
+FROM python:3.13.11-alpine3.23
 
 EXPOSE 8000/tcp
 
