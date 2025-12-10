@@ -4,6 +4,6 @@ services:
   api:
     version: main.43
   fast_api:
-    version: main.59
+    version: main.61
   neo4j:
     version: 4.4.44-community
