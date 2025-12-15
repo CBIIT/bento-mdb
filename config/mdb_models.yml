@@ -135,7 +135,7 @@ CDS:
   - version: 10.0.1
     tag: 10.0.1-GC_Release
   latest_version: 10.0.1
-  latest_prerelease_commit: b94158f3d48c6418ee476be3083da23c8476e5e9
+  latest_prerelease_commit: fe538f5579449717646a2afe3a4f1ee393dc7402
   latest_prerelease_version: 11.0.0
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
@@ -199,9 +199,11 @@ CTDC:
     tag: 1.19.0
   - version: 1.20.0
     tag: 1.20.0
-  latest_version: 1.20.0
-  latest_prerelease_commit: 31498785d7a0f0d7f9d8ab309674ed5d46b474c0
-  latest_prerelease_version: 1.20.0
+  - version: 1.21.0
+    tag: 1.21.0
+  latest_version: 1.21.0
+  latest_prerelease_commit: 7c920c47c27bc6560d82ee0e5c079190fa17d8ec
+  latest_prerelease_version: 1.21.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
