@@ -135,6 +135,38 @@ def run_liquibase_update(  # noqa: C901, PLR0912
             except Exception:
                 logger.exception("Error reading Liquibase logs from %s", log_file)
 
+@task
+def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]:
+    """Below is the format of the changelog file:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+        <changeSet id="1" author="GitHub Actions">
+            <neo4j:cypher>MATCH (n0:model {handle: 'CDS'}) WHERE n0.is_latest_version = true SET n0.is_latest_version = false</neo4j:cypher>
+        </changeSet>
+    </databaseChangeLog>"""
+    """Split changelog file into smaller files, each smaller file contains at most max_changesets changesets."""
+    with Path(changelog_file).open("r") as f:
+        lines = f.readlines()
+    smaller_changelog_files = []
+    # better to skip the first two lines and last line of the changelog file as they are the xml declaration and the databaseChangeLog end tag
+    lines = lines[2:-1]
+    # each changeset is 3 lines, so we need to skip 3 * max_changesets lines for each smaller changelog file
+    for i in range(0, len(lines), 3 * max_changesets):
+        # can we make file name suffix to be 1, 2, 3, etc.
+        file_suffix = i // (3 * max_changesets) + 1
+        smaller_changelog_file = changelog_file.with_name(f"{changelog_file.stem}_{file_suffix}.xml")
+        # last file should be the remaining changesets
+        if i + 3 * max_changesets >= len(lines):
+            remaining_lines = lines[i:]
+        else:
+            remaining_lines = lines[i:i+3 * max_changesets]
+        with smaller_changelog_file.open("w") as f:
+            f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
+            f.write("<databaseChangeLog xmlns='http://www.liquibase.org/xml/ns/dbchangelog' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:neo4j='http://www.liquibase.org/xml/ns/dbchangelog-ext' xsi:schemaLocation='http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd'>\n")
+            f.writelines(remaining_lines)
+            f.write("</databaseChangeLog>\n")
+        smaller_changelog_files.append(smaller_changelog_file)
+    return smaller_changelog_files
 
 @flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
@@ -157,28 +189,32 @@ def liquibase_update_flow(
     if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
         plb_logger.addHandler(APILogHandler())
 
-    defaults_file, log_file = set_defaults_file(
-        changelog_file,
-        mdb_id,
-        log_level,
-    )
-    # print out the contents of the defaults file
-    raw = Path(defaults_file).read_text().splitlines()  # type:ignore reportArgumentType
-    for line in raw:
-        if line.lower().startswith("password"):
-            logger.info("password: ********")
-        else:
-            logger.info(line)
-    logger.info("Changelog file: %s", Path(changelog_file).resolve())
-
-    try:
-        run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
-    finally:
-        defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-        if log_file.exists():
+    # if changelog file size is large than 1MB, please split it into smaller files, each smaller file contains at most 5000 changesets
+    if Path(changelog_file).stat().st_size > 1024 * 1024:
+        smaller_changelog_files = split_changelog_file(changelog_file, 5000)
+        for smaller_changelog_file in smaller_changelog_files:
+            defaults_file, log_file = set_defaults_file(smaller_changelog_file, mdb_id, log_level)
+            logger.info("Changelog file: %s", Path(smaller_changelog_file).resolve())
             try:
-                log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-            except Exception:
-                logger.exception("Error deleting log file %s", log_file)
+                run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
+            finally:
+                defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+                if log_file.exists():
+                    try:
+                        log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+                    except Exception:
+                        logger.exception("Error deleting log file %s", log_file)
+    else:
+        defaults_file, log_file = set_defaults_file(changelog_file, mdb_id, log_level)
+        logger.info("Changelog file: %s", Path(changelog_file).resolve())
+        try:
+            run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
+        finally:
+            defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+            if log_file.exists():
+                try:
+                    log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+                except Exception:
+                    logger.exception("Error deleting log file %s", log_file)
 
     logger.info("Liquibase finished.")
