@@ -58,43 +58,38 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
     """
     Clear all existing nodes and relationships from the database.
 
-    First delete the relationships by type, then delete the remaining nodes.
+    Deletes nodes in batches of 5000 using DETACH DELETE until no nodes remain.
     """
     logger = get_run_logger()
 
-    logger.info("Deleting relationships by type")
-    for rel in MDB_REL_TYPES:
-        rel_stmt = (
-            "CALL apoc.periodic.iterate("
-            f'"MATCH ()-[r:{rel}]-() RETURN r", '
-            '"DELETE r", '
-            "{batchSize: 5000, parallel: true, concurrency: 1}) "
-            "YIELD batches, total, timeTaken, committedOperations "
-            "RETURN batches, total, timeTaken, committedOperations"
-        )
-        result = mdb.put_with_statement(rel_stmt)
-        if result:
-            logger.info("%s relationships deleted: %s", rel, result)
+    logger.info("Deleting nodes and relationships in batches")
+    delete_stmt = "MATCH (n) WITH n LIMIT 5000 DETACH DELETE n"
+    count_stmt = "MATCH (n) RETURN count(n) as node_count"
 
-    logger.info("Deleting nodes and any remaining relationships")
-    node_stmt = (
-        "CALL apoc.periodic.iterate("
-        '"MATCH (n) RETURN n", '
-        '"DETACH DELETE n", '
-        "{batchSize: 5000, parallel: true, concurrency: 1}) "
-        "YIELD batches, total, timeTaken, committedOperations "
-        "RETURN batches, total, timeTaken, committedOperations"
-    )
+    while True:
+        # Check how many nodes remain
+        count_result = mdb.get_with_statement(count_stmt)
+        if count_result and len(count_result) > 0:
+            first_result = count_result[0]
+            node_count = (
+                first_result.get("node_count", 0)
+                if isinstance(first_result, dict)
+                else 0
+            )
 
-    final_result = mdb.put_with_statement(node_stmt)
-    if final_result:
-        logger.info("Remaining nodes and relationships deleted: %s", final_result)
-    else:
-        clear_fail_msg = "Clear remaining nodes failed - no results returned"
-        raise RuntimeError(clear_fail_msg)
+            if node_count == 0:
+                logger.info("All nodes deleted")
+                break
+
+            # Delete a batch of up to 5000 nodes
+            mdb.put_with_statement(delete_stmt)
+            logger.info("Deleted batch, nodes remaining: %d", node_count)
+        else:
+            # If count query fails, try one more deletion attempt and break
+            mdb.put_with_statement(delete_stmt)
+            break
 
     logger.info("Verify database is cleared")
-    count_stmt = "MATCH (n) RETURN count(n) as node_count"
     count_result = mdb.get_with_statement(count_stmt)
     logger.info("Final count result: %s", count_result)
 
