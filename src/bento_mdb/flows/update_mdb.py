@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import shutil
 import stat
 import tempfile
@@ -137,35 +138,87 @@ def run_liquibase_update(  # noqa: C901, PLR0912
 
 @task
 def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]:
-    """Below is the format of the changelog file:
-    <?xml version="1.0" encoding="UTF-8"?>
-    <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-        <changeSet id="1" author="GitHub Actions">
-            <neo4j:cypher>MATCH (n0:model {handle: 'CDS'}) WHERE n0.is_latest_version = true SET n0.is_latest_version = false</neo4j:cypher>
-        </changeSet>
-    </databaseChangeLog>"""
-    """Split changelog file into smaller files, each smaller file contains at most max_changesets changesets."""
-    with Path(changelog_file).open("r") as f:
-        lines = f.readlines()
+    """Split changelog file into smaller files, each smaller file contains at most max_changesets changesets.
+    
+    This function properly parses XML to find changeset boundaries, regardless of how many lines
+    each changeset spans. Changesets can have varying numbers of lines depending on the Cypher query content.
+    """
+    logger = get_run_logger()
+    changelog_path = Path(changelog_file)
+    
+    # Read the entire file content
+    with changelog_path.open("r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # Extract the XML header (first line) and databaseChangeLog opening tag
+    # Find the opening databaseChangeLog tag with all its attributes
+    header_match = re.search(
+        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
+        content,
+        re.MULTILINE | re.DOTALL
+    )
+    if not header_match:
+        msg = "Could not find databaseChangeLog header in changelog file"
+        raise ValueError(msg)
+    
+    header = header_match.group(1)
+    closing_tag = "</databaseChangeLog>"
+    
+    # Find all changesets using regex that handles multi-line content
+    # This pattern matches from <changeSet to </changeSet> including all content in between
+    changeset_pattern = re.compile(
+        r'(<changeSet[^>]*>.*?</changeSet>)',
+        re.DOTALL
+    )
+    changesets = changeset_pattern.findall(content)
+    
+    total_changesets = len(changesets)
+    logger.info("Found %d changesets in changelog file", total_changesets)
+    
+    if total_changesets == 0:
+        msg = "No changesets found in changelog file"
+        raise ValueError(msg)
+    
     smaller_changelog_files = []
-    # better to skip the first two lines and last line of the changelog file as they are the xml declaration and the databaseChangeLog end tag
-    lines = lines[2:-1]
-    # each changeset is 3 lines, so we need to skip 3 * max_changesets lines for each smaller changelog file
-    for i in range(0, len(lines), 3 * max_changesets):
-        # can we make file name suffix to be 1, 2, 3, etc.
-        file_suffix = i // (3 * max_changesets) + 1
-        smaller_changelog_file = changelog_file.with_name(f"{changelog_file.stem}_{file_suffix}.xml")
-        # last file should be the remaining changesets
-        if i + 3 * max_changesets >= len(lines):
-            remaining_lines = lines[i:]
-        else:
-            remaining_lines = lines[i:i+3 * max_changesets]
-        with smaller_changelog_file.open("w") as f:
-            f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
-            f.write("<databaseChangeLog xmlns='http://www.liquibase.org/xml/ns/dbchangelog' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:neo4j='http://www.liquibase.org/xml/ns/dbchangelog-ext' xsi:schemaLocation='http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd'>\n")
-            f.writelines(remaining_lines)
-            f.write("</databaseChangeLog>\n")
+    
+    # Split changesets into chunks
+    num_splits = (total_changesets + max_changesets - 1) // max_changesets
+    logger.info("Splitting into %d files (max %d changesets per file)", num_splits, max_changesets)
+    
+    for split_idx in range(num_splits):
+        start_idx = split_idx * max_changesets
+        end_idx = min(start_idx + max_changesets, total_changesets)
+        chunk_changesets = changesets[start_idx:end_idx]
+        
+        # Create split file with suffix 1, 2, 3, etc.
+        file_suffix = split_idx + 1
+        smaller_changelog_file = changelog_path.with_name(
+            f"{changelog_path.stem}_{file_suffix}.xml"
+        )
+        
+        # Write the split file with proper XML structure
+        with smaller_changelog_file.open("w", encoding="utf-8") as f:
+            f.write(header + "\n")
+            for changeset in chunk_changesets:
+                # Add proper indentation (2 spaces) for readability
+                # Split the changeset into lines and indent each line
+                changeset_lines = changeset.split("\n")
+                for line in changeset_lines:
+                    if line.strip():  # Skip empty lines
+                        f.write("  " + line + "\n")
+            f.write(closing_tag + "\n")
+        
         smaller_changelog_files.append(smaller_changelog_file)
+        logger.info(
+            "Created split file %d/%d: %s (%d changesets, %.2f MB)",
+            split_idx + 1,
+            num_splits,
+            smaller_changelog_file.name,
+            len(chunk_changesets),
+            smaller_changelog_file.stat().st_size / (1024 * 1024),
+        )
+    
+    logger.info("Successfully split changelog into %d files", len(smaller_changelog_files))
     return smaller_changelog_files
 
 @flow(name="liquibase-update", log_prints=True)
