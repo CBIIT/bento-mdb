@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bento_mdb.flows.update_mdb import liquibase_update_flow, split_changelog_file
+from bento_mdb.flows.update_mdb import split_changelog_file
 from tests.test_utils import assert_equal
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
@@ -60,3 +60,5 @@ class TestSplitChangelogFile:
         assert result[2].name == "sample_changelog_large_3.xml"
         assert result[3].name == "sample_changelog_large_4.xml"
         assert result[4].name == "sample_changelog_large_5.xml"
+
+
