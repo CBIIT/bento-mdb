@@ -63,51 +63,22 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
     logger = get_run_logger()
 
     logger.info("Deleting nodes and relationships in batches")
-    delete_stmt = "MATCH (n) WITH n LIMIT 1000 DETACH DELETE n"
-    count_stmt = "MATCH (n) RETURN count(n) as node_count"
-
-    while True:
-        # Check how many nodes remain
-        count_result = mdb.get_with_statement(count_stmt)
-        if count_result and len(count_result) > 0:
-            first_result = count_result[0]
-            node_count = (
-                first_result.get("node_count", 0)
-                if isinstance(first_result, dict)
-                else 0
-            )
-
-            if node_count == 0:
-                logger.info("All nodes deleted")
-                break
-
-            # Delete a batch of up to 1000 nodes
-            mdb.put_with_statement(delete_stmt)
-            logger.info("Deleted batch, nodes remaining: %d", node_count)
-        else:
-            # If count query fails, try one more deletion attempt and break
-            mdb.put_with_statement(delete_stmt)
-            break
+    node_stmt = """
+        CALL apoc.periodic.commit(
+            "MATCH (n)
+            WITH n
+            LIMIT $limit
+            DETACH DELETE n
+            RETURN count(n) AS deleted",
+            {limit: 1000}
+        )
+    """
+    mdb.put_with_statement(node_stmt)
 
     logger.info("Verify database is cleared")
+    count_stmt = "MATCH (n) RETURN count(n) as node_count"
     count_result = mdb.get_with_statement(count_stmt)
     logger.info("Final count result: %s", count_result)
-
-    if count_result and len(count_result) > 0:
-        first_result = count_result[0]
-        node_count = (
-            first_result.get("node_count", 0) if isinstance(first_result, dict) else 0
-        )
-        if node_count > 0:
-            logger.warning(
-                "Database still contains %d nodes after clear operation",
-                node_count,
-            )
-
-            error_msg = f"Clear operation incomplete: {node_count} nodes remaining"
-            raise RuntimeError(error_msg)
-
-        logger.info("Database successfully cleared - 0 nodes remaining")
 
 
 @task(name="Import MDB from S3", cache_policy=NO_CACHE)

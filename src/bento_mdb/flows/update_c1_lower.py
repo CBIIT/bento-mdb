@@ -13,11 +13,11 @@ def update_c1_lower_flow(
     """Orchestration script to update Cloud One Dev and QA MDBs from graphml file."""
     logger = get_run_logger()
     logger.info("Running update-c1-lower flow...")
-    logger.info("Importing to cloud-one-mdb-qa from fnl-mdb-data bucket")
+    logger.info("Importing to cloud-one-mdb-dev from fnl-mdb-data bucket")
     run_deployment(
         name="mdb-import-s3/mdb-import-s3",
         parameters={
-            "mdb_id": "cloud-one-mdb-qa",
+            "mdb_id": "cloud-one-mdb-dev",
             "bucket": "fnl-mdb-data",
             "key": key,
             "clear_db": True,
@@ -25,27 +25,27 @@ def update_c1_lower_flow(
         timeout=None,
         as_subflow=True,
     )
-    logger.info("Exporting from cloud-one-mdb-qa to cloudone-mdb-data bucket")
+    logger.info("Exporting from cloud-one-mdb-dev to cloudone-mdb-data bucket")
     run_deployment(
         name="mdb-export-s3/mdb-export-s3",
         parameters={
-            "mdb_id": "cloud-one-mdb-qa",
+            "mdb_id": "cloud-one-mdb-dev",
             "bucket": "cloudone-mdb-data",
         },
         timeout=None,
         as_subflow=True,
     )
-    # current_date = get_current_date()
-    # c1_dev_key = f"{current_date}__cloud-one-mdb-dev.graphml"
-    # logger.info("Importing to cloud-one-mdb-qa from cloudone-mdb-data bucket")
-    # run_deployment(
-    #     name="mdb-import-s3/mdb-import-s3",
-    #     parameters={
-    #         "mdb_id": "cloud-one-mdb-qa",
-    #         "bucket": "cloudone-mdb-data",
-    #         "key": c1_dev_key,
-    #         "clear_db": True,
-    #     },
-    #     timeout=None,
-    #     as_subflow=True,
-    # )
+    current_date = get_current_date()
+    c1_dev_key = f"{current_date}__cloud-one-mdb-dev.graphml"
+    logger.info("Importing to cloud-one-mdb-qa from cloudone-mdb-data bucket")
+    run_deployment(
+        name="mdb-import-s3/mdb-import-s3",
+        parameters={
+            "mdb_id": "cloud-one-mdb-qa",
+            "bucket": "cloudone-mdb-data",
+            "key": c1_dev_key,
+            "clear_db": True,
+        },
+        timeout=None,
+        as_subflow=True,
+    )
