@@ -279,6 +279,8 @@ def liquibase_update_flow(
         for changeset in changesets:
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            # make these replacements in a more efficient way
+            cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
             mdb.put_with_statement(cypher_statement)
             num = num + 1
             logger.info("Completed changelog update %d", num)
