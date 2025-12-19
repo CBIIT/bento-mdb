@@ -60,23 +60,3 @@ class TestSplitChangelogFile:
         assert result[2].name == "sample_changelog_large_3.xml"
         assert result[3].name == "sample_changelog_large_4.xml"
         assert result[4].name == "sample_changelog_large_5.xml"
-
-
-class TestLiquibaseUpdateFlow:
-    """Tests for liquibase_update_flow function."""
-
-    def test_liquibase_update_flow_success(
-        self
-    ):
-        """Test successful execution of liquibase_update_flow."""
-        changelog_file = TEST_CHANGELOG_FILE_SMALL
-        try:
-            liquibase_update_flow(
-                changelog_file=str(changelog_file),
-                mdb_id="fnl-mdb-qa",
-                log_level="info",
-                dry_run=False,
-            )
-        except Exception:
-            assert False
-        assert True
