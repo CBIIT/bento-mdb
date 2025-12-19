@@ -273,7 +273,7 @@ def liquibase_update_flow(
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
     
-    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
+    mdb = init_mdb_connection("fnl-mdb-qa", writeable=True, allow_empty=True)
 
     try:
         for changeset in changesets:
