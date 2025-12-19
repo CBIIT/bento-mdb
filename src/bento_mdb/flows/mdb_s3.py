@@ -58,12 +58,12 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
     """
     Clear all existing nodes and relationships from the database.
 
-    Deletes nodes in batches of 5000 using DETACH DELETE until no nodes remain.
+    Deletes nodes in batches of 1000 using DETACH DELETE until no nodes remain.
     """
     logger = get_run_logger()
 
     logger.info("Deleting nodes and relationships in batches")
-    delete_stmt = "MATCH (n) WITH n LIMIT 5000 DETACH DELETE n"
+    delete_stmt = "MATCH (n) WITH n LIMIT 1000 DETACH DELETE n"
     count_stmt = "MATCH (n) RETURN count(n) as node_count"
 
     while True:
@@ -81,7 +81,7 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
                 logger.info("All nodes deleted")
                 break
 
-            # Delete a batch of up to 5000 nodes
+            # Delete a batch of up to 1000 nodes
             mdb.put_with_statement(delete_stmt)
             logger.info("Deleted batch, nodes remaining: %d", node_count)
         else:
