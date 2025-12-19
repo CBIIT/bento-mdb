@@ -73,7 +73,7 @@ class TestLiquibaseUpdateFlow:
         try:
             liquibase_update_flow(
                 changelog_file=str(changelog_file),
-                mdb_id="test-mdb",
+                mdb_id="fnl-mdb-qa",
                 log_level="info",
                 dry_run=False,
             )
