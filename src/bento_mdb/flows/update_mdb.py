@@ -272,6 +272,11 @@ def liquibase_update_flow(
     if total_changesets == 0:
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
+
+    for changeset in changesets:
+            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
+            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            logger.info("Running changeset: %s", cypher_statement)
     
     mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
 
