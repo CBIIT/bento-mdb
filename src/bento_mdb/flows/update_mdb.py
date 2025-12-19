@@ -273,11 +273,12 @@ def liquibase_update_flow(
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
     
-    mdb = init_mdb_connection("fnl-mdb-qa", writeable=True, allow_empty=True)
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
 
     try:
         for changeset in changesets:
-            cypher_statement = changeset.find("neo4j:cypher").text
+            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
+            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             mdb.put_with_statement(cypher_statement)
             logger.info("Completed changelog update %s", changeset.id)
     except Exception:
