@@ -280,8 +280,6 @@ def liquibase_update_flow(
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             mdb.put_with_statement(cypher_statement)
-            // the below line reports an error: AttributeError: 'str' object has no attribute 'id'
-            // let's count and auto-increment the changeset_id
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:
