@@ -16,6 +16,7 @@ from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
+from bento_mdb.mdb_utils import init_mdb_connection
 from bento_mdb.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
 
 # liquibase constants
@@ -242,32 +243,48 @@ def liquibase_update_flow(
     if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
         plb_logger.addHandler(APILogHandler())
 
-    # if changelog file size is large than 1MB, please split it into smaller files, each smaller file contains at most 5000 changesets
-    if Path(changelog_file).stat().st_size > 1024 * 1024:
-        smaller_changelog_files = split_changelog_file(changelog_file, 5000)
-        for smaller_changelog_file in smaller_changelog_files:
-            defaults_file, log_file = set_defaults_file(smaller_changelog_file, mdb_id, log_level)
-            logger.info("Changelog file: %s", Path(smaller_changelog_file).resolve())
-            try:
-                run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
-            finally:
-                defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-                if log_file.exists():
-                    try:
-                        log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-                    except Exception:
-                        logger.exception("Error deleting log file %s", log_file)
-    else:
-        defaults_file, log_file = set_defaults_file(changelog_file, mdb_id, log_level)
-        logger.info("Changelog file: %s", Path(changelog_file).resolve())
-        try:
-            run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
-        finally:
-            defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-            if log_file.exists():
-                try:
-                    log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-                except Exception:
-                    logger.exception("Error deleting log file %s", log_file)
+    # generate code to read from changelog file and run the Cypher statements on the MDB
+    with open(changelog_file, "r") as f:
+        content = f.read()
+    
+    # Extract the XML header (first line) and databaseChangeLog opening tag
+    # Find the opening databaseChangeLog tag with all its attributes
+    header_match = re.search(
+        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
+        content,
+        re.MULTILINE | re.DOTALL
+    )
+    if not header_match:
+        msg = "Could not find databaseChangeLog header in changelog file"
+        raise ValueError(msg)
+    
+    # Find all changesets using regex that handles multi-line content
+    # This pattern matches from <changeSet to </changeSet> including all content in between
+    changeset_pattern = re.compile(
+        r'(<changeSet[^>]*>.*?</changeSet>)',
+        re.DOTALL
+    )
+    changesets = changeset_pattern.findall(content)
+    
+    total_changesets = len(changesets)
+    logger.info("Found %d changesets in changelog file", total_changesets)
+    
+    if total_changesets == 0:
+        msg = "No changesets found in changelog file"
+        raise ValueError(msg)
+    
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
+
+    try:
+        for changeset in changesets:
+            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
+            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            mdb.put_with_statement(cypher_statement)
+            logger.info("Completed changelog update %s", changeset.id)
+    except Exception:
+        logger.exception("Error in changelog update")
+        raise
+    finally:
+        mdb.close()
 
     logger.info("Liquibase finished.")
