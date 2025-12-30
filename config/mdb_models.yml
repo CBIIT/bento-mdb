@@ -247,15 +247,17 @@ ICDC:
     tag: 1.1.0
   - version: 1.2.0
     tag: 1.2.0
+  - version: 1.3.0
+    tag: 1.3.0
   - version: 2.0.0
     tag: v2.0.0
     ignore: true
   - version: 3.8.7
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
-  latest_version: 1.2.0
-  latest_prerelease_commit: bc617bee1c283ad5fc4c0a3944d7c18ecfbc0432
-  latest_prerelease_version: 1.2.0
+  latest_version: 1.3.0
+  latest_prerelease_commit: 5d3bb49ffae8629ff32c4b0332b9267ac0546c6e
+  latest_prerelease_version: 1.3.0
 PDC:
   repository: CBIIT/pdc-model
   mdf_directory: model-desc
