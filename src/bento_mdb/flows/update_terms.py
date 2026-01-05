@@ -26,6 +26,9 @@ from bento_mdb.model_cdes import (
 if TYPE_CHECKING:
     from bento_mdb.datatypes import MDBCDESpec, ModelCDESpec
 
+# GitHub Contents API limit is 1 MB
+GITHUB_CONTENTS_API_SIZE_LIMIT = 1024 * 1024  # 1 MB in bytes
+
 
 def make_changelog_output_more_visible(changelog_file: Path) -> None:
     """
@@ -82,6 +85,61 @@ def update_mdb_cdes_from_term_sources(
     return update_cde_spec
 
 
+def commit_large_file_via_git_api(
+    repo,
+    repo_path: str,
+    file_content: str,
+    commit_msg: str,
+    committer,
+    logger,
+    file_sha: str | None = None,
+) -> dict:
+    """
+    Commit large files using Git Data API (blobs and trees).
+
+    This bypasses the 1 MB Contents API limit and supports files up to 100 MB.
+    """
+    logger.info("Using Git Data API for large file: %s", repo_path)
+
+    # Get the default branch
+    default_branch = repo.default_branch
+    ref = repo.get_git_ref(f"heads/{default_branch}")
+    base_commit = repo.get_git_commit(ref.object.sha)
+    base_tree = base_commit.tree
+
+    # Create a blob for the file content
+    blob = repo.create_git_blob(content=file_content, encoding="utf-8")
+    logger.info("Created blob with SHA: %s", blob.sha)
+
+    # Create tree element
+    element = {
+        "path": repo_path,
+        "mode": "100644",  # regular file
+        "type": "blob",
+        "sha": blob.sha,
+    }
+
+    # Create a new tree with the file
+    tree = repo.create_git_tree([element], base_tree)
+    logger.info("Created tree with SHA: %s", tree.sha)
+
+    # Create commit
+    commit = repo.create_git_commit(
+        message=commit_msg,
+        tree=tree,
+        parents=[base_commit],
+        author=committer,
+        committer=committer,
+    )
+    logger.info("Created commit with SHA: %s", commit.sha)
+
+    # Update reference
+    ref.edit(commit.sha)
+    logger.info("Updated ref to commit: %s", commit.sha)
+
+    return {"commit": commit}
+
+
 @task
 def commit_new_files(files: list[Path]) -> list:
     """Commit new files to GitHub."""
@@ -102,6 +160,11 @@ def commit_new_files(files: list[Path]) -> list:
             logger.info("Converting %s to %s", file_path, repo_path)
             with file_path.open("r", encoding="utf-8") as f:
                 file_content = f.read()
+
+            # Check file size
+            file_size = len(file_content.encode("utf-8"))
+            logger.info("File size: %d bytes (%.2f MB)", file_size, file_size / (1024 * 1024))
+            use_git_data_api = file_size > GITHUB_CONTENTS_API_SIZE_LIMIT
 
             file_exists = False
             file_sha = None
@@ -132,7 +195,32 @@ def commit_new_files(files: list[Path]) -> list:
                 else:
                     raise
             try:
-                if file_exists and file_sha is not None:
+                # Use Git Data API for large files
+                if use_git_data_api:
+                    logger.info(
+                        "File %s is too large for Contents API, using Git Data API",
+                        repo_path,
+                    )
+                    if file_exists:
+                        commit_msg = f"Update {repo_path} (GitHub Actions)"
+                    else:
+                        commit_msg = f"Add {repo_path} (GitHub Actions)"
+
+                    result = commit_large_file_via_git_api(
+                        repo=repo,
+                        repo_path=repo_path,
+                        file_content=file_content,
+                        commit_msg=commit_msg,
+                        committer=committer,
+                        logger=logger,
+                        file_sha=file_sha,
+                    )
+                    action = "Updated" if file_exists else "Created"
+                    results.append(
+                        f"{action} {repo_path} (commit: {result['commit'].sha[:7]}) via Git Data API",
+                    )
+                # Use Contents API for small files
+                elif file_exists and file_sha is not None:
                     logger.info("Updating existing file %s", repo_path)
                     commit_msg = f"Update {repo_path} (GitHub Actions)"
                     result = repo.update_file(
@@ -159,10 +247,35 @@ def commit_new_files(files: list[Path]) -> list:
                     )
             except GithubException as e:
                 if e.status == 422 and "too large" in str(e):
-                    logger.exception("File %s is too large for GitHub API", repo_path)
-                    results.append(
-                        f"Error: File {repo_path} is too large for GitHub API",
+                    # This shouldn't happen anymore since we check size beforehand,
+                    # but keep as fallback
+                    logger.warning(
+                        "File %s exceeded size limit, retrying with Git Data API",
+                        repo_path,
                     )
+                    try:
+                        if file_exists:
+                            commit_msg = f"Update {repo_path} (GitHub Actions)"
+                        else:
+                            commit_msg = f"Add {repo_path} (GitHub Actions)"
+
+                        result = commit_large_file_via_git_api(
+                            repo=repo,
+                            repo_path=repo_path,
+                            file_content=file_content,
+                            commit_msg=commit_msg,
+                            committer=committer,
+                            logger=logger,
+                            file_sha=file_sha,
+                        )
+                        action = "Updated" if file_exists else "Created"
+                        results.append(
+                            f"{action} {repo_path} (commit: {result['commit'].sha[:7]}) via Git Data API (fallback)",
+                        )
+                    except Exception as fallback_error:
+                        error_msg = f"Error: Failed to commit large file {repo_path}: {fallback_error}"
+                        logger.exception(error_msg)
+                        results.append(error_msg)
                 else:
                     raise
         except Exception as e:
