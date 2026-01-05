@@ -4,7 +4,7 @@ prefect-version: 3.3.4
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
-    branch: main
+    branch: commit-large-file
     repository: https://github.com/CBIIT/bento-mdb.git
 - prefect.deployments.steps.run_shell_script:
     id: install-dependencies
