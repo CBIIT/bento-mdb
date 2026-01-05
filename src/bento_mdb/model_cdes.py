@@ -132,6 +132,10 @@ def add_cde_pvs_to_model_cde_spec(
     cadsr_client: CADSRClient,
 ) -> None:
     """Add CDE PVs to a ModelCDESpec."""
+    # Check API health before starting bulk operations
+    if not cadsr_client.check_api_health():
+        logger.warning("caDSR API may be down or under maintenance.")
+    
     logger.info("Getting CDE value sets from caDSR...")
     for annotation in cde_spec["annotations"]:
         cde_id = annotation["annotation"]["attrs"].get("origin_id")

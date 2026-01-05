@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
 
 RESPONSE_200 = 200
-DEFAULT_TIMEOUT = 120
-DEFAULT_RETRIES = 3
+DEFAULT_TIMEOUT = 180
+DEFAULT_RETRIES = 5
 DEFAULT_RETRY_DELAY = 1.0
 
 SYNC_STATUS_YAML = Path("config/sync_status.yml")
@@ -56,6 +56,23 @@ class CADSRClient:
 
     def __init__(self) -> None:
         """Initialize client."""
+    
+    @staticmethod
+    def check_api_health() -> bool:
+        """
+            True if API is healthy
+        """
+        # Use a simple CDE for health check
+        test_url = "https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/62"
+        try:
+            logger.info("Checking caDSR API health...")
+            response = requests.get(test_url, timeout=30, headers={"accept": "application/json"})
+            response.raise_for_status()
+            logger.info("caDSR API is healthy and responsive")
+            return True
+        except requests.RequestException as e:
+            logger.error("caDSR API health check failed: %s", e)
+            return False
 
     def get_valueset_from_json(
         self,
@@ -115,7 +132,13 @@ class CADSRClient:
         else:
             return vs
 
-    @stamina.retry(on=requests.RequestException, attempts=DEFAULT_RETRIES)
+    @stamina.retry(
+        on=requests.RequestException,
+        attempts=DEFAULT_RETRIES,
+        wait_initial=2.0,
+        wait_max=30.0,
+        wait_jitter=1.0,  # Add ±1s random delay so 100 failed requests don't all retry at exact same time
+    )
     def fetch_cde_valueset(
         self,
         cde_id: str,
