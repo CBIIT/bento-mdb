@@ -19,7 +19,7 @@ import stamina
 import yaml
 from tqdm import tqdm
 
-from bento_mdb.constants import NCIM_TSV_NAME
+from bento_mdb.constants import CADSR_WORKFLOW_STATUS_DRAFT_NEW, NCIM_TSV_NAME
 
 if TYPE_CHECKING:
     from bento_mdb.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
@@ -153,14 +153,110 @@ class CADSRClient:
         else:
             return value_set
 
+    @stamina.retry(on=requests.RequestException, attempts=DEFAULT_RETRIES)
+    def fetch_cde_details(
+        self,
+        cde_id: str,
+        cde_version: str | None = None,
+    ) -> dict:
+        """Fetch CDE metadata (name, definition, status) from caDSR API."""
+        url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id}"
+        if cde_version:
+            url += f"?version={cde_version}"
+        headers = {"accept": "application/json"}
+        
+        logger.info("Fetching CDE details from caDSR: %s", url)
+        response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        if not data or "DataElement" not in data:
+            logger.warning("No CDE details found for %s", cde_id)
+            return {}
+        
+        cde = data["DataElement"]
+        return {
+            "CDECode": cde.get("publicId"),
+            "CDEVersion": cde.get("version"),
+            "CDEFullName": cde.get("longName"),
+            "CDEWorkflowStatus": cde.get("workflowStatus"),
+            "CDEOrigin": cde.get("origin")
+        }
+
+    def _check_draft_new_cde_changes(
+        self,
+        cadsr_cde_details: dict,
+        cadsr_pvs: list[PermissibleValue | None],
+        mdb_pv_objects: list[PermissibleValue],
+        cde_spec: MDBCDESpec,
+        annotation_spec: AnnotationSpec
+    ) -> bool:
+        """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
+        is_updated = False
+
+        # Check for removed PVs - compare by origin_id for accuracy
+        cadsr_pv_ids = {pv["origin_id"] for pv in cadsr_pvs if pv}
+        removed_pv_objects = [
+            {
+                "value": pv["value"], 
+                "origin_id": pv["origin_id"],
+                "origin_version": pv.get("origin_version", ""),
+            }
+            for pv in mdb_pv_objects 
+            if pv["origin_id"] not in cadsr_pv_ids
+        ]
+        if removed_pv_objects:
+            removed_values = [pv["value"] for pv in removed_pv_objects]
+            logger.info(
+                "Removed PVs (by origin_id) from caDSR for %sv%s: %s",
+                cde_spec["CDECode"],
+                cde_spec.get("CDEVersion"),
+                removed_values,
+            )
+            is_updated = True
+            annotation_spec["removed_pvs"] = removed_pv_objects  # type: ignore
+
+        # Check name change
+        if cadsr_cde_details.get("CDEFullName") != cde_spec["CDEFullName"]:
+            logger.info(
+                "CDE name changed for %s: '%s' -> '%s'",
+                cde_spec["CDECode"],
+                cde_spec["CDEFullName"],
+                cadsr_cde_details.get("CDEFullName"),
+            )
+            is_updated = True
+            annotation_spec["CDEFullName"] = cadsr_cde_details["CDEFullName"]
+
+        # Check CDEVersion change
+        if cadsr_cde_details.get("CDEVersion") and cadsr_cde_details.get("CDEVersion") != cde_spec.get("CDEVersion"):
+            logger.info(
+                "CDE version changed for %s: '%s' -> '%s'",
+                cde_spec["CDECode"],
+                cde_spec.get("CDEVersion"),
+                cadsr_cde_details.get("CDEVersion"),
+            )
+            is_updated = True
+            annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
+
+        # For DRAFT NEW CDEs, log the status only if changes found
+        if is_updated:
+            logger.info(
+                "DRAFT NEW CDE detected for %s with status: '%s'",
+                cde_spec["CDECode"],
+                cadsr_cde_details.get("CDEWorkflowStatus"),
+            )
+
+        return is_updated
+
     def check_cdes_against_mdb(
         self,
         mdb_cdes: list[MDBCDESpec],
     ) -> list[AnnotationSpec]:
-        """For MDB CDEs with PVs, check caDSR for new PVs."""
+        """For MDB CDEs with PVs, check caDSR for new PVs and field changes."""
         result = []
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
+            mdb_pv_objects = cde_spec["permissibleValues"]
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
@@ -185,6 +281,7 @@ class CADSRClient:
                 "value_set": [],
             }
             update_annotation = False
+            # Check for new PVs
             for pv in cadsr_pvs:
                 if not pv:
                     logger.exception(
@@ -198,6 +295,21 @@ class CADSRClient:
                 logger.info("New PV found: %s", pv["value"])
                 update_annotation = True
                 annotation_spec["value_set"].append(pv)
+
+            # Check for removed PVs and metadata changes (only for DRAFT NEW CDEs)
+            cadsr_cde_details = self.fetch_cde_details(
+                cde_id=cde_spec["CDECode"],
+                cde_version=cde_spec.get("CDEVersion"),
+            )
+            if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
+                update_annotation |= self._check_draft_new_cde_changes(
+                    cadsr_cde_details,
+                    cadsr_pvs,
+                    mdb_pv_objects,
+                    cde_spec,
+                    annotation_spec,
+                )
+            
             if not update_annotation:
                 continue
             result.append(annotation_spec)
