@@ -39,8 +39,6 @@ def get_logger():
     except RuntimeError:
         return logging.getLogger(__name__)
 
-logger = get_logger()
-
 def get_last_sync_date(
     source: str,
     yaml_path: Path = SYNC_STATUS_YAML,
@@ -68,6 +66,7 @@ class CADSRClient:
         json_response: dict,
     ) -> list[PermissibleValue | None]:
         """Get value set from JSON response."""
+        logger = get_logger()
         try:
             vs = []
             cde_pvs = json_response["DataElement"]["ValueDomain"].get(
@@ -127,6 +126,7 @@ class CADSRClient:
         cde_id: str,
         cde_version: str | None = None,
         entity_key: str | None = None,
+        logger: logging.Logger = get_logger(),
     ) -> list[PermissibleValue | None]:
         """Fetch CDE value set from caDSR II API."""
         ver_str = (
@@ -165,6 +165,7 @@ class CADSRClient:
         self,
         cde_id: str,
         cde_version: str | None = None,
+        logger: logging.Logger = get_logger(),
     ) -> dict:
         """Fetch CDE metadata (name, definition, status) from caDSR API."""
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id}"
@@ -196,7 +197,8 @@ class CADSRClient:
         cadsr_pvs: list[PermissibleValue | None],
         mdb_pv_objects: list[PermissibleValue],
         cde_spec: MDBCDESpec,
-        annotation_spec: AnnotationSpec
+        annotation_spec: AnnotationSpec,
+        logger: logging.Logger = get_logger(),
     ) -> bool:
         """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
         is_updated = False
@@ -260,6 +262,7 @@ class CADSRClient:
         mdb_cdes: list[MDBCDESpec],
     ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check caDSR for new PVs and field changes."""
+        logger = get_logger()
         result = []
         logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
@@ -268,6 +271,7 @@ class CADSRClient:
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
+                logger=logger,
             )
             if not cadsr_pvs:
                 logger.exception(
@@ -308,6 +312,7 @@ class CADSRClient:
             cadsr_cde_details = self.fetch_cde_details(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
+                logger=logger,
             )
             if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
                 update_annotation |= self._check_draft_new_cde_changes(
@@ -316,6 +321,7 @@ class CADSRClient:
                     mdb_pv_objects,
                     cde_spec,
                     annotation_spec,
+                    logger=logger,
                 )
             
             if not update_annotation:
