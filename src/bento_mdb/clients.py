@@ -66,6 +66,7 @@ class CADSRClient:
     def get_valueset_from_json(
         self,
         json_response: dict,
+        run_logger: logging.Logger = get_logger(),
     ) -> list[PermissibleValue | None]:
         """Get value set from JSON response."""
         try:
@@ -75,7 +76,7 @@ class CADSRClient:
                 [],
             )
             if not cde_pvs:
-                logger.warning(
+                run_logger.warning(
                     "No permissible values found for CDE %s v%s",
                     json_response["DataElement"]["publicId"],
                     json_response["DataElement"]["version"],
@@ -98,7 +99,7 @@ class CADSRClient:
                     pv_dict["ncit_concept_codes"].append(concept["conceptCode"])
                     if len(vm_concepts) > 1:
                         msg = "Multiple NCIt concepts found for PV %s: %sv%s"
-                        logger.warning(
+                        run_logger.warning(
                             msg,
                             pv["value"],
                             pv["ValueMeaning"]["publicId"],
@@ -116,7 +117,7 @@ class CADSRClient:
                 vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}"
-            logger.exception(msg)
+            run_logger.exception(msg)
             return []
         else:
             return vs
@@ -127,6 +128,7 @@ class CADSRClient:
         cde_id: str,
         cde_version: str | None = None,
         entity_key: str | None = None,
+        run_logger: logging.Logger = get_logger(),
     ) -> list[PermissibleValue | None]:
         """Fetch CDE value set from caDSR II API."""
         ver_str = (
@@ -139,23 +141,23 @@ class CADSRClient:
         headers = {"accept": "application/json"}
 
         try:
-            logger.info("Fetching CDE value set from caDSR: %s", cde_id_ver_str)
+            run_logger.info("Fetching CDE value set from caDSR: %s", cde_id_ver_str)
             response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
             response.raise_for_status()
             json_response = response.json()
-            value_set = self.get_valueset_from_json(json_response)
+            value_set = self.get_valueset_from_json(json_response, run_logger=run_logger)
         except JSONDecodeError as e:
             msg = (
                 f"Failed to parse JSON response for entity{entity_key}: {e}\nurl: {url}"
             )
-            logger.exception(msg)
+            run_logger.exception(msg)
             return []
         except requests.HTTPError:
             msg = (
                 f"HTTP error fetching value set for CDE {cde_id}v{cde_version}"
                 f" for entity {entity_key}"
             )
-            logger.exception(msg)
+            run_logger.exception(msg)
             return []
         else:
             return value_set
@@ -165,6 +167,7 @@ class CADSRClient:
         self,
         cde_id: str,
         cde_version: str | None = None,
+        run_logger: logging.Logger = get_logger(),
     ) -> dict:
         """Fetch CDE metadata (name, definition, status) from caDSR API."""
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id}"
@@ -172,13 +175,13 @@ class CADSRClient:
             url += f"?version={cde_version}"
         headers = {"accept": "application/json"}
         
-        logger.info("Fetching CDE details from caDSR: %s", url)
+        run_logger.info("Fetching CDE details from caDSR: %s", url)
         response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
         response.raise_for_status()
         
         data = response.json()
         if not data or not data.get("DataElement"):
-            logger.warning("No CDE details found for %s", cde_id)
+            run_logger.warning("No CDE details found for %s", cde_id)
             return {}
         
         cde = data["DataElement"]
@@ -196,7 +199,8 @@ class CADSRClient:
         cadsr_pvs: list[PermissibleValue | None],
         mdb_pv_objects: list[PermissibleValue],
         cde_spec: MDBCDESpec,
-        annotation_spec: AnnotationSpec
+        annotation_spec: AnnotationSpec,
+        run_logger: logging.Logger = get_logger(),
     ) -> bool:
         """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
         is_updated = False
@@ -214,7 +218,7 @@ class CADSRClient:
         ]
         if removed_pv_objects:
             removed_values = [pv["value"] for pv in removed_pv_objects]
-            logger.info(
+            run_logger.info(
                 "Removed PVs (by origin_id) from caDSR for %sv%s: %s",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
@@ -225,7 +229,7 @@ class CADSRClient:
 
         # Check name change
         if cadsr_cde_details.get("CDEFullName") != cde_spec["CDEFullName"]:
-            logger.info(
+            run_logger.info(
                 "CDE name changed for %s: '%s' -> '%s'",
                 cde_spec["CDECode"],
                 cde_spec["CDEFullName"],
@@ -236,7 +240,7 @@ class CADSRClient:
 
         # Check CDEVersion change
         if cadsr_cde_details.get("CDEVersion") and cadsr_cde_details.get("CDEVersion") != cde_spec.get("CDEVersion"):
-            logger.info(
+            run_logger.info(
                 "CDE version changed for %s: '%s' -> '%s'",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
@@ -247,7 +251,7 @@ class CADSRClient:
 
         # For DRAFT NEW CDEs, log the status only if changes found
         if is_updated:
-            logger.info(
+            run_logger.info(
                 "DRAFT NEW CDE detected for %s with status: '%s'",
                 cde_spec["CDECode"],
                 cadsr_cde_details.get("CDEWorkflowStatus"),
@@ -260,17 +264,19 @@ class CADSRClient:
         mdb_cdes: list[MDBCDESpec],
     ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check caDSR for new PVs and field changes."""
+        run_logger = get_logger()
         result = []
-        logger.info("total cdes to check: %s", len(mdb_cdes))
+        run_logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             mdb_pv_objects = cde_spec["permissibleValues"]
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
+                run_logger=run_logger,
             )
             if not cadsr_pvs:
-                logger.exception(
+                run_logger.exception(
                     "Error fetching PVs from caDSR for %sv%s",
                     cde_spec["CDECode"],
                     cde_spec.get("CDEVersion"),
@@ -292,7 +298,7 @@ class CADSRClient:
             # Check for new PVs
             for pv in cadsr_pvs:
                 if not pv:
-                    logger.exception(
+                    run_logger.exception(
                         "PVs from caDSR for %sv%s are null",
                         cde_spec["CDECode"],
                         cde_spec.get("CDEVersion"),
@@ -300,7 +306,7 @@ class CADSRClient:
                     continue
                 if pv["value"] in mdb_pvs:
                     continue
-                logger.info("New PV found: %s", pv["value"])
+                run_logger.info("New PV found: %s", pv["value"])
                 update_annotation = True
                 annotation_spec["value_set"].append(pv)
 
@@ -308,6 +314,7 @@ class CADSRClient:
             cadsr_cde_details = self.fetch_cde_details(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
+                run_logger=run_logger,
             )
             if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
                 update_annotation |= self._check_draft_new_cde_changes(
@@ -316,6 +323,7 @@ class CADSRClient:
                     mdb_pv_objects,
                     cde_spec,
                     annotation_spec,
+                    run_logger=run_logger,
                 )
             
             if not update_annotation:
