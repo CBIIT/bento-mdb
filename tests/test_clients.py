@@ -303,6 +303,20 @@ class TestCADSRClient:
         actual = self.client.fetch_cde_valueset("11524549", "1")
         assert_equal(actual, [])
 
+    def test_fetch_cde_details_dataelement_none(self, fake_requests_get) -> None:
+        """Test fetch_cde_details handles None DataElement gracefully."""
+        response = {"DataElement": None}
+        fake_requests_get(response)
+        actual = self.client.fetch_cde_details("15260691", "1")
+        assert_equal(actual, {})
+
+    def test_fetch_cde_details_empty_response(self, fake_requests_get) -> None:
+        """Test fetch_cde_details handles empty response."""
+        response = {}
+        fake_requests_get(response)
+        actual = self.client.fetch_cde_details("15260691", "1")
+        assert_equal(actual, {})
+
     def test_check_cdes_against_mdb_no_updates(self, monkeypatch) -> None:
         client = CADSRClient()
         monkeypatch.setattr(
