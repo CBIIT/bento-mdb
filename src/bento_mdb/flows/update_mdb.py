@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import shutil
 import stat
 import tempfile
@@ -15,6 +16,7 @@ from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
+from bento_mdb.mdb_utils import init_mdb_connection
 from bento_mdb.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
 
 # liquibase constants
@@ -135,6 +137,90 @@ def run_liquibase_update(  # noqa: C901, PLR0912
             except Exception:
                 logger.exception("Error reading Liquibase logs from %s", log_file)
 
+@task
+def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]:
+    """Split changelog file into smaller files, each smaller file contains at most max_changesets changesets.
+    
+    This function properly parses XML to find changeset boundaries, regardless of how many lines
+    each changeset spans. Changesets can have varying numbers of lines depending on the Cypher query content.
+    """
+    logger = get_run_logger()
+    changelog_path = Path(changelog_file)
+    
+    # Read the entire file content
+    with changelog_path.open("r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # Extract the XML header (first line) and databaseChangeLog opening tag
+    # Find the opening databaseChangeLog tag with all its attributes
+    header_match = re.search(
+        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
+        content,
+        re.MULTILINE | re.DOTALL
+    )
+    if not header_match:
+        msg = "Could not find databaseChangeLog header in changelog file"
+        raise ValueError(msg)
+    
+    header = header_match.group(1)
+    closing_tag = "</databaseChangeLog>"
+    
+    # Find all changesets using regex that handles multi-line content
+    # This pattern matches from <changeSet to </changeSet> including all content in between
+    changeset_pattern = re.compile(
+        r'(<changeSet[^>]*>.*?</changeSet>)',
+        re.DOTALL
+    )
+    changesets = changeset_pattern.findall(content)
+    
+    total_changesets = len(changesets)
+    logger.info("Found %d changesets in changelog file", total_changesets)
+    
+    if total_changesets == 0:
+        msg = "No changesets found in changelog file"
+        raise ValueError(msg)
+    
+    smaller_changelog_files = []
+    
+    # Split changesets into chunks
+    num_splits = (total_changesets + max_changesets - 1) // max_changesets
+    logger.info("Splitting into %d files (max %d changesets per file)", num_splits, max_changesets)
+    
+    for split_idx in range(num_splits):
+        start_idx = split_idx * max_changesets
+        end_idx = min(start_idx + max_changesets, total_changesets)
+        chunk_changesets = changesets[start_idx:end_idx]
+        
+        # Create split file with suffix 1, 2, 3, etc.
+        file_suffix = split_idx + 1
+        smaller_changelog_file = changelog_path.with_name(
+            f"{changelog_path.stem}_{file_suffix}.xml"
+        )
+        
+        # Write the split file with proper XML structure
+        with smaller_changelog_file.open("w", encoding="utf-8") as f:
+            f.write(header + "\n")
+            for changeset in chunk_changesets:
+                # Add proper indentation (2 spaces) for readability
+                # Split the changeset into lines and indent each line
+                changeset_lines = changeset.split("\n")
+                for line in changeset_lines:
+                    if line.strip():  # Skip empty lines
+                        f.write("  " + line + "\n")
+            f.write(closing_tag + "\n")
+        
+        smaller_changelog_files.append(smaller_changelog_file)
+        logger.info(
+            "Created split file %d/%d: %s (%d changesets, %.2f MB)",
+            split_idx + 1,
+            num_splits,
+            smaller_changelog_file.name,
+            len(chunk_changesets),
+            smaller_changelog_file.stat().st_size / (1024 * 1024),
+        )
+    
+    logger.info("Successfully split changelog into %d files", len(smaller_changelog_files))
+    return smaller_changelog_files
 
 @flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
@@ -157,28 +243,51 @@ def liquibase_update_flow(
     if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
         plb_logger.addHandler(APILogHandler())
 
-    defaults_file, log_file = set_defaults_file(
-        changelog_file,
-        mdb_id,
-        log_level,
+    # generate code to read from changelog file and run the Cypher statements on the MDB
+    with open(changelog_file, "r") as f:
+        content = f.read()
+    
+    # Extract the XML header (first line) and databaseChangeLog opening tag
+    # Find the opening databaseChangeLog tag with all its attributes
+    header_match = re.search(
+        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
+        content,
+        re.MULTILINE | re.DOTALL
     )
-    # print out the contents of the defaults file
-    raw = Path(defaults_file).read_text().splitlines()  # type:ignore reportArgumentType
-    for line in raw:
-        if line.lower().startswith("password"):
-            logger.info("password: ********")
-        else:
-            logger.info(line)
-    logger.info("Changelog file: %s", Path(changelog_file).resolve())
-
+    if not header_match:
+        msg = "Could not find databaseChangeLog header in changelog file"
+        raise ValueError(msg)
+    
+    # Find all changesets using regex that handles multi-line content
+    # This pattern matches from <changeSet to </changeSet> including all content in between
+    changeset_pattern = re.compile(
+        r'(<changeSet[^>]*>.*?</changeSet>)',
+        re.DOTALL
+    )
+    changesets = changeset_pattern.findall(content)
+    
+    total_changesets = len(changesets)
+    logger.info("Found %d changesets in changelog file", total_changesets)
+    
+    if total_changesets == 0:
+        msg = "No changesets found in changelog file"
+        raise ValueError(msg)
+    
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
+    num = 0
     try:
-        run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
+        for changeset in changesets:
+            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
+            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            # make these replacements in a more efficient way
+            cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
+            mdb.put_with_statement(cypher_statement)
+            num = num + 1
+            logger.info("Completed changelog update %d", num)
+    except Exception:
+        logger.exception("Error in changelog update")
+        raise
     finally:
-        defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-        if log_file.exists():
-            try:
-                log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
-            except Exception:
-                logger.exception("Error deleting log file %s", log_file)
+        mdb.close()
 
     logger.info("Liquibase finished.")

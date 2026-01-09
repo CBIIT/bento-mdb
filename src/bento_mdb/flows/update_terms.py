@@ -184,7 +184,6 @@ def commit_new_files(files: list[Path]) -> list:
 def update_terms(
     mdb_id: str,
     author: str,
-    output_file: str | Path | None = None,
     commit: str | None = None,
     *,
     no_commit: bool = False,
@@ -192,11 +191,6 @@ def update_terms(
     """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
     logger = get_run_logger()
     today = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d")
-    if output_file is None:
-        output_file = Path(f"data/output/mdb_cdes/mdb_cdes_{mdb_id}_{today}.json")
-    else:
-        output_file = Path(output_file)
-    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     mdb_cdes = get_current_mdb_cdes(mdb_id)
     update_cde_spec = update_mdb_cdes_from_term_sources(mdb_cdes)
@@ -208,17 +202,13 @@ def update_terms(
     changelog_file.parent.mkdir(parents=True, exist_ok=True)
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
 
-    # Update mdb_cdes JSON file
-    with output_file.open("w", encoding="utf-8") as f:
-        json.dump(mdb_cdes, f, indent=2)
-
     if changelog.count_changesets() == 0:
         logger.info("No changesets to commit")
         no_commit = True
 
     if not no_commit:
         logger.info("Committing changes...")
-        commit_new_files([output_file, changelog_file])
+        commit_new_files([changelog_file])
 
     # Print changlog file as JSON for GitHub Actions
     make_changelog_output_more_visible(changelog_file)

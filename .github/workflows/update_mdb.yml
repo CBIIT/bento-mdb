@@ -29,8 +29,6 @@ on:
         required: true
       PREFECT_API_URL:
         required: true
-      GH_PAT:
-        required: true
 
 jobs:
   update-mdb:

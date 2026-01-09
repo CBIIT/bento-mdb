@@ -39,6 +39,8 @@ if __name__=="__main__":
   
   app = cdk.App()
 
+  #stack_name="{}-{}".format(config['main']['resource_prefix'], config['main']['tier'])
+  #stack_name=f"{config['main']['resource_prefix']}-{config['main']['tier']}"
   stack = Stack(
     app,
     stack_name="{}-{}".format(config['main']['resource_prefix'], config['main']['tier']),

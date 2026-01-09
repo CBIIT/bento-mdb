@@ -80,5 +80,6 @@ class MDBCDESpec(TypedDict):
     CDEVersion: str | None
     CDEFullName: str
     CDEOrigin: str
+    CDEWorkflowStatus: str | None
     models: list[MDBModelSpec]
     permissibleValues: list[PermissibleValue]

@@ -80,6 +80,137 @@ def mock_ncit_client():
     return client
 
 
+@pytest.fixture
+def mdb_cde_with_three_pvs():
+    """Fixture: MDB CDE with 3 PVs (Breast, Brain, Bone) for testing removed PV detection."""
+    return [
+        {
+            "CDECode": "15260691",
+            "CDEVersion": "1",
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEOrigin": "caDSR",
+            "models": [],
+            "permissibleValues": [
+                {
+                    "value": "Breast",
+                    "origin_id": "2561089",
+                    "origin_definition": "Breast definition",
+                    "origin_version": "1",
+                    "origin_name": "caDSR",
+                    "ncit_concept_codes": ["C12971"],
+                    "synonyms": [],
+                },
+                {
+                    "value": "Brain",
+                    "origin_id": "2558329",
+                    "origin_definition": "Brain definition",
+                    "origin_version": "1",
+                    "origin_name": "caDSR",
+                    "ncit_concept_codes": ["C12439"],
+                    "synonyms": [],
+                },
+                {
+                    "value": "Bone",
+                    "origin_id": "2816296",
+                    "origin_definition": "Bone definition",
+                    "origin_version": "1",
+                    "origin_name": "caDSR",
+                    "ncit_concept_codes": ["C12366"],
+                    "synonyms": [],
+                },
+            ],
+        }
+    ]
+
+
+@pytest.fixture
+def cadsr_response_two_pvs():
+    """Fixture: caDSR response with 2 PVs (Breast, Brain) - Bone PV removed from caDSR."""
+    return [
+        {
+            "value": "Breast",
+            "origin_id": "2561089",
+            "origin_definition": "Breast definition",
+            "origin_version": "1",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C12971"],
+            "synonyms": [],
+        },
+        {
+            "value": "Brain",
+            "origin_id": "2558329",
+            "origin_definition": "Brain definition",
+            "origin_version": "1",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C12439"],
+            "synonyms": [],
+        },
+    ]
+
+
+@pytest.fixture
+def mdb_cde_with_changed_name():
+    """Fixture: MDB CDE with old name for testing metadata change detection."""
+    return [
+        {
+            "CDECode": "15260691",
+            "CDEVersion": "1",
+            "CDEFullName": "Disease Primary Anatomic Site",  # Old name (before update)
+            "CDEOrigin": "caDSR",
+            "CDEDefinition": "Old definition",
+            "models": [],
+            "permissibleValues": [
+                {
+                    "value": "Breast",
+                    "origin_id": "2561089",
+                    "origin_definition": "Breast definition",
+                    "origin_version": "1",
+                    "origin_name": "caDSR",
+                    "ncit_concept_codes": ["C12971"],
+                    "synonyms": [],
+                },
+            ],
+        }
+    ]
+
+
+@pytest.fixture
+def cadsr_cde_with_new_name():
+    """Fixture: caDSR CDE metadata with new name and DRAFT NEW workflow status."""
+    return {
+        "CDECode": "15260691",
+        "CDEVersion": "1",
+        "CDEFullName": "Disease Primary Anatomic Site Category",  # New name (after update)
+        "CDEDefinition": "New definition",
+        "workflowStatus": "DRAFT NEW",  # caDSR API field name for workflow status
+    }
+
+
+@pytest.fixture
+def cadsr_response_with_new_pv():
+    """Fixture: caDSR response with new PV (Data Redacted)."""
+    return [
+        {
+            "value": "Not Reported",
+            "origin_id": "2181620",
+            "origin_definition": "Not provided",
+            "origin_version": "1",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C17998"],
+            "synonyms": [],
+        },
+        {
+            "value": "Data Redacted",
+            "origin_id": "2181621",
+            "origin_definition": "Data suppressed",
+            "origin_version": "1",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C25474"],
+            "synonyms": [],
+        },
+    ]
+
+
 class TestCADSRClient:
     """Tests for CADSRClient."""
 
@@ -302,6 +433,12 @@ class TestCADSRClient:
             "fetch_cde_valueset",
             lambda cde_id, cde_version: TEST_CADSR_RESPONSE_MDB_CDES,
         )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
+        )
 
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         assert_equal(annotations, [])
@@ -337,6 +474,12 @@ class TestCADSRClient:
             "fetch_cde_valueset",
             lambda cde_id, cde_version: test_response_new_pv,
         )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
+        )
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         expected_annotations = [
             AnnotationSpec(
@@ -365,6 +508,12 @@ class TestCADSRClient:
             client,
             "fetch_cde_valueset",
             lambda cde_id, cde_version: [],
+        )
+        # Mock fetch_cde_details to avoid network call
+        monkeypatch.setattr(
+            client,
+            "fetch_cde_details",
+            lambda cde_id, cde_version: {},
         )
         with caplog.at_level(logging.ERROR):
             result = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
@@ -513,3 +662,116 @@ class TestNCItClient:
             (x["model"], x["version"]) for x in TEST_MDB_CDE_SPEC["models"]
         }
         assert_equal(annotations, expected_annotations)
+
+    def test_check_cdes_against_mdb_detect_removed_pvs(
+        self,
+        mdb_cde_with_three_pvs,
+        cadsr_response_two_pvs,
+    ) -> None:
+        """Test that removed PVs are detected when DRAFT NEW CDE has fewer PVs in caDSR.
+
+        This test verifies that when a DRAFT NEW CDE is checked against MDB:
+        - MDB has: [Breast, Brain, Bone]
+        - caDSR has: [Breast, Brain] (Bone removed)
+        - Result: removed_pvs = ["Bone"]
+        """
+        client = CADSRClient()
+        import unittest.mock as mock
+        # Return DRAFT NEW status to trigger _check_draft_new_cde_changes
+        cadsr_cde_details_draft_new = {
+            "CDECode": "15260691",
+            "CDEVersion": "1",
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEWorkflowStatus": "DRAFT NEW",
+        }
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_response_two_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_draft_new):
+                annotations = client.check_cdes_against_mdb(mdb_cde_with_three_pvs)
+
+        # Verify removed PVs are detected (now includes origin_id and origin_version)
+        assert len(annotations) > 0
+        assert "removed_pvs" in annotations[0]
+        assert len(annotations[0]["removed_pvs"]) == 1
+        assert annotations[0]["removed_pvs"][0]["value"] == "Bone"
+        assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
+        assert "origin_version" in annotations[0]["removed_pvs"][0]
+
+    def test_check_cdes_against_mdb_detect_metadata_change(
+        self,
+        mdb_cde_with_changed_name,
+        cadsr_cde_with_new_name,
+    ) -> None:
+        """Test detection of CDE metadata changes when DRAFT NEW CDE name changes.
+
+        This test verifies that when a DRAFT NEW CDE name is updated:
+        - MDB has old name: "Disease Primary Anatomic Site"
+        - caDSR has new name: "Disease Primary Anatomic Site Category"
+        - Result: annotation is returned with CDEFullName field set
+        """
+        # Get the Breast PV from the fixture for caDSR response
+        cadsr_pvs = [mdb_cde_with_changed_name[0]["permissibleValues"][0]]
+
+        client = CADSRClient()
+        import unittest.mock as mock
+        # Ensure DRAFT NEW status is set to trigger _check_draft_new_cde_changes
+        cadsr_cde_details = dict(cadsr_cde_with_new_name)
+        cadsr_cde_details["CDEWorkflowStatus"] = "DRAFT NEW"
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details):
+                annotations = client.check_cdes_against_mdb(mdb_cde_with_changed_name)
+
+        # Verify metadata change is detected (annotation should be returned)
+        assert len(annotations) > 0
+        assert annotations[0]["entity"] == {}
+        assert annotations[0]["annotation"]["key"] == ('Disease Primary Anatomic Site', 'caDSR')
+        # Verify CDEFullName is stored in annotation_spec
+        assert "CDEFullName" in annotations[0]
+        assert annotations[0]["CDEFullName"] == "Disease Primary Anatomic Site Category"
+
+    def test_check_cdes_against_mdb_detect_version_change(self) -> None:
+        """Test detection of CDE version changes when DRAFT NEW CDE version updates.
+
+        This test verifies that when a DRAFT NEW CDE version is updated:
+        - MDB has version: "1"
+        - caDSR has version: "2"
+        - Result: annotation is returned with CDEVersion field set
+        """
+        mdb_cde_old_version = [
+            {
+                "CDECode": "15260691",
+                "CDEVersion": "1",
+                "CDEFullName": "Disease Primary Anatomic Site Category",
+                "CDEOrigin": "caDSR",
+                "models": [],
+                "permissibleValues": [
+                    {
+                        "value": "Breast",
+                        "origin_id": "2561089",
+                        "origin_definition": "Breast definition",
+                        "origin_version": "1",
+                        "origin_name": "caDSR",
+                        "ncit_concept_codes": ["C12971"],
+                        "synonyms": [],
+                    },
+                ],
+            }
+        ]
+
+        cadsr_pvs = [mdb_cde_old_version[0]["permissibleValues"][0]]
+        cadsr_cde_details_new_version = {
+            "CDECode": "15260691",
+            "CDEVersion": "2",  # New version
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEWorkflowStatus": "DRAFT NEW",
+        }
+
+        client = CADSRClient()
+        import unittest.mock as mock
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_new_version):
+                annotations = client.check_cdes_against_mdb(mdb_cde_old_version)
+
+        # Verify version change is detected
+        assert len(annotations) > 0
+        assert "CDEVersion" in annotations[0]
+        assert annotations[0]["CDEVersion"] == "2"
