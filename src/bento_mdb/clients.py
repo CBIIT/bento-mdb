@@ -133,6 +133,7 @@ class CADSRClient:
         headers = {"accept": "application/json"}
 
         try:
+            logger.info("Fetching CDE value set from caDSR: %s", cde_id_ver_str)
             response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
             response.raise_for_status()
             json_response = response.json()
