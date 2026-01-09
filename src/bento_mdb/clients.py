@@ -171,7 +171,7 @@ class CADSRClient:
         response.raise_for_status()
         
         data = response.json()
-        if not data or "DataElement" not in data:
+        if not data or not data.get("DataElement"):
             logger.warning("No CDE details found for %s", cde_id)
             return {}
         
