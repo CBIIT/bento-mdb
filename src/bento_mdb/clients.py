@@ -6,6 +6,7 @@ import csv
 import datetime
 import io
 import logging
+from prefect import get_run_logger
 import os
 import re
 import subprocess
@@ -32,8 +33,13 @@ DEFAULT_RETRY_DELAY = 1.0
 
 SYNC_STATUS_YAML = Path("config/sync_status.yml")
 
-logger = logging.getLogger(__name__)
+def get_logger():
+    try:
+        return get_run_logger()
+    except RuntimeError:
+        return logging.getLogger(__name__)
 
+logger = get_logger()
 
 def get_last_sync_date(
     source: str,
@@ -255,6 +261,7 @@ class CADSRClient:
     ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check caDSR for new PVs and field changes."""
         result = []
+        logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             mdb_pv_objects = cde_spec["permissibleValues"]
