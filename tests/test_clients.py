@@ -322,13 +322,13 @@ class TestCADSRClient:
         monkeypatch.setattr(
             client,
             "fetch_cde_valueset",
-            lambda cde_id, cde_version: TEST_CADSR_RESPONSE_MDB_CDES,
+            lambda cde_id, cde_version, **kwargs: TEST_CADSR_RESPONSE_MDB_CDES,
         )
         # Mock fetch_cde_details to avoid network call
         monkeypatch.setattr(
             client,
             "fetch_cde_details",
-            lambda cde_id, cde_version: {},
+            lambda cde_id, cde_version, **kwargs: {},
         )
 
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
@@ -363,13 +363,13 @@ class TestCADSRClient:
         monkeypatch.setattr(
             client,
             "fetch_cde_valueset",
-            lambda cde_id, cde_version: test_response_new_pv,
+            lambda cde_id, cde_version, **kwargs: test_response_new_pv,
         )
         # Mock fetch_cde_details to avoid network call
         monkeypatch.setattr(
             client,
             "fetch_cde_details",
-            lambda cde_id, cde_version: {},
+            lambda cde_id, cde_version, **kwargs: {},
         )
         annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         expected_annotations = [
@@ -398,13 +398,13 @@ class TestCADSRClient:
         monkeypatch.setattr(
             client,
             "fetch_cde_valueset",
-            lambda cde_id, cde_version: [],
+            lambda cde_id, cde_version, **kwargs: [],
         )
         # Mock fetch_cde_details to avoid network call
         monkeypatch.setattr(
             client,
             "fetch_cde_details",
-            lambda cde_id, cde_version: {},
+            lambda cde_id, cde_version, **kwargs: {},
         )
         with caplog.at_level(logging.ERROR):
             result = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
