@@ -4,7 +4,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "12 5 * * 6" # runs weekly on Saturday at 05:12 UTC/01:12 AM ET
+    - cron: "0 22 * * *" # runs every night at 10:00pm EST
   workflow_dispatch:
     inputs:
       author:
