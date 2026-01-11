@@ -73,11 +73,11 @@ class CADSRClient:
             vs = []
             data_element = json_response.get("DataElement")
             if not data_element:
-                logger.warning("No DataElement found in JSON response")
+                run_logger.warning("No DataElement found in JSON response")
                 return vs
             value_domain = data_element.get("ValueDomain")
             if not value_domain:
-                logger.warning("No ValueDomain found for CDE %s v%s", data_element.get("publicId"), data_element.get("version"))
+                run_logger.warning("No ValueDomain found for CDE %s v%s", data_element.get("publicId"), data_element.get("version"))
                 return vs
             cde_pvs = value_domain.get(
                 "PermissibleValues",
@@ -107,13 +107,13 @@ class CADSRClient:
                         continue
                     pv_dict["ncit_concept_codes"].append(concept["conceptCode"])
                     if len(vm_concepts) > 1:
-                        msg = "Multiple NCIt concepts found for PV %s: %sv%s"
-                        run_logger.warning(
-                            msg,
-                            pv["value"],
-                            pv["ValueMeaning"]["publicId"],
-                            pv["ValueMeaning"]["version"],
-                        )
+                        # msg = "Multiple NCIt concepts found for PV %s: %sv%s"
+                        # run_logger.warning(
+                        #     msg,
+                        #     pv["value"],
+                        #     pv["ValueMeaning"]["publicId"],
+                        #     pv["ValueMeaning"]["version"],
+                        # )
                         continue  # TODO: break out of concepts loop?
                     pv_dict["synonyms"].append(
                         {
@@ -132,6 +132,7 @@ class CADSRClient:
                         alt_value = alt_name.get("name", "")
                         if alt_value and alt_value not in alternates_name_set:
                             alternates_name_set.add(alt_value)
+                            run_logger.info("Found alternative values for PV ( %s ): %s", pv["value"], alt_value)
                             pv_dict["alternates"].append({"value": alt_value})
                 
                 vs.append(pv_dict)
@@ -324,8 +325,8 @@ class CADSRClient:
                         cde_spec.get("CDEVersion"),
                     )
                     continue
-                if pv["value"] in mdb_pvs:
-                    continue
+                # if pv["value"] in mdb_pvs:
+                #     continue
                 run_logger.info("New PV found: %s", pv["value"])
                 update_annotation = True
                 annotation_spec["value_set"].append(pv)
