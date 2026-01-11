@@ -352,3 +352,74 @@ def deprecate_old_model_nodes_cypher_stmt(
         ),
         Statement(),
     )
+
+
+def generate_cypher_to_link_term_alternates(
+    pv_term: Entity,
+    alt_term: Entity,
+    _commit: str | None = DEFAULT_COMMIT,
+) -> Statement:
+    """
+    Generate cypher statement to link PV term to alternate name term via shared Concept node.
+    
+    Both terms are linked to the same concept node using the mapping_source tag alternate_name.
+    """
+    reset_pg_ent_counter()
+    cypher_pv = cypherize_entity(pv_term)
+    cypher_alt = cypherize_entity(alt_term)
+    cypher_concept = N(label="concept")
+    
+    pv_represents_concept = T(cypher_pv.plain_var(), R(Type="represents"), cypher_concept)
+    
+    concept_tag_trip = T(
+        cypher_concept,
+        R(Type="has_tag"),
+        N(
+            label="tag",
+            props={"key": "mapping_source", "value": "alternate_name"},
+        )
+    )
+    
+    pv_concept_path = G(pv_represents_concept, concept_tag_trip)
+    
+    cypher_pv_var = cypher_pv.plain_var().pattern()
+    cypher_alt_var = cypher_alt.plain_var().pattern()
+    cypher_concept_var = cypher_concept.plain_var().pattern()
+    
+    new_concept = N(label="concept", props={"_commit": _commit})
+    for cypher_ent in (cypher_pv, cypher_alt):
+        if "_commit" in cypher_ent.props:
+            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+    
+    return Statement(
+        Match(cypher_pv, cypher_alt),
+        Where(cypher_pv_var, "<>", cypher_alt_var, op=""),
+        With(cypher_pv_var, cypher_alt_var),
+        OptionalMatch(pv_concept_path),
+        With(cypher_pv_var, cypher_alt_var, cypher_concept_var),
+        "LIMIT 1",
+        With(cypher_pv_var, cypher_alt_var),
+        ",",
+        f"{Case()}{When(cypher_concept_var)} IS NOT NULL THEN {cypher_concept_var} ELSE NULL END AS existing_concept ",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NOT NULL THEN [1] ELSE [] END |",
+        Merge(f"{cypher_pv_var}-[:represents]->(existing_concept)"),
+        Merge(f"{cypher_alt_var}-[:represents]->(existing_concept)"),
+        ")",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NULL THEN [1] ELSE [] END |",
+        Create(new_concept),
+        Create(
+            T(
+                new_concept.plain_var(),
+                R("has_tag"),
+                N(
+                    label="tag",
+                    props={"key": "mapping_source", "value": "alternate_name"},
+                ),
+            ),
+        ),
+        Create(T(cypher_pv.plain_var(), R("represents"), new_concept.plain_var())),
+        Create(T(cypher_alt.plain_var(), R("represents"), new_concept.plain_var())),
+        ")"
+    )

@@ -71,15 +71,23 @@ class CADSRClient:
         """Get value set from JSON response."""
         try:
             vs = []
-            cde_pvs = json_response["DataElement"]["ValueDomain"].get(
+            data_element = json_response.get("DataElement")
+            if not data_element:
+                logger.warning("No DataElement found in JSON response")
+                return vs
+            value_domain = data_element.get("ValueDomain")
+            if not value_domain:
+                logger.warning("No ValueDomain found for CDE %s v%s", data_element.get("publicId"), data_element.get("version"))
+                return vs
+            cde_pvs = value_domain.get(
                 "PermissibleValues",
                 [],
             )
             if not cde_pvs:
                 run_logger.warning(
                     "No permissible values found for CDE %s v%s",
-                    json_response["DataElement"]["publicId"],
-                    json_response["DataElement"]["version"],
+                    data_element["publicId"],
+                    data_element["version"],
                 )
                 return vs
             for pv in cde_pvs:
@@ -91,6 +99,7 @@ class CADSRClient:
                     "origin_name": "caDSR",
                     "ncit_concept_codes": [],
                     "synonyms": [],
+                    "alternates": [],
                 }
                 vm_concepts = pv["ValueMeaning"].get("Concepts", [])
                 for concept in vm_concepts:
@@ -114,6 +123,17 @@ class CADSRClient:
                             "origin_name": "NCIt",
                         },
                     )
+                
+                # Extract alternate names from PV (without duplicates)
+                alt_names = pv["ValueMeaning"].get("Designations", [])
+                if alt_names:
+                    alternates_name_set = set()
+                    for alt_name in alt_names:
+                        alt_value = alt_name.get("name", "")
+                        if alt_value and alt_value not in alternates_name_set:
+                            alternates_name_set.add(alt_value)
+                            pv_dict["alternates"].append({"value": alt_value})
+                
                 vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}"

@@ -171,7 +171,7 @@ def add_ncit_synonyms_to_model_cde_spec(
                     continue
                 syn_dicts = ncit_client.ncim_mapping[code]
                 for syn_attrs in syn_dicts:
-                    pv["synonyms"].append(syn_attrs)
+                    pv["synonyms"].append(dict(syn_attrs))
 
         annotation["value_set"] = value_set
 

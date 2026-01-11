@@ -85,6 +85,10 @@ TEST_ANNOTATION_SPEC = AnnotationSpec(
                     "value": "Mus",
                 },
             ],
+            "alternates": [
+                {"value": "Murine"},
+                {"value": "Rodent"},
+            ]
         },
         {
             "value": "Human",

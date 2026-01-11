@@ -27,6 +27,7 @@ class PermissibleValue(TypedDict):
 
     id & definition refer to ValueMeaning of the Permissible Value.
     synonyms: initiated with NCIt synonym(s) from 'Concepts' for the PV if available.
+    alternates: alternate names (Designations) for the PV from caDSR (names only).
     """
 
     value: str
@@ -36,6 +37,7 @@ class PermissibleValue(TypedDict):
     origin_name: str
     ncit_concept_codes: list[str | None]
     synonyms: list[dict[str, str | None]]
+    alternates: list[dict[str, str]]
 
 
 class AnnotationSpec(TypedDict):

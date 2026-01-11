@@ -6,6 +6,7 @@ import copy
 import logging
 from typing import TYPE_CHECKING, cast
 
+from bento_meta.model import make_nanoid
 from bento_meta.objects import Term, ValueSet
 from liquichange.changelog import Changelog, Changeset, CypherChange
 from tqdm import tqdm
@@ -16,6 +17,7 @@ from bento_mdb.cypher_utils import (
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
     generate_cypher_to_link_term_synonyms,
+    generate_cypher_to_link_term_alternates
 )
 
 if TYPE_CHECKING:
@@ -119,37 +121,62 @@ def convert_annotation_to_changesets(
         if not pv:
             continue
         pv_copy = copy.deepcopy(pv)
-        # separate synonyms dict from pv attrs
+        # separate synonyms and alternates from pv attrs
         synonyms = cast("list[dict[str, str | None]]", pv_copy.pop("synonyms"))
+        pv_alternates = cast("list[dict[str, str]]", pv_copy.pop("alternates", []))
         pv_term = Term(pv_copy)
         pv_term._commit = _commit  # noqa: SLF001
         statements.append(create_entity_cypher_stmt(pv_term)[0])
         statements.append(
             create_relationship_cypher_stmt(cde_vs, "has_term", pv_term)[0],
         )
-        if not synonyms:
-            continue
-        ncit_term = Term(synonyms[0])  # first synonym is NCIt concept from caDSR
-        statements.append(create_entity_cypher_stmt(ncit_term)[0])
-        statements.append(
-            generate_cypher_to_link_term_synonyms(
-                pv_term,
-                ncit_term,
-                "caDSR",
-                _commit,
-            ),
-        )
-        for syn_attrs in synonyms[1:]:  # rest from NCIm mappings
-            syn_term = Term(syn_attrs)
-            statements.append(create_entity_cypher_stmt(syn_term)[0])
+
+        if synonyms:
+            ncit_term = Term(synonyms[0])  # first synonym is NCIt concept from caDSR
+            statements.append(create_entity_cypher_stmt(ncit_term)[0])
             statements.append(
                 generate_cypher_to_link_term_synonyms(
+                    pv_term,
                     ncit_term,
-                    syn_term,
-                    "NCIm",
+                    "caDSR",
                     _commit,
                 ),
             )
+            for syn_attrs in synonyms[1:]:  # rest from NCIm mappings
+                syn_term = Term(syn_attrs)
+                statements.append(create_entity_cypher_stmt(syn_term)[0])
+                statements.append(
+                    generate_cypher_to_link_term_synonyms(
+                        ncit_term,
+                        syn_term,
+                        "NCIm",
+                        _commit,
+                    ),
+                )
+        
+        # PV - alternate names as concepts via represents relationship
+        if pv_alternates:
+            for alt_dict in pv_alternates:
+                alt_name = alt_dict.get("value", "")
+                if not alt_name:
+                    continue
+                alt_attrs = {
+                    "nanoid": make_nanoid(),
+                    "value": alt_name,
+                    "origin_id": pv_term.origin_id,
+                    "origin_version": pv_term.origin_version,
+                    "origin_name": "caDSR_alternates",
+                    "_commit": _commit,
+                }
+                alt_term = Term(alt_attrs)
+                statements.append(create_entity_cypher_stmt(alt_term)[0])
+                statements.append(
+                    generate_cypher_to_link_term_alternates(
+                        pv_term,
+                        alt_term,
+                        _commit,
+                    ),
+                )
 
     # create changesets for each statement
     cs_id = changeset_id

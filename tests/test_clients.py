@@ -265,6 +265,7 @@ class TestCADSRClient:
                         "origin_name": "NCIt",
                     },
                 ],
+                "alternates": [],
             },
         ]
         assert_equal(actual, expected)
@@ -303,19 +304,127 @@ class TestCADSRClient:
         actual = self.client.fetch_cde_valueset("11524549", "1")
         assert_equal(actual, [])
 
-    def test_fetch_cde_details_dataelement_none(self, fake_requests_get) -> None:
-        """Test fetch_cde_details handles None DataElement gracefully."""
-        response = {"DataElement": None}
-        fake_requests_get(response)
-        actual = self.client.fetch_cde_details("15260691", "1")
-        assert_equal(actual, {})
+    def test_missing_valuedomain(self, fake_requests_get) -> None:
+        """Test that no PVs are returned when ValueDomain key is missing."""
+        missing_valuedomain_response = {
+            "DataElement": {"publicId": "11524549", "version": "1"},
+        }
+        fake_requests_get(missing_valuedomain_response)
+        actual = self.client.fetch_cde_valueset("11524549", "1")
+        assert_equal(actual, [])
 
-    def test_fetch_cde_details_empty_response(self, fake_requests_get) -> None:
-        """Test fetch_cde_details handles empty response."""
-        response = {}
-        fake_requests_get(response)
-        actual = self.client.fetch_cde_details("15260691", "1")
-        assert_equal(actual, {})
+    def test_get_valueset_from_json_with_alternates(self) -> None:
+        """Test that alternates are extracted from Designations in Valueset."""
+        response_with_alternates = {
+            "DataElement": {
+                "publicId": "11524549",
+                "version": "1",
+                "ValueDomain": {
+                    "PermissibleValues": [
+                        {
+                            "value": "Yes",
+                            "ValueMeaning": {
+                                "version": "1",
+                                "publicId": "2597927",
+                                "definition": "Affirmative response.",
+                                "Concepts": [
+                                    {
+                                        "longName": "Yes",
+                                        "conceptCode": "C25554",
+                                        "definition": "Affirmative response.",
+                                        "evsSource": "NCI_CONCEPT_CODE",
+                                        "primaryIndicator": "Yes",
+                                        "displayOrder": "0",
+                                    },
+                                ],
+                                "Designations": [
+                                    {"name": "Affirmative"},
+                                    {"name": "True"},
+                                    {"name": ""},  # Empty name should be skipped
+                                    {"name": "Affirmative"},  # Duplicate should be skipped
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+        actual = self.client.get_valueset_from_json(response_with_alternates)
+        expected = [
+            {
+                "value": "Yes",
+                "origin_version": "1",
+                "origin_id": "2597927",
+                "origin_definition": "Affirmative response.",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C25554"],
+                "synonyms": [
+                    {
+                        "value": "Yes",
+                        "origin_id": "C25554",
+                        "origin_definition": "Affirmative response.",
+                        "origin_name": "NCIt",
+                    },
+                ],
+                "alternates": [
+                    {"value": "Affirmative"},
+                    {"value": "True"},
+                ],
+            },
+        ]
+        assert_equal(actual, expected)
+
+    def test_get_valueset_from_json_without_designations(self) -> None:
+        """Test that alternates are empty when no Designations field present."""
+        response_without_designations = {
+            "DataElement": {
+                "publicId": "11524549",
+                "version": "1",
+                "ValueDomain": {
+                    "PermissibleValues": [
+                        {
+                            "value": "No",
+                            "ValueMeaning": {
+                                "version": "1",
+                                "publicId": "2597928",
+                                "definition": "Negative response.",
+                                "Concepts": [
+                                    {
+                                        "longName": "No",
+                                        "conceptCode": "C25555",
+                                        "definition": "Negative response.",
+                                        "evsSource": "NCI_CONCEPT_CODE",
+                                        "primaryIndicator": "Yes",
+                                        "displayOrder": "0",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+        actual = self.client.get_valueset_from_json(response_without_designations)
+        expected = [
+            {
+                "value": "No",
+                "origin_version": "1",
+                "origin_id": "2597928",
+                "origin_definition": "Negative response.",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C25555"],
+                "synonyms": [
+                    {
+                        "value": "No",
+                        "origin_id": "C25555",
+                        "origin_definition": "Negative response.",
+                        "origin_name": "NCIt",
+                    },
+                ],
+                "alternates": [],
+            },
+        ]
+        assert_equal(actual, expected)
 
     def test_check_cdes_against_mdb_no_updates(self, monkeypatch) -> None:
         client = CADSRClient()
@@ -560,7 +669,7 @@ class TestNCItClient:
         cadsr_response_two_pvs,
     ) -> None:
         """Test that removed PVs are detected when DRAFT NEW CDE has fewer PVs in caDSR.
-        
+
         This test verifies that when a DRAFT NEW CDE is checked against MDB:
         - MDB has: [Breast, Brain, Bone]
         - caDSR has: [Breast, Brain] (Bone removed)
@@ -593,7 +702,7 @@ class TestNCItClient:
         cadsr_cde_with_new_name,
     ) -> None:
         """Test detection of CDE metadata changes when DRAFT NEW CDE name changes.
-        
+
         This test verifies that when a DRAFT NEW CDE name is updated:
         - MDB has old name: "Disease Primary Anatomic Site"
         - caDSR has new name: "Disease Primary Anatomic Site Category"
@@ -618,10 +727,10 @@ class TestNCItClient:
         # Verify CDEFullName is stored in annotation_spec
         assert "CDEFullName" in annotations[0]
         assert annotations[0]["CDEFullName"] == "Disease Primary Anatomic Site Category"
-    
+
     def test_check_cdes_against_mdb_detect_version_change(self) -> None:
         """Test detection of CDE version changes when DRAFT NEW CDE version updates.
-        
+
         This test verifies that when a DRAFT NEW CDE version is updated:
         - MDB has version: "1"
         - caDSR has version: "2"
@@ -647,7 +756,7 @@ class TestNCItClient:
                 ],
             }
         ]
-        
+
         cadsr_pvs = [mdb_cde_old_version[0]["permissibleValues"][0]]
         cadsr_cde_details_new_version = {
             "CDECode": "15260691",
@@ -655,13 +764,13 @@ class TestNCItClient:
             "CDEFullName": "Disease Primary Anatomic Site Category",
             "CDEWorkflowStatus": "DRAFT NEW",
         }
-        
+
         client = CADSRClient()
         import unittest.mock as mock
         with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):
             with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_new_version):
                 annotations = client.check_cdes_against_mdb(mdb_cde_old_version)
-        
+
         # Verify version change is detected
         assert len(annotations) > 0
         assert "CDEVersion" in annotations[0]
