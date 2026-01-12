@@ -288,8 +288,7 @@ class CADSRClient:
         run_logger = get_logger()
         result = []
         run_logger.info("total cdes to check: %s", len(mdb_cdes))
-        # only loop for first 100 cdes
-        for cde_spec in tqdm(mdb_cdes[:200], desc="Checking caDSR for new PVs..."):
+        for cde_spec in tqdm(mdb_cdes[200], desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             mdb_pv_objects = cde_spec["permissibleValues"]
             cadsr_pvs = self.fetch_cde_valueset(
