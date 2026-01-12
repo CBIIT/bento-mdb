@@ -134,8 +134,8 @@ class CADSRClient:
                             alternates_name_set.add(alt_value)
                             run_logger.info("Found alternative values for PV ( %s ): %s", pv["value"], alt_value)
                             pv_dict["alternates"].append({"value": alt_value})
-                
-                vs.append(pv_dict)
+                if len(pv_dict["alternates"]) > 0:
+                    vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}"
             run_logger.exception(msg)
