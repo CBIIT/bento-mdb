@@ -107,13 +107,13 @@ class CADSRClient:
                         continue
                     pv_dict["ncit_concept_codes"].append(concept["conceptCode"])
                     if len(vm_concepts) > 1:
-                        # msg = "Multiple NCIt concepts found for PV %s: %sv%s"
-                        # run_logger.warning(
-                        #     msg,
-                        #     pv["value"],
-                        #     pv["ValueMeaning"]["publicId"],
-                        #     pv["ValueMeaning"]["version"],
-                        # )
+                        msg = "Multiple NCIt concepts found for PV %s: %sv%s"
+                        run_logger.warning(
+                            msg,
+                            pv["value"],
+                            pv["ValueMeaning"]["publicId"],
+                            pv["ValueMeaning"]["version"],
+                        )
                         continue  # TODO: break out of concepts loop?
                     pv_dict["synonyms"].append(
                         {
@@ -134,8 +134,7 @@ class CADSRClient:
                             alternates_name_set.add(alt_value)
                             run_logger.info("Found alternative values for PV ( %s ): %s", pv["value"], alt_value)
                             pv_dict["alternates"].append({"value": alt_value})
-                if len(pv_dict["alternates"]) > 0:
-                    vs.append(pv_dict)
+                vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}"
             run_logger.exception(msg)
@@ -288,8 +287,7 @@ class CADSRClient:
         run_logger = get_logger()
         result = []
         run_logger.info("total cdes to check: %s", len(mdb_cdes))
-        # loop for the rest starting from 500
-        for cde_spec in tqdm(mdb_cdes[500:], desc="Checking caDSR for new PVs..."):
+        for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             mdb_pv_objects = cde_spec["permissibleValues"]
             cadsr_pvs = self.fetch_cde_valueset(
@@ -326,8 +324,8 @@ class CADSRClient:
                         cde_spec.get("CDEVersion"),
                     )
                     continue
-                # if pv["value"] in mdb_pvs:
-                #     continue
+                if pv["value"] in mdb_pvs:
+                    continue
                 run_logger.info("New PV found: %s", pv["value"])
                 update_annotation = True
                 annotation_spec["value_set"].append(pv)
