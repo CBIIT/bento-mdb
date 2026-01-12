@@ -128,31 +128,31 @@ def convert_annotation_to_changesets(
         pv_term._commit = _commit  # noqa: SLF001
         statements.append(create_entity_cypher_stmt(pv_term)[0])
         statements.append(
-             create_relationship_cypher_stmt(cde_vs, "has_term", pv_term)[0],
-         )
+            create_relationship_cypher_stmt(cde_vs, "has_term", pv_term)[0],
+        )
 
-         if synonyms:
-             ncit_term = Term(synonyms[0])  # first synonym is NCIt concept from caDSR
-             statements.append(create_entity_cypher_stmt(ncit_term)[0])
-             statements.append(
-                 generate_cypher_to_link_term_synonyms(
-                     pv_term,
-                     ncit_term,
-                     "caDSR",
-                     _commit,
-                 ),
-             )
-             for syn_attrs in synonyms[1:]:  # rest from NCIm mappings
-                 syn_term = Term(syn_attrs)
-                 statements.append(create_entity_cypher_stmt(syn_term)[0])
-                 statements.append(
-                     generate_cypher_to_link_term_synonyms(
-                         ncit_term,
-                         syn_term,
-                         "NCIm",
-                         _commit,
-                     ),
-                 )
+        if synonyms:
+            ncit_term = Term(synonyms[0])  # first synonym is NCIt concept from caDSR
+            statements.append(create_entity_cypher_stmt(ncit_term)[0])
+            statements.append(
+                generate_cypher_to_link_term_synonyms(
+                    pv_term,
+                    ncit_term,
+                    "caDSR",
+                    _commit,
+                ),
+            )
+            for syn_attrs in synonyms[1:]:  # rest from NCIm mappings
+                syn_term = Term(syn_attrs)
+                statements.append(create_entity_cypher_stmt(syn_term)[0])
+                statements.append(
+                    generate_cypher_to_link_term_synonyms(
+                        ncit_term,
+                        syn_term,
+                        "NCIm",
+                        _commit,
+                    ),
+                )
         
         # PV - alternate names as concepts via represents relationship
         if pv_alternates:
