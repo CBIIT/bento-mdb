@@ -132,7 +132,6 @@ class CADSRClient:
                         alt_value = alt_name.get("name", "")
                         if alt_value and alt_value not in alternates_name_set:
                             alternates_name_set.add(alt_value)
-                            run_logger.info("Found alternative values for PV ( %s ): %s", pv["value"], alt_value)
                             pv_dict["alternates"].append({"value": alt_value})
 
                 vs.append(pv_dict)
