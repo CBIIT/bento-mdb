@@ -170,6 +170,7 @@ def convert_annotation_to_changesets(
                 }
                 alt_term = Term(alt_attrs)
                 statements.append(create_entity_cypher_stmt(alt_term)[0])
+                create_entity_cypher_stmt(pv_term)
                 statements.append(
                     generate_cypher_to_link_term_alternates(
                         pv_term,
