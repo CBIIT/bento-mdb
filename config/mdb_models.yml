@@ -138,8 +138,10 @@ CDS:
     tag: 10.0.1-GC_Release
   - version: 11.0.0
     tag: 11.0.0-GC_Release
-  latest_version: 11.0.0
-  latest_prerelease_commit: 47633f9c277785954ff4050c227c640b0ba46936
+  - version: 11.0.1
+    tag: 11.0.1-GC_Release
+  latest_version: 11.0.1
+  latest_prerelease_commit: 5d3f626473a14cc6e62330b83cd2c9990dbb60e2
   latest_prerelease_version: 11.0.1
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
