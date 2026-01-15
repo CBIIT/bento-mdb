@@ -259,15 +259,15 @@ class CADSRClient:
             annotation_spec["CDEFullName"] = cadsr_cde_details["CDEFullName"]
 
         # Check CDEVersion change
-        if cadsr_cde_details.get("CDEVersion") and cadsr_cde_details.get("CDEVersion") != cde_spec.get("CDEVersion"):
-            run_logger.info(
-                "CDE version changed for %s: '%s' -> '%s'",
-                cde_spec["CDECode"],
-                cde_spec.get("CDEVersion"),
-                cadsr_cde_details.get("CDEVersion"),
-            )
-            is_updated = True
-            annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
+        # if cadsr_cde_details.get("CDEVersion") and cadsr_cde_details.get("CDEVersion") != cde_spec.get("CDEVersion"):
+        #     run_logger.info(
+        #         "CDE version changed for %s: '%s' -> '%s'",
+        #         cde_spec["CDECode"],
+        #         cde_spec.get("CDEVersion"),
+        #         cadsr_cde_details.get("CDEVersion"),
+        #     )
+        #     is_updated = True
+        #     annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
 
         # For DRAFT NEW CDEs, log the status only if changes found
         if is_updated:
