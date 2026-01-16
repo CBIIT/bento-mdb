@@ -325,10 +325,24 @@ class CADSRClient:
                     )
                     continue
                 if pv["value"] in mdb_pvs:
-                    continue
-                run_logger.info("New PV found: %s", pv["value"])
-                update_annotation = True
-                annotation_spec["value_set"].append(pv)
+                    # check if alternate values are the same
+                    mdb_pv_alternates = [alt["value"] for alt in mdb_pv_objects.get("alternates", [])]
+                    cadsr_pv_alternates = [alt["value"] for alt in pv.get("alternates", [])]
+                    new_alternates = []
+                    for cadsr_alt in cadsr_pv_alternates:
+                        if cadsr_alt not in mdb_pv_alternates:
+                            run_logger.info("New alternate found for existing PV %s: %s", pv["value"], cadsr_alt)
+                            new_alternates.append({"value": cadsr_alt})
+                    if size(new_alternates) > 0:
+                        pv["alternates"] = new_alternates
+                    else:
+                        continue
+                    update_annotation = True
+                    annotation_spec["value_set"].append(pv)
+                else:
+                    run_logger.info("New PV found: %s", pv["value"])
+                    update_annotation = True
+                    annotation_spec["value_set"].append(pv)
 
             # Check for removed PVs and metadata changes (only for DRAFT NEW CDEs)
             cadsr_cde_details = self.fetch_cde_details(
