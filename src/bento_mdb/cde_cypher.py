@@ -161,7 +161,6 @@ def convert_annotation_to_changesets(
                 if not alt_name:
                     continue
                 alt_attrs = {
-                    "nanoid": make_nanoid(),
                     "value": alt_name,
                     "origin_id": pv_term.origin_id,
                     "origin_version": pv_term.origin_version,
