@@ -336,7 +336,7 @@ class CADSRClient:
                         if cadsr_alt not in mdb_pv_alternates:
                             run_logger.info("New alternate found for existing PV %s: %s", pv["value"], cadsr_alt)
                             new_alternates.append({"value": cadsr_alt})
-                    if size(new_alternates) > 0:
+                    if len(new_alternates) > 0:
                         pv["alternates"] = new_alternates
                     else:
                         continue
