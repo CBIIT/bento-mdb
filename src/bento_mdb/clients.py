@@ -290,6 +290,9 @@ class CADSRClient:
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             mdb_pv_objects = cde_spec["permissibleValues"]
+            mdb_alternates = {}
+            for mdb_pv in mdb_pv_objects:
+                mdb_alternates[mdb_pv["value"]] = mdb_pv.get("alternates", [])
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
                 cde_version=cde_spec.get("CDEVersion"),
@@ -326,7 +329,7 @@ class CADSRClient:
                     continue
                 if pv["value"] in mdb_pvs:
                     # check if alternate values are the same
-                    mdb_pv_alternates = [alt["value"] for alt in mdb_pv_objects.get("alternates", [])]
+                    mdb_pv_alternates = [alt["value"] for alt in mdb_alternates[pv["value"]]]
                     cadsr_pv_alternates = [alt["value"] for alt in pv.get("alternates", [])]
                     new_alternates = []
                     for cadsr_alt in cadsr_pv_alternates:
