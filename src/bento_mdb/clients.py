@@ -156,7 +156,15 @@ class CADSRClient:
             if cde_version and re.match(r"^v?\d{1,3}(\.\d{1,3}){0,2}$", cde_version)
             else ""
         )
-        cde_id_ver_str = f"{cde_id}{ver_str}"
+        cde_id_str = (
+            cde_id
+            if cde_id and re.match(r"^\d+$", cde_id)
+            else ""
+        )
+        if not cde_id_str:
+            run_logger.error("Invalid CDE ID: %s", cde_id)
+            return []
+        cde_id_ver_str = f"{cde_id_str}{ver_str}"
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id_ver_str}"
         headers = {"accept": "application/json"}
 
@@ -304,6 +312,7 @@ class CADSRClient:
                     cde_spec["CDECode"],
                     cde_spec.get("CDEVersion"),
                 )
+                continue
             annotation_spec: AnnotationSpec = {
                 "entity": {},
                 "annotation": {
