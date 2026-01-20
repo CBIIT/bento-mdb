@@ -229,7 +229,7 @@ def get_cdes_from_mdb(mdb: MDB) -> list[MDBCDESpec]:
     qry = (
         "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "
         "MATCH (ent)-[:has_property]->(p:property)-[:has_concept]->(:concept)"
-        "<-[:represents]-(cde) WHERE p.model in ['CDS', 'C3DC', 'CCDI', 'CCDI-DCC', 'CTDC','ICDC'] AND p.version IS NOT NULL and p.handle = 'alteration_type' "
+        "<-[:represents]-(cde) WHERE p.model in ['CDS', 'C3DC', 'CCDI', 'CCDI-DCC', 'CTDC','ICDC'] AND p.version IS NOT NULL "
         "WITH cde, COLLECT(DISTINCT {model: p.model, version: p.version, "
         "property: ent.handle + '.' + p.handle}) AS models "
         "WITH distinct cde.origin_id AS CDECode, cde.origin_version AS CDEVersion, "
