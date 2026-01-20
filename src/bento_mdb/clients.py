@@ -233,8 +233,8 @@ class CADSRClient:
         """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
         is_updated = False
 
-        # Check for removed PVs - compare by origin_id for accuracy
-        cadsr_pv_ids = {pv["origin_id"] for pv in cadsr_pvs if pv}
+        # Check for removed PVs - compare by value for accuracy
+        cadsr_pv_values = {pv["value"] for pv in cadsr_pvs if pv}
         removed_pv_objects = [
             {
                 "value": pv["value"], 
@@ -242,12 +242,12 @@ class CADSRClient:
                 "origin_version": pv.get("origin_version", ""),
             }
             for pv in mdb_pv_objects 
-            if pv["origin_id"] not in cadsr_pv_ids
+            if pv["value"] not in cadsr_pv_values
         ]
         if removed_pv_objects:
             removed_values = [pv["value"] for pv in removed_pv_objects]
             run_logger.info(
-                "Removed PVs (by origin_id) from caDSR for %sv%s: %s",
+                "Removed PVs (by value) from caDSR for %sv%s: %s",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
                 removed_values,
