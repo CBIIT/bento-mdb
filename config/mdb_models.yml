@@ -210,8 +210,8 @@ CTDC:
   - version: 1.21.0
     tag: 1.21.0
   latest_version: 1.21.0
-  latest_prerelease_commit: 7c920c47c27bc6560d82ee0e5c079190fa17d8ec
-  latest_prerelease_version: 1.21.0
+  latest_prerelease_commit: 75e148989dafc9e9f9bc173482de2df0c2232b2f
+  latest_prerelease_version: 1.22.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
