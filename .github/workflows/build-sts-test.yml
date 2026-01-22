@@ -1,0 +1,56 @@
+name: Test Slack Notification (act10ns)
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_status:
+        description: 'Simulate job status'
+        type: choice
+        default: success
+        options:
+          - success
+          - failure
+
+run-name: "Test Slack Notification - ${{ inputs.test_status }}"
+
+jobs:
+  test-slack:
+    name: Test Slack Message
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Step 1 - Checkout
+      uses: actions/checkout@v4
+
+    - name: Step 2 - Print Info
+      run: |
+        echo "Testing Slack notification..."
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Actor: ${{ github.actor }}"
+
+    - name: Step 3 - Simulate Work
+      run: |
+        echo "Doing some work..."
+        sleep 2
+        echo "Work completed!"
+
+    - name: Step 4 - Simulate Status
+      id: simulate_status
+      run: |
+        if [ "${{ inputs.test_status }}" == "failure" ]; then
+          echo "Simulating failure..."
+          exit 1
+        else
+          echo "Simulating success..."
+        fi
+      continue-on-error: true
+
+    - name: Slack Notification
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08     # v1.6.0
+      with:
+        status: ${{ job.status }}
+        steps: ${{ toJson(steps) }}
+      if: always()
