@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_delete_pv_cypher(
-    pv_value: str,
+    pv_origin_id: str,
     cde_id: str,
     cde_ver: str,
 ) -> str:
@@ -36,9 +36,10 @@ def create_delete_pv_cypher(
     
     Deletes only the relationship between PV and ValueSet, not the PV node itself.
     This is safer in case the PV is used by other ValueSets.
+    Uses origin_id for accurate matching.
     """
     return (
-        f"MATCH (pv:term {{value: '{pv_value}'}})"
+        f"MATCH (pv:term {{origin_id: '{pv_origin_id}'}})"
         f"-[r:has_term]-"
         f"(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
         f"WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
@@ -90,8 +91,8 @@ def convert_annotation_to_changesets(
     if removed_pvs:
         logger.info("Removing %d PVs from %s", len(removed_pvs), cde_id)
         for pv_obj in removed_pvs:
-            pv_value = pv_obj["value"]
-            delete_stmt = create_delete_pv_cypher(pv_value, cde_id, old_ver)
+            pv_origin_id = pv_obj.get("origin_id", "")
+            delete_stmt = create_delete_pv_cypher(pv_origin_id, cde_id, old_ver)
             statements.append(delete_stmt)  # type: ignore
 
     # Update annotation term if CDE name changed
@@ -162,6 +163,7 @@ def convert_annotation_to_changesets(
                     continue
                 alt_attrs = {
                     "value": alt_name,
+                    "nanoid": "",
                     "origin_id": pv_term.origin_id,
                     "origin_version": pv_term.origin_version,
                     "origin_name": "caDSR_alternates",
