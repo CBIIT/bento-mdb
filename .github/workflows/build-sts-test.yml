@@ -1,154 +1,32 @@
-name: Build STS Image
-permissions:
-  contents: write
-  id-token: write
+name: Test Slack Notification (act10ns)
+
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Which account the ECR repository is in'
+      test_status:
+        description: 'Simulate job status'
         type: choice
-        default: fnl-leidos
+        default: success
         options:
-          - fnl-leidos
-          - ECR-cbiit-cloudone
-      trivy_scan:
-        type: boolean
-        description: "Run Trivy Test Scan"
-        required: true
-        default: true
-run-name: "Build to ${{ inputs.environment }} (Trivy: ${{ inputs.trivy_scan }})"
+          - success
+          - failure
+
+run-name: "Test Slack Notification - ${{ inputs.test_status }}"
+
 jobs:
-  build:
-    name: Build Image
+  test-slack:
+    name: Test Slack Message
     runs-on: ubuntu-latest
-    # environment: ${{ inputs.environment }}
-    env:
-      ECR_REPOSITORY: crdc-mdb-sts
-      ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
-      REGION: "us-east-1"
-      AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
 
     steps:
-
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          #       ref: ${{ env.CODE_BRANCH }}
-          #       ref: ${{ github.ref_name }}
-          submodules: true
-
-      - name: Extract branch name and set tag image
-        id: extract_branch
+      - name: Simulate Status
         run: |
-          BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-          echo "branch=$BRANCH_NAME" >> "$GITHUB_ENV"
-          echo "Current branch is: $BRANCH_NAME"
-          git fetch --tags --force --quiet
-          tag=$(git tag -l $BRANCH_NAME* | sort -V | tail -1)
-          if  [ ! -z "$tag" ];
-          then
-            # Increment the build number if a tag is found
-            build_num=$(echo "${tag##*.}")
-            build_num=$((build_num+1))
-            echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
+          if [ "${{ inputs.test_status }}" == "failure" ]; then
+            echo "Simulating failure..."
+            exit 1
           else
-            # If no tag is found create a new tag name
-            build_num=1
-            echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
+            echo "Simulating success..."
           fi
-      - name: Build STS image
-        id: build-image
-        env:
-          ECR_REPOSITORY: "crdc-mdb-sts"
-          REGION: "us-east-1"
-          AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
-          AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-          STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        run: |
-          cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
-          #docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
-
-      - name: Run Trivy vulnerability scanner
-        id: trivy-scan
-        if: github.event.inputs.trivy_scan == 'true'
-        env:
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-          STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.STS_IMAGE_NAME }}'
-          format: 'table'
-          exit-code: 1
-          severity: 'CRITICAL,HIGH'
-
-      - name: Build STS FAST API image
-        id: build-sts-fast-api-image
-        env:
-          ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
-          REGION: "us-east-1"
-          AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
-          AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-          STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        run: |
-          #cd devops/dockerfiles/sts-fast-api/ && docker build -t $STS_FAST_API_IMAGE_NAME .
-          docker build --no-cache -t $STS_FAST_API_IMAGE_NAME -f devops/dockerfiles/sts-fast-api/Dockerfile .
-
-      - name: Run Trivy vulnerability scanner
-        id: trivy-fast-api-scan
-        if: github.event.inputs.trivy_scan == 'true'
-        env:
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-          STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.STS_FAST_API_IMAGE_NAME }}'
-          format: 'table'
-          exit-code: 1
-          severity: 'CRITICAL,HIGH'
-
-      - name: Create git tag for image
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git tag ${{ env.IMAGE_TAG }}
-          git push origin ${{ env.IMAGE_TAG }}
-
-      - name: Configure AWS Role to assume using OIDC authentication
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-      - name: Login to Amazon ECR
-        id: login-ecr
-        env:
-          REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        run:  |
-          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY_URL
-
-      - name: Push STS docker Image
-        if: success()
-        env:
-          ECR_REPOSITORY: "crdc-mdb-sts"
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
-          STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        run: |
-          echo "Pushing: $STS_IMAGE_NAME"
-          docker push $STS_IMAGE_NAME
-
-      - name: Push STS FAST API docker Image
-        if: success()
-        env:
-          ECR_STS_REPOSITORY: "crdc-mdb-sts-fast-api"
-          REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ env.REGION }}.amazonaws.com
-          STS_FAST_API_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}
-        run: |
-          echo "Pushing: $STS_FAST_API_IMAGE_NAME"
-          docker push $STS_FAST_API_IMAGE_NAME        
 
       - name: Slack Notification
         env:
