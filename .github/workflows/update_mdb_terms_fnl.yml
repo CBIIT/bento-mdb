@@ -180,4 +180,7 @@ jobs:
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
           status: ${{ (needs.setup.result == 'failure' || needs.update-mdb-terms.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
-          steps: ${{ toJson(steps) }}
+          message: |
+            ${{ needs.setup.result == 'success' && '✔️' || needs.setup.result == 'failure' && '❌' || '⊘' }} setup
+            ${{ needs.update-mdb-terms.result == 'success' && '✔️' || needs.update-mdb-terms.result == 'failure' && '❌' || '⊘' }} update-mdb-terms
+            ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
