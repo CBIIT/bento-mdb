@@ -22,7 +22,7 @@ jobs:
   build:
     name: Build Image
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    # environment: ${{ inputs.environment }}
     env:
       ECR_REPOSITORY: crdc-mdb-sts
       ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
