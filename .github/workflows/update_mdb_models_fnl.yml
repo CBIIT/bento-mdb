@@ -394,4 +394,3 @@ jobs:
         with:
           status: ${{ (needs.determine-models.result == 'failure' || needs.generate-changelogs.result == 'failure' || needs.commit-all-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           steps: ${{ toJson(steps) }}
-        if: always()
