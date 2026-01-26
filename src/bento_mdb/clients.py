@@ -317,7 +317,7 @@ class CADSRClient:
                     str(e),
                 )
                 continue
-            
+
             if not cadsr_pvs:
                 run_logger.warning(
                     "No PVs fetched from caDSR for %sv%s, skipping",
@@ -385,7 +385,7 @@ class CADSRClient:
                     str(e),
                 )
                 continue
-            
+
             if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
                 update_annotation |= self._check_draft_new_cde_changes(
                     cadsr_cde_details,
