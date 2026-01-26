@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 RESPONSE_200 = 200
-DEFAULT_TIMEOUT = 120
+DEFAULT_TIMEOUT = 300  # 5 minutes
 DEFAULT_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 
@@ -296,19 +296,31 @@ class CADSRClient:
         result = []
         run_logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
-            mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
-            mdb_pv_objects = cde_spec["permissibleValues"]
-            mdb_alternates = {}
-            for mdb_pv in mdb_pv_objects:
-                mdb_alternates[mdb_pv["value"]] = mdb_pv.get("alternates", [])
-            cadsr_pvs = self.fetch_cde_valueset(
-                cde_id=cde_spec["CDECode"],
-                cde_version=cde_spec.get("CDEVersion"),
-                run_logger=run_logger,
-            )
+            try:
+                mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
+                mdb_pv_objects = cde_spec["permissibleValues"]
+                mdb_alternates = {}
+                for mdb_pv in mdb_pv_objects:
+                    mdb_alternates[mdb_pv["value"]] = mdb_pv.get("alternates", [])
+                cadsr_pvs = self.fetch_cde_valueset(
+                    cde_id=cde_spec["CDECode"],
+                    cde_version=cde_spec.get("CDEVersion"),
+                    run_logger=run_logger,
+                )
+            except (requests.Timeout, requests.exceptions.ReadTimeout) as e:
+                run_logger.error(
+                    "Timeout (%ds) fetching value set for CDE %sv%s. "
+                    "Skipping this CDE and continuing with next one. Error: %s",
+                    DEFAULT_TIMEOUT,
+                    cde_spec["CDECode"],
+                    cde_spec.get("CDEVersion"),
+                    str(e),
+                )
+                continue
+            
             if not cadsr_pvs:
-                run_logger.exception(
-                    "Error fetching PVs from caDSR for %sv%s",
+                run_logger.warning(
+                    "No PVs fetched from caDSR for %sv%s, skipping",
                     cde_spec["CDECode"],
                     cde_spec.get("CDEVersion"),
                 )
@@ -357,11 +369,23 @@ class CADSRClient:
                     annotation_spec["value_set"].append(pv)
 
             # Check for removed PVs and metadata changes (only for DRAFT NEW CDEs)
-            cadsr_cde_details = self.fetch_cde_details(
-                cde_id=cde_spec["CDECode"],
-                cde_version=cde_spec.get("CDEVersion"),
-                run_logger=run_logger,
-            )
+            try:
+                cadsr_cde_details = self.fetch_cde_details(
+                    cde_id=cde_spec["CDECode"],
+                    cde_version=cde_spec.get("CDEVersion"),
+                    run_logger=run_logger,
+                )
+            except (requests.Timeout, requests.exceptions.ReadTimeout) as e:
+                run_logger.error(
+                    "Timeout (%ds) fetching details for CDE %sv%s. "
+                    "Skipping this CDE completely to avoid incorrect updates. Error: %s",
+                    DEFAULT_TIMEOUT,
+                    cde_spec["CDECode"],
+                    cde_spec.get("CDEVersion"),
+                    str(e),
+                )
+                continue
+            
             if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
                 update_annotation |= self._check_draft_new_cde_changes(
                     cadsr_cde_details,
