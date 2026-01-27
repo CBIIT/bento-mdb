@@ -319,8 +319,8 @@ class CADSRClient:
                 continue
 
             if not cadsr_pvs:
-                run_logger.warning(
-                    "No PVs fetched from caDSR for %sv%s, skipping",
+                run_logger.error(
+                    "Error fetching PVs from caDSR for %sv%s",
                     cde_spec["CDECode"],
                     cde_spec.get("CDEVersion"),
                 )
