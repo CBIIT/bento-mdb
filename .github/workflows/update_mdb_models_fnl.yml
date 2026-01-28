@@ -381,3 +381,20 @@ jobs:
       changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
+
+  slack-notification:
+    needs: [determine-models, generate-changelogs, commit-all-changelogs, update-fnl-mdb-dev]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
+        with:
+          status: ${{ (needs.determine-models.result == 'failure' || needs.generate-changelogs.result == 'failure' || needs.commit-all-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+          message: |
+            ${{ needs.determine-models.result == 'success' && '✔️' || needs.determine-models.result == 'failure' && '❌' || '⊘' }} determine-models
+            ${{ needs.generate-changelogs.result == 'success' && '✔️' || needs.generate-changelogs.result == 'failure' && '❌' || '⊘' }} generate-changelogs
+            ${{ needs.commit-all-changelogs.result == 'success' && '✔️' || needs.commit-all-changelogs.result == 'failure' && '❌' || '⊘' }} commit-all-changelogs
+            ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
