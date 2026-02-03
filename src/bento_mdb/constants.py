@@ -67,7 +67,7 @@ CADSR_WORKFLOW_STATUS_DRAFT_NEW = "DRAFT NEW"
 # External Data Source Constants
 # =============================================================================
 
-NCIM_TSV_NAME = "NCIt_Metathesaurus_Mapping_202508.txt"
+NCIM_TSV_NAME = "NCIt_Metathesaurus_Mapping.txt"
 
 # =============================================================================
 # AWS/S3 Configuration Constants
