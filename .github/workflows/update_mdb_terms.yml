@@ -1,4 +1,4 @@
-name: Term Update Changelog for FNL and C1
+name: Run FNL and Cloud-One Term Updates Changelog
 permissions:
   contents: write
 
@@ -170,7 +170,7 @@ jobs:
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
-  update-cloud-one-mdb-dev:
+  update-c1-mdb-dev:
     needs: [setup, update-mdb-terms]
     if: ${{ needs.update-mdb-terms.outputs.changelog_files != '' && needs.update-mdb-terms.outputs.changelog_files != '[]' }}
     uses: ./.github/workflows/update_mdb.yml
@@ -184,7 +184,7 @@ jobs:
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
   slack-notification:
-    needs: [setup, update-mdb-terms, update-fnl-mdb-dev, update-cloud-one-mdb-dev]
+    needs: [setup, update-mdb-terms, update-fnl-mdb-dev, update-c1-mdb-dev]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -193,9 +193,9 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.setup.result == 'failure' || needs.update-mdb-terms.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure' || needs.update-cloud-one-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+          status: ${{ (needs.setup.result == 'failure' || needs.update-mdb-terms.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
             ${{ needs.setup.result == 'success' && '✔️' || needs.setup.result == 'failure' && '❌' || '⊘' }} setup
             ${{ needs.update-mdb-terms.result == 'success' && '✔️' || needs.update-mdb-terms.result == 'failure' && '❌' || '⊘' }} update-mdb-terms
             ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
-            ${{ needs.update-cloud-one-mdb-dev.result == 'success' && '✔️' || needs.update-cloud-one-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-cloud-one-mdb-dev
+            ${{ needs.update-c1-mdb-dev.result == 'success' && '✔️' || needs.update-c1-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-c1-mdb-dev
