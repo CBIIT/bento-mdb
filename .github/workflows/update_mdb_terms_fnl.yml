@@ -1,4 +1,4 @@
-name: Term Update Changelog for FNL and C1
+name: Generate and Commit Term Update Changelog for FNL-MDB-DEV
 permissions:
   contents: write
 
@@ -41,8 +41,7 @@ jobs:
         run: |
           MATRIX='{
             "include": [
-              { "name": "fnl-dev", "mdb_id": "fnl-mdb-dev" },
-              { "name": "c1-dev", "mdb_id": "cloud-one-mdb-dev" }
+              { "name": "fnl-dev", "mdb_id": "fnl-mdb-dev" }
             ]
           }'
           MATRIX=$(echo "$MATRIX" | jq -c .)
@@ -52,8 +51,12 @@ jobs:
   update-mdb-terms:
     needs: setup
     runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+      fail-fast: false
+      max-parallel: 1
     outputs:
-      changelog_files: ${{ steps.update-terms.outputs.changelog_files }}
+      changelog_files: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'fnl-dev' && steps.update-terms.outputs.changelog_files || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -80,13 +83,12 @@ jobs:
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-          MDB_ID: fnl-mdb-dev
         run: |
           set -xeuo pipefail
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
           PARAMS=$(jq -n \
-          --arg mdb_id "$MDB_ID" \
+          --arg mdb_id "${{ matrix.mdb_id }}" \
           --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
           --argjson no_commit "${{ github.event.inputs.no_commit || false }}" \
@@ -153,38 +155,22 @@ jobs:
 
           # Set output for GitHub Actions
           echo "changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
-          echo "mdb_name=$MDB_ID" >> $GITHUB_OUTPUT
-          
-          echo "Changelog files for $MDB_ID: $RESULT_JSON"
+          echo "mdb_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
+
+          echo "Changelog files for ${{ matrix.name }}: $RESULT_JSON"
 
   update-fnl-mdb-dev:
     needs: [setup, update-mdb-terms]
     if: ${{ needs.update-mdb-terms.outputs.changelog_files != '' && needs.update-mdb-terms.outputs.changelog_files != '[]' }}
     uses: ./.github/workflows/update_mdb.yml
-    secrets:
-      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+    secrets: inherit
     with:
       mdb_id: fnl-mdb-dev
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files }}
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
-
-  update-cloud-one-mdb-dev:
-    needs: [setup, update-mdb-terms]
-    if: ${{ needs.update-mdb-terms.outputs.changelog_files != '' && needs.update-mdb-terms.outputs.changelog_files != '[]' }}
-    uses: ./.github/workflows/update_mdb.yml
-    secrets:
-      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
-    with:
-      mdb_id: cloud-one-mdb-dev
-      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files }}
-      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      log_level: ${{ github.event.inputs.log_level || 'info' }}
-
   slack-notification:
-    needs: [setup, update-mdb-terms, update-fnl-mdb-dev, update-cloud-one-mdb-dev]
+    needs: [setup, update-mdb-terms, update-fnl-mdb-dev]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -193,9 +179,8 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.setup.result == 'failure' || needs.update-mdb-terms.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure' || needs.update-cloud-one-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+          status: ${{ (needs.setup.result == 'failure' || needs.update-mdb-terms.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
             ${{ needs.setup.result == 'success' && '✔️' || needs.setup.result == 'failure' && '❌' || '⊘' }} setup
             ${{ needs.update-mdb-terms.result == 'success' && '✔️' || needs.update-mdb-terms.result == 'failure' && '❌' || '⊘' }} update-mdb-terms
             ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
-            ${{ needs.update-cloud-one-mdb-dev.result == 'success' && '✔️' || needs.update-cloud-one-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-cloud-one-mdb-dev
