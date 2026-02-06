@@ -41,8 +41,7 @@ jobs:
         run: |
           MATRIX='{
             "include": [
-              { "name": "fnl-dev", "mdb_id": "fnl-mdb-dev" },
-              { "name": "c1-dev", "mdb_id": "cloud-one-mdb-dev" }
+              { "name": "fnl-dev", "mdb_id": "fnl-mdb-dev" }
             ]
           }'
           MATRIX=$(echo "$MATRIX" | jq -c .)
