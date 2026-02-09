@@ -1,4 +1,4 @@
-name: Generate Term Updates Changelog (reusable)
+name: Generate Term Updates Changelog
 permissions:
   contents: write
 
