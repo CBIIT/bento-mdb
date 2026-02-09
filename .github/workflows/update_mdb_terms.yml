@@ -36,24 +36,7 @@ on:
         value: ${{ jobs.update-mdb-terms.outputs.changelog_files }}
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: set-matrix
-        run: |
-          MATRIX='{
-            "include": [
-              { "name": "cloud-one-dev", "mdb_id": "cloud-one-mdb-dev" }
-            ]
-          }'
-          MATRIX=$(echo "$MATRIX" | jq -c .)
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-
-
   update-mdb-terms:
-    needs: setup
     runs-on: ubuntu-latest
     outputs:
       changelog_files: ${{ steps.update-terms.outputs.changelog_files }}

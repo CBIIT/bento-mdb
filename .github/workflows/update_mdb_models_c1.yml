@@ -55,6 +55,7 @@ on:
 jobs:
   collect-changelogs:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       changelog_files: ${{ steps.find-changelogs.outputs.changelog_files }}
     steps:
@@ -66,12 +67,17 @@ jobs:
       - name: Find committed changelog files
         id: find-changelogs
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           # Find all changelog XML files in the commit that triggered this workflow
-          CHANGELOGS=$(git log -1 --name-only --pretty=format: "$HEAD_SHA" | \
-            grep 'data/output/model_changelogs/.*\.xml' | \
-            jq -R -s -c 'split("\n") | map(select(length > 0))')
+          RAW_CHANGELOGS=$(git log -1 --name-only --pretty=format: "$HEAD_SHA" | \
+            grep 'data/output/model_changelogs/.*\.xml' || true)
+          
+          if [ -z "$RAW_CHANGELOGS" ]; then
+            CHANGELOGS='[]'
+          else
+            CHANGELOGS=$(printf '%s\n' "$RAW_CHANGELOGS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
           
           echo "changelog_files=$CHANGELOGS" >> $GITHUB_OUTPUT
           echo "Found changelogs: $CHANGELOGS"

@@ -64,12 +64,12 @@ jobs:
     outputs:
       mdb_models_changed: ${{ steps.filter.outputs.mdb_models }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v4
         with:
           fetch-depth: 2
 
       - id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@5cf07d8b6920b9849e604700c9af46a6c537f3c2 # v3
         with:
           filters: |
             mdb_models:
