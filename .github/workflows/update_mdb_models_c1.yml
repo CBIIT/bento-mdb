@@ -58,16 +58,18 @@ jobs:
     outputs:
       changelog_files: ${{ steps.find-changelogs.outputs.changelog_files }}
     steps:
-      - name: Checkout repository at workflow_run commit
+      - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
       - name: Find committed changelog files
         id: find-changelogs
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           # Find all changelog XML files in the commit that triggered this workflow
-          CHANGELOGS=$(git log -1 --name-only --pretty=format: ${{ github.event.workflow_run.head_sha }} | \
+          CHANGELOGS=$(git log -1 --name-only --pretty=format: "$HEAD_SHA" | \
             grep 'data/output/model_changelogs/.*\.xml' | \
             jq -R -s -c 'split("\n") | map(select(length > 0))')
           
