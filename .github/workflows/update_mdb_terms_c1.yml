@@ -1,0 +1,78 @@
+name: Update Cloud-One-MDB-DEV Terms
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows: ["Generate Term Updates Changelog"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      author:
+        description: "Author name for changes"
+        required: false
+        default: "GitHub Actions"
+      commit_sha:
+        description: "Commit SHA for reference"
+        required: false
+        default: ""
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  collect-changelogs:
+    runs-on: ubuntu-latest
+    outputs:
+      changelog_files: ${{ steps.find-changelogs.outputs.changelog_files }}
+    steps:
+      - name: Checkout repository at workflow_run commit
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Find committed changelog files
+        id: find-changelogs
+        run: |
+          # Find term changelog XML files in the commit that triggered this workflow
+          CHANGELOGS=$(git log -1 --name-only --pretty=format: ${{ github.event.workflow_run.head_sha }} | \
+            grep 'data/output/term_changelogs/.*\.xml' | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+          
+          echo "changelog_files=$CHANGELOGS" >> $GITHUB_OUTPUT
+          echo "Found changelogs: $CHANGELOGS"
+
+  update-c1-mdb-dev:
+    needs: collect-changelogs
+    if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' }}
+    uses: ./.github/workflows/update_mdb.yml
+    secrets:
+      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+    with:
+      mdb_id: cloud-one-mdb-dev
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+
+  slack-notification:
+    needs: [collect-changelogs, update-c1-mdb-dev]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
+        with:
+          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+          message: |
+            ${{ needs.collect-changelogs.result == 'success' && '✔️' || needs.collect-changelogs.result == 'failure' && '❌' || '⊘' }} collect-changelogs
+            ${{ needs.update-c1-mdb-dev.result == 'success' && '✔️' || needs.update-c1-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-c1-mdb-dev

@@ -1,4 +1,4 @@
-name: Run FNL and Cloud-One Model Updates Changelogs
+name: Generate Model Updates Changelogs
 
 permissions:
   contents: read
@@ -6,26 +6,27 @@ permissions:
 
 
 on:
-  workflow_run:
-    workflows: ["Check New MDFs"]
-    types: [completed]
-  workflow_dispatch: # update an mdb with a certain model version
+  workflow_call:
     inputs:
       models_spec_path:
         description: "Path to YAML files with models & refs their MDFs."
         required: false
+        type: string
         default: "config/mdb_models.yml"
       model:
         description: "Specific model handle to process"
         required: false
+        type: string
         default: ""
       version:
         description: "Specific version to process"
         required: false
+        type: string
         default: ""
       mdf_files:
         description: "Path or URL to specific MDF files to process"
         required: false
+        type: string
         default: ""
       datahub_only:
         description: "Only include datahub models"
@@ -36,7 +37,7 @@ on:
         description: "ID of MDB to update"
         required: false
         type: string
-        default: "fnl-mdb-dev"
+        default: "cloud-one-mdb-dev"
       log_level:
         description: "Log level"
         required: false
@@ -52,6 +53,10 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      changelog_files:
+        description: "Generated changelog files"
+        value: ${{ jobs.collect-changelogs.outputs.changelog_files }}
 
 jobs:
   changes:
@@ -105,30 +110,30 @@ jobs:
           set -xeuo pipefail
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
-          # Use provided MDB ID or default to fnl-mdb-dev
-          MDB_ID="${{ github.event.inputs.mdb_id || 'fnl-mdb-dev' }}"
+          # Use provided MDB ID or default to cloud-one-mdb-dev
+          MDB_ID="${{ inputs.mdb_id || 'cloud-one-mdb-dev' }}"
           
           # If specific model/version/mdfs provided, use them
-          if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
-            MODEL_INFO="{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}"
+          if [ "${{ inputs.model }}" != "" ] && [ "${{ inputs.version }}" != "" ]; then
+            MODEL_INFO="{\"model\": \"${{ inputs.model }}\", \"version\": \"${{ inputs.version }}\", \"mdf_files\": [${{ inputs.mdf_files || '[]' }}]}"
             echo "{\"include\": [$MODEL_INFO]}" > matrix.json
           else
-            # Generate matrix for FNL database (focuses on lower/prerelease models)
-            FNL_PARAMS=$(jq -n \
+            # Generate matrix for database
+            PARAMS=$(jq -n \
               --arg mdb_id "$MDB_ID" \
-              --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
-              --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
+              --arg model_specs_yaml "${{ inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+              --argjson datahub_only "${{ inputs.datahub_only || false }}" \
               '{
                 "mdb_id": $mdb_id,
                 "model_specs_yaml": $model_specs_yaml,
                 "datahub_only": $datahub_only
               }')
             
-            echo "Running Prefect deployment for FNL with params: $FNL_PARAMS"
+            echo "Running Prefect deployment with params: $PARAMS"
 
             watch_out=$(
               prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
-                --params "$FNL_PARAMS" \
+                --params "$PARAMS" \
                 --watch \
                 --watch-interval 30 2>&1 | tee watch.log
             )
@@ -138,7 +143,7 @@ jobs:
               grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
               | head -n1
             )
-            echo "FNL run ID: $RUN_ID"
+            echo "Run ID: $RUN_ID"
 
             echo "Waiting for logs to be available..."
             sleep 10
@@ -146,8 +151,8 @@ jobs:
             LOG_FILE="${RUN_ID}_run.log"
             prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
             
-            echo "Checking for MATRIX_JSON in FNL logs:"
-            grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in FNL logs"
+            echo "Checking for MATRIX_JSON in logs:"
+            grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in logs"
             
             MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOG_FILE" \
               | grep -oP 'MATRIX_JSON:\K\{.*\}' \
@@ -155,9 +160,9 @@ jobs:
 
             if [ -n "$MATRIX_OUTPUT" ]; then
               echo "$MATRIX_OUTPUT" > matrix.json
-              echo "FNL matrix extracted successfully"
+              echo "Matrix extracted successfully"
             else
-              echo "Warning: Could not extract matrix from FNL deployment output"
+              echo "Warning: Could not extract matrix from deployment output"
               echo "{\"include\": []}" > matrix.json
             fi
           fi
@@ -172,7 +177,7 @@ jobs:
           MATRIX_COMPACT=$(echo "$MATRIX" | jq -c .)
           
           echo "model_matrix=$MATRIX_COMPACT" >> $GITHUB_OUTPUT
-          echo "FNL Matrix: $MATRIX"
+          echo "Matrix: $MATRIX"
 
   generate-changelogs:
     needs: determine-models
@@ -283,7 +288,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
+    if: ${{ !fromJson(inputs.no_commit || 'false') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -328,7 +333,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             MODEL_COUNT=$(echo '${{ needs.determine-models.outputs.affected_models }}' | jq -r '.include | length')
             MODELS_LIST=$(echo '${{ needs.determine-models.outputs.affected_models }}' | jq -r '.include[] | "- \(.model) v\(.version)"' | sort)
-            COMMIT_MSG=$(printf "Add FNL changelogs for %s model versions\n\nGenerated FNL changelogs for:\n%s\n\nGenerated by workflow run: %s/%s/actions/runs/%s" \
+            COMMIT_MSG=$(printf "Add changelogs for %s model versions\n\nGenerated changelogs for:\n%s\n\nGenerated by workflow run: %s/%s/actions/runs/%s" \
               "$MODEL_COUNT" \
               "$MODELS_LIST" \
               "${{ github.server_url }}" \
@@ -370,47 +375,3 @@ jobs:
           fi          
           echo "changelog_files=$(echo $CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT
           echo "Changelog files: $(echo $CHANGELOGS | jq .)"
-
-  update-fnl-mdb-dev:
-    needs: [determine-models, collect-changelogs, commit-all-changelogs]
-    if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
-    uses: ./.github/workflows/update_mdb.yml
-    secrets:
-      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-    with:
-      mdb_id: fnl-mdb-dev
-      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
-      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      log_level: ${{ github.event.inputs.log_level || 'info' }}
-
-  update-c1-mdb-dev:
-    needs: [determine-models, collect-changelogs, commit-all-changelogs]
-    if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
-    uses: ./.github/workflows/update_mdb.yml
-    secrets:
-      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
-    with:
-      mdb_id: cloud-one-mdb-dev
-      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
-      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      log_level: ${{ github.event.inputs.log_level || 'info' }}
-
-  slack-notification:
-    needs: [determine-models, generate-changelogs, commit-all-changelogs, update-fnl-mdb-dev, update-c1-mdb-dev]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Slack Notification
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
-        with:
-          status: ${{ (needs.determine-models.result == 'failure' || needs.generate-changelogs.result == 'failure' || needs.commit-all-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
-          message: |
-            ${{ needs.determine-models.result == 'success' && '✔️' || needs.determine-models.result == 'failure' && '❌' || '⊘' }} determine-models
-            ${{ needs.generate-changelogs.result == 'success' && '✔️' || needs.generate-changelogs.result == 'failure' && '❌' || '⊘' }} generate-changelogs
-            ${{ needs.commit-all-changelogs.result == 'success' && '✔️' || needs.commit-all-changelogs.result == 'failure' && '❌' || '⊘' }} commit-all-changelogs
-            ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
-            ${{ needs.update-c1-mdb-dev.result == 'success' && '✔️' || needs.update-c1-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-c1-mdb-dev
