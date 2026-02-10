@@ -1,0 +1,46 @@
+name: Generate Term Updates Changelog
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # runs every night at 10:00pm EST
+  workflow_dispatch:
+    inputs:
+      author:
+        description: "Author name for changes"
+        required: false
+        default: "GitHub Actions"
+      commit_sha:
+        description: "Commit SHA for reference"
+        required: false
+        default: ""
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  generate-changelog:
+    uses: ./.github/workflows/generate_terms_changelog.yml
+    secrets:
+      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+    with:
+      author: ${{ github.event.inputs.author || 'GitHub Actions' }}
+      commit_sha: ${{ github.event.inputs.commit_sha || github.sha }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}

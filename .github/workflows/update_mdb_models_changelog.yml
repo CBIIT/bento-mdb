@@ -1,0 +1,64 @@
+name: Generate Model Updates Changelogs
+
+permissions:
+  contents: write
+
+on:
+  workflow_run:
+    workflows: ["Check New MDFs"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      models_spec_path:
+        description: "Path to YAML files with models & refs their MDFs."
+        required: false
+        default: "config/mdb_models.yml"
+      model:
+        description: "Specific model handle to process"
+        required: false
+        default: ""
+      version:
+        description: "Specific version to process"
+        required: false
+        default: ""
+      mdf_files:
+        description: "Path or URL to specific MDF files to process"
+        required: false
+        default: ""
+      datahub_only:
+        description: "Only include datahub models"
+        required: false
+        type: boolean
+        default: false
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  generate-changelogs:
+    uses: ./.github/workflows/generate_models_changelog.yml
+    secrets:
+      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+    with:
+      models_spec_path: ${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}
+      model: ${{ github.event.inputs.model || '' }}
+      version: ${{ github.event.inputs.version || '' }}
+      mdf_files: ${{ github.event.inputs.mdf_files || '' }}
+      datahub_only: ${{ fromJson(github.event.inputs.datahub_only || 'false') }}
+      mdb_id: cloud-one-mdb-dev
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
