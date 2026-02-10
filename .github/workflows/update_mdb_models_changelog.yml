@@ -48,7 +48,7 @@ on:
 
 jobs:
   generate-changelogs:
-    uses: ./.github/workflows/update_mdb_models.yml
+    uses: ./.github/workflows/generate_models_changelog.yml
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}

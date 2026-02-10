@@ -34,7 +34,7 @@ on:
 
 jobs:
   generate-changelog:
-    uses: ./.github/workflows/update_mdb_terms.yml
+    uses: ./.github/workflows/generate_terms_changelog.yml
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
