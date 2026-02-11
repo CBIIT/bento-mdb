@@ -1,0 +1,146 @@
+name: Data Promotion (Dev to QA)
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # runs daily at 1:00 AM EST
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  export-c1-dev:
+    runs-on: ubuntu-latest
+    outputs:
+      s3_key: ${{ steps.export.outputs.s3_key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Export cloud-one-mdb-dev to S3
+        id: export
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+
+          PARAMS=$(jq -n \
+            '{
+              "mdb_id": "cloud-one-mdb-dev",
+              "bucket": "cloudone-mdb-data"
+            }')
+
+          echo "Running mdb-export-s3 with params: $PARAMS"
+
+          watch_out=$(
+            prefect deployment run mdb-export-s3/mdb-export-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee export_watch.log
+          )
+
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+            | head -n1
+          )
+          echo "Export flow run: $RUN_ID"
+
+          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+          S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
+
+          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+          echo "Generated S3 key: $S3_KEY"
+
+  import-to-c1-qa:
+    needs: export-c1-dev
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Import to cloud-one-mdb-qa from S3
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+
+          S3_KEY="${{ needs.export-c1-dev.outputs.s3_key }}"
+
+          PARAMS=$(jq -n \
+            --arg key "$S3_KEY" \
+            '{
+              "mdb_id": "cloud-one-mdb-qa",
+              "bucket": "cloudone-mdb-data",
+              "key": $key,
+              "clear_db": true
+            }')
+
+          echo "Running mdb-import-s3 with params: $PARAMS"
+
+          watch_out=$(
+            prefect deployment run mdb-import-s3/mdb-import-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee import_watch.log
+          )
+
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+            | head -n1
+          )
+          echo "Import flow run: $RUN_ID"
+
+  slack-notification:
+    needs: [export-c1-dev, import-to-c1-qa]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
+        with:
+          status: ${{ (needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure') && 'failure' || 'success' }}
+          message: |
+            *Data Promotion: CloudOne Dev → QA*
+            ${{ needs.export-c1-dev.result == 'success' && '✔️' || needs.export-c1-dev.result == 'failure' && '❌' || '⊘' }} export-c1-dev (cloud-one-mdb-dev → S3)
+            ${{ needs.import-to-c1-qa.result == 'success' && '✔️' || needs.import-to-c1-qa.result == 'failure' && '❌' || '⊘' }} import-to-c1-qa (S3 → cloud-one-mdb-qa)
