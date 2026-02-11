@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 2
 
       - id: filter
-        uses: dorny/paths-filter@5cf07d8b6920b9849e604700c9af46a6c537f3c2 # v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
           filters: |
             mdb_models:
