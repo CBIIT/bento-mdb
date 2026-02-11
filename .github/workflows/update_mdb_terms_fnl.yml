@@ -59,30 +59,29 @@ jobs:
           echo "changelog_files=$CHANGELOGS" >> $GITHUB_OUTPUT
           echo "Found changelogs: $CHANGELOGS"
 
+  # TODO: revert to uses: ./.github/workflows/update_mdb.yml after testing
   update-fnl-mdb-dev:
     needs: collect-changelogs
     if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' }}
-    uses: ./.github/workflows/update_mdb.yml
-    secrets:
-      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-    with:
-      mdb_id: fnl-mdb-dev
-      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
-      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      log_level: ${{ github.event.inputs.log_level || 'info' }}
-
-  slack-notification:
-    needs: [collect-changelogs, update-fnl-mdb-dev]
     runs-on: ubuntu-latest
-    if: always()
     steps:
-      - name: Slack Notification
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
-        with:
-          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
-          message: |
-            ${{ needs.collect-changelogs.result == 'success' && '✔️' || needs.collect-changelogs.result == 'failure' && '❌' || '⊘' }} collect-changelogs
-            ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
+      - name: Trigger test
+        run: |
+          echo "=== update-fnl-mdb-dev triggered ==="
+          echo "changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}"
+          echo "mdb_id: fnl-mdb-dev"
+
+  # slack-notification:
+  #   needs: [collect-changelogs, update-fnl-mdb-dev]
+  #   runs-on: ubuntu-latest
+  #   if: always()
+  #   steps:
+  #     - name: Slack Notification
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #       uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
+  #       with:
+  #         status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+  #         message: |
+  #           ${{ needs.collect-changelogs.result == 'success' && '✔️' || needs.collect-changelogs.result == 'failure' && '❌' || '⊘' }} collect-changelogs
+  #           ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev

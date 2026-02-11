@@ -52,99 +52,50 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Set up Python
-        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
-        with:
-          python-version-file: ".python-version"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.5.10"
-
-      - name: Install dependencies and project
-        run: |
-          uv pip install --system -e .
-          uv sync --all-extras --dev
-      
-      - name: Update terms
+      # TODO: Replace this fake changelog block with the real Prefect flow
+      - name: Generate fake term changelog for testing
         id: update-terms
-        env:
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-          MDB_ID: cloud-one-mdb-dev
         run: |
-          set -xeuo pipefail
-          trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
+          set -euo pipefail
 
-          PARAMS=$(jq -n \
-          --arg mdb_id "$MDB_ID" \
-          --arg author "${{ inputs.author || 'GitHub Actions Bot' }}" \
-          --arg commit "${{ inputs.commit_sha || github.sha }}" \
-          --argjson no_commit "${{ inputs.no_commit || false }}" \
-          '{
-            "mdb_id": $mdb_id,
-            "author": $author,
-            "commit": $commit,
-            "no_commit": $no_commit
-          }')
-          echo "PARAMS=$PARAMS"
+          MDB_ID="cloud-one-mdb-dev"
+          TODAY=$(date +%Y%m%d)
+          CHANGELOG_DIR="data/output/term_changelogs"
+          CHANGELOG_FILE="${CHANGELOG_DIR}/${MDB_ID}_${TODAY}_term_updates.xml"
 
-          watch_out=$(
-            prefect deployment run update-terms/update-terms \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee watch.log
-          )
-          echo "watch_out=$watch_out"
+          mkdir -p "$CHANGELOG_DIR"
 
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
-            | head -n1
-          )
-          echo "Scheduled and completed run: $RUN_ID"
-          
-          LOG_FILE="${RUN_ID}_run.log"
-          echo "Log file: $LOG_FILE"
+          cat > "$CHANGELOG_FILE" <<'XMLEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog">
+            <!-- Fake changelog for trigger testing -->
+            <changeSet id="test-term-update" author="GitHub Actions Bot">
+              <comment>Test term changelog generated for workflow trigger testing</comment>
+            </changeSet>
+          </databaseChangeLog>
+          XMLEOF
 
-          prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+          echo "Created fake changelog: $CHANGELOG_FILE"
 
-          echo "First 10 lines of log file:"
-          head -n 10 "$LOG_FILE" || echo "Failed to read log file"
-          
-          echo "Checking for RESULT_JSON in logs:"
-          grep -a "RESULT_JSON" "$LOG_FILE" || echo "No RESULT_JSON found in logs"
-
-          RESULT_JSON='[]'
-          
-          RAW_JSON=$(grep -a -m1 "RESULT_JSON:" "$LOG_FILE" \
-            | grep -oP 'RESULT_JSON:\s*\[.*\]' \
-            | sed 's/RESULT_JSON:\s*//' \
-            || echo '[]')
-          echo "Raw JSON array from logs: $RAW_JSON"
-
-          FIRST_PATH=$(echo "$RAW_JSON" | jq -r '.[0] // empty')
-          if [ -n "$FIRST_PATH" ]; then
-            CLEAN_PATH=$(echo "$FIRST_PATH" \
-              | sed -E 's|.*/data/|data/|')
-            RESULT_JSON=$(jq -nc --arg p "$CLEAN_PATH" '[ $p ]')
-            echo "Normalized RESULT_JSON: $RESULT_JSON"
-          fi
-
-          if [ -z "${RESULT_JSON//\[\]/}" ]; then
-            echo "Fallback: no direct JSON, grepping for filename…"
-            FILE_PATH=$(grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' "$LOG_FILE" \
-              | tail -n1 \
-              || true)
-            if [ -n "$FILE_PATH" ]; then
-              STRIPPED=${FILE_PATH#*/data/}               # e.g. output/term_changelogs/xxx.xml
-              RESULT_JSON=$(jq -nc --arg p "data/$STRIPPED" '[ $p ]')
-              echo "Fallback RESULT_JSON: $RESULT_JSON"
-            fi
-          fi
-
-          # Set output for GitHub Actions
+          RESULT_JSON=$(jq -nc --arg p "$CHANGELOG_FILE" '[ $p ]')
           echo "changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
-          echo "mdb_name=$MDB_ID" >> $GITHUB_OUTPUT
-          
-          echo "Changelog files for $MDB_ID: $RESULT_JSON"
+          echo "Changelog files: $RESULT_JSON"
+
+      - name: Commit fake changelog
+        if: ${{ !fromJson(inputs.no_commit || 'false') }}
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+          git add data/output/term_changelogs/
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Add fake term changelog for testing
+
+          Generated by workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            git push origin ${{ github.ref_name }}
+          else
+            echo "No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
