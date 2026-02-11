@@ -1,6 +1,7 @@
 name: Generate Term Changelogs
 permissions:
   contents: write
+  actions: write
 
 on:
   workflow_call:
