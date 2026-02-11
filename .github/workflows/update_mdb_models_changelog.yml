@@ -2,6 +2,7 @@ name: Generate Model Updates Changelogs
 
 permissions:
   contents: write
+  actions: write
 
 on:
   workflow_run:
