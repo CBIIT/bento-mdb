@@ -4,5 +4,6 @@ RUN apk update && apk upgrade sqlite-libs
 ADD app /app
 WORKDIR /app
 RUN pip install bento-sts
+RUN pip install --upgrade cryptography==46.0.5
 RUN pip list | grep bento-sts > STS-VERSION
 ENTRYPOINT ["gunicorn"]
