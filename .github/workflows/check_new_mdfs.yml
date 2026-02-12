@@ -2,7 +2,7 @@ name: Check New MDFs
 
 on:
   schedule:
-    - cron: "22 23 * * *" # runs daily 22:12 UTC/6:12 PM ET
+    - cron: "12 22 * * *" # runs daily 22:12 UTC/6:12 PM ET
   workflow_dispatch:
     inputs:
       models_yaml_path:
