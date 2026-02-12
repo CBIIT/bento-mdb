@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import logging
 import re
 import shutil
 import stat
@@ -13,7 +12,6 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
-from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
 from bento_mdb.mdb_utils import init_mdb_connection
@@ -24,10 +22,6 @@ DRIVER_PATH = "/app/drivers"
 DRIVER_JAR = "liquibase-neo4j-4.31.1-full.jar"
 LIQUIBASE_VERSION = "4.31.1"
 DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
-
-# configure jvm
-JVM_HEAP_MIN = "2g"
-JVM_HEAP_MAX = "6g"
 
 
 @task
@@ -232,18 +226,8 @@ def liquibase_update_flow(
 ) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
-    # configure jvm
-    import jnius_config
 
-    jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
-
-    # set up pyliquibase logger use prefect api log handler
-    plb_logger = logging.getLogger("pyliquibase")
-    plb_logger.setLevel(VALID_LOG_LEVELS[log_level])
-    if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
-        plb_logger.addHandler(APILogHandler())
-
-    # generate code to read from changelog file and run the Cypher statements on the MDB
+    # read from changelog file and run the Cypher statements on the MDB
     with open(changelog_file, "r") as f:
         content = f.read()
     

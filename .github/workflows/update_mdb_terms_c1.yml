@@ -84,5 +84,6 @@ jobs:
         with:
           status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
+            *[CloudOne] Term Update*
             ${{ needs.collect-changelogs.result == 'success' && '✔️' || needs.collect-changelogs.result == 'failure' && '❌' || '⊘' }} collect-changelogs
             ${{ needs.update-c1-mdb-dev.result == 'success' && '✔️' || needs.update-c1-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-c1-mdb-dev

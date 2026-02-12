@@ -99,12 +99,29 @@ jobs:
             fi
           done
 
-          echo "Successfully queued ${#RUN_IDS[@]} flow runs:"
+          echo "Successfully queued ${#RUN_IDS[@]} flow runs. Waiting for completion..."
+          
+          FAILED=()
           for run_info in "${RUN_IDS[@]}"; do
             IFS=':' read -r run_id file <<< "$run_info"
-            echo "  - Flow run $run_id for $file"
+            echo ""
+            echo "Watching flow run $run_id for $file..."
+            if ! prefect flow-run watch "$run_id"; then
+              echo "ERROR: Flow run $run_id for $file failed!"
+              FAILED+=("$run_id:$file")
+            else
+              echo "Flow run $run_id for $file completed successfully."
+            fi
           done
-          
+
           echo ""
-          echo "All flow runs have been queued successfully!"
-          echo "Monitor their progress in the Prefect UI or set up notifications for completion status."
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            echo "The following flow runs failed:"
+            for fail_info in "${FAILED[@]}"; do
+              IFS=':' read -r run_id file <<< "$fail_info"
+              echo "  - Flow run $run_id for $file"
+            done
+            exit 1
+          fi
+
+          echo "All ${#RUN_IDS[@]} flow runs completed successfully!"
