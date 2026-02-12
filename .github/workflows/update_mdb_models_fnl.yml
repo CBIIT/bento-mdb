@@ -109,5 +109,6 @@ jobs:
         with:
           status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
+            *[FNL] Model Update*
             ${{ needs.collect-changelogs.result == 'success' && '✔️' || needs.collect-changelogs.result == 'failure' && '❌' || '⊘' }} collect-changelogs
             ${{ needs.update-fnl-mdb-dev.result == 'success' && '✔️' || needs.update-fnl-mdb-dev.result == 'failure' && '❌' || '⊘' }} update-fnl-mdb-dev
