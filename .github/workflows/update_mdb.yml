@@ -64,10 +64,10 @@ jobs:
           echo "Processing the following changelog files:"
           echo '${{ inputs.changelog_files }}' | jq -r '.[]'
           
-          RUN_IDS=()
+          HAS_FAILURE=false
 
           for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
-            echo "Queueing $file"
+            echo "Running $file"
 
             if [ ! -f "$file" ]; then
               echo "Warning: Changelog file $file does not exist, skipping"
@@ -86,42 +86,20 @@ jobs:
               "dry_run": $dry_run
             }')
 
-            OUTPUT=$(prefect deployment run liquibase-update/liquibase-update \
-              --params "$PARAMS" 2>&1)
-
-            RUN_ID=$(echo "$OUTPUT" | grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" | head -n1)
-
-            if [ -n "$RUN_ID" ]; then
-              echo "Created flow run $RUN_ID for $file"
-              RUN_IDS+=("$RUN_ID:$file")
+            echo "Running deployment for $file and waiting for completion..."
+            if prefect deployment run liquibase-update/liquibase-update \
+              --params "$PARAMS" \
+              --watch; then
+              echo "Flow run for $file completed successfully."
             else
-              echo "Failed to create flow run for $file"
+              echo "ERROR: Flow run for $file failed!"
+              HAS_FAILURE=true
             fi
           done
 
-          echo "Successfully queued ${#RUN_IDS[@]} flow runs. Waiting for completion..."
-          
-          FAILED=()
-          for run_info in "${RUN_IDS[@]}"; do
-            IFS=':' read -r run_id file <<< "$run_info"
-            echo ""
-            echo "Watching flow run $run_id for $file..."
-            if ! prefect flow-run watch "$run_id"; then
-              echo "ERROR: Flow run $run_id for $file failed!"
-              FAILED+=("$run_id:$file")
-            else
-              echo "Flow run $run_id for $file completed successfully."
-            fi
-          done
-
-          echo ""
-          if [ ${#FAILED[@]} -gt 0 ]; then
-            echo "The following flow runs failed:"
-            for fail_info in "${FAILED[@]}"; do
-              IFS=':' read -r run_id file <<< "$fail_info"
-              echo "  - Flow run $run_id for $file"
-            done
+          if [ "$HAS_FAILURE" = true ]; then
+            echo "One or more flow runs failed."
             exit 1
           fi
 
-          echo "All ${#RUN_IDS[@]} flow runs completed successfully!"
+          echo "All flow runs completed successfully!"
