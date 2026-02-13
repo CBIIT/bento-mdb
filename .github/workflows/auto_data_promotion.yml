@@ -63,7 +63,7 @@ jobs:
 
           RUN_ID=$(
             grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
-            | head -n1
+            | head -n1 || true
           )
           echo "Export flow run: $RUN_ID"
 
@@ -125,7 +125,7 @@ jobs:
 
           RUN_ID=$(
             grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1
+            | head -n1 || true
           )
           echo "Import flow run: $RUN_ID"
 
