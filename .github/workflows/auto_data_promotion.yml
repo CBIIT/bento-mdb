@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry run flag"
+        description: "Export s3 bucket"
         required: false
         type: boolean
         default: false
