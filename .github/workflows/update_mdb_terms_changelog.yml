@@ -34,8 +34,9 @@ on:
         default: false
 
 jobs:
+
   generate-changelog:
-    uses: ./.github/workflows/generate_terms_changelog.yml
+    uses: ./.github/workflows/shared/generate_terms_changelog.yml
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
