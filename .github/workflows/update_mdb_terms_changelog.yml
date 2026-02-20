@@ -1,4 +1,4 @@
-name: Generate Term Updates Changelog
+name: Trigger Term Updates Changelog
 
 permissions:
   contents: write

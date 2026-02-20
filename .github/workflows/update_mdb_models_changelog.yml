@@ -1,4 +1,4 @@
-name: Generate Model Updates Changelogs
+name: Trigger Model Updates Changelogs
 
 permissions:
   contents: write
