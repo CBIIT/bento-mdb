@@ -1,4 +1,4 @@
-name: Generate Model Updates Changelogs
+name: Trigger Model Updates Changelogs
 
 permissions:
   contents: write
@@ -49,7 +49,7 @@ on:
 
 jobs:
   generate-changelogs:
-    uses: ./.github/workflows/shared/generate_models_changelog.yml
+    uses: ./.github/workflows/generate_models_changelog.yml
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
