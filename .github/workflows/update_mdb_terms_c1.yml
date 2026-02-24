@@ -4,7 +4,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Generate Term Updates Changelog"]
+    workflows: ["Trigger Term Updates Changelog"]
     types: [completed]
   workflow_dispatch:
     inputs:

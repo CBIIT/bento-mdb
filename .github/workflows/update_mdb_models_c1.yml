@@ -6,7 +6,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Generate Model Updates Changelogs"]
+    workflows: ["Trigger Model Updates Changelogs"]
     types: [completed]
   workflow_dispatch:
     inputs:
