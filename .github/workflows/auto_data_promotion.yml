@@ -50,8 +50,9 @@ jobs:
             echo "model_filters=" >> $GITHUB_OUTPUT
           else
             echo "Updated models: $MODELS"
-            FILTERS=$(for m in $MODELS; do printf -- '--models-filter %s ' "$m"; done)
-            echo "model_filters=$FILTERS" >> $GITHUB_OUTPUT
+            # Build a JSON array for use as Prefect flow parameter, e.g. ["CDS","CTDC"]
+            MODELS_JSON=$(printf '%s\n' $MODELS | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "model_filters=$MODELS_JSON" >> $GITHUB_OUTPUT
           fi
 
   check-dev-mdf-sync:
@@ -83,7 +84,12 @@ jobs:
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
           set -xeuo pipefail
-          check_promotion check-dev ${{ needs.detect-updated-models.outputs.model_filters }}
+          PARAMS=$(jq -n \
+            --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
+            '{"stage": "pre", "models_filter": $filters}')
+          prefect deployment run 'check-promotion/check-promotion' \
+            --params "$PARAMS" \
+            --watch
 
   export-c1-dev:
     needs: check-dev-mdf-sync
@@ -171,21 +177,18 @@ jobs:
           uv pip install --system -e .
           uv sync --all-extras --dev
 
-      - name: Check 1 — Confirm QA received all promoted models
+      - name: Check 1+2 — Confirm QA received all promoted models and is in sync with DEV
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
           set -xeuo pipefail
-          check_promotion check-qa ${{ needs.detect-updated-models.outputs.model_filters }}
-
-      - name: Check 2 — Confirm DEV and QA are in sync
-        env:
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
-        run: |
-          set -xeuo pipefail
-          check_promotion check-sync ${{ needs.detect-updated-models.outputs.model_filters }}
+          PARAMS=$(jq -n \
+            --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
+            '{"stage": "post", "models_filter": $filters}')
+          prefect deployment run 'check-promotion/check-promotion' \
+            --params "$PARAMS" \
+            --watch
 
       - name: Update last_promoted_sha in sync_status.yml
         env:
