@@ -200,6 +200,7 @@ jobs:
           set -xeuo pipefail
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
+          git checkout -- .
           git pull --rebase origin ${BRANCH}
           python -c "
           import yaml, pathlib, os
