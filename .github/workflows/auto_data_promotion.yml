@@ -198,6 +198,9 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           set -xeuo pipefail
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git pull --rebase origin ${BRANCH}
           python -c "
           import yaml, pathlib, os
           p = pathlib.Path('config/sync_status.yml')
@@ -205,11 +208,8 @@ jobs:
           d.setdefault('promotion', {})['last_promoted_sha'] = os.environ['NEW_SHA']
           p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
           "
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
           git add config/sync_status.yml
           git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
-          git pull --rebase origin ${BRANCH}
           git push origin HEAD:${BRANCH}
 
   slack-notification:
