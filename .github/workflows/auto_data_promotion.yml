@@ -111,38 +111,12 @@ jobs:
 
       - name: Export cloud-one-mdb-dev to S3
         id: export
-        env:
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
-          set -xeuo pipefail
-
-          PARAMS=$(jq -n \
-            '{
-              "mdb_id": "cloud-one-mdb-dev",
-              "bucket": "cloudone-mdb-data"
-            }')
-
-          echo "Running mdb-export-s3 with params: $PARAMS"
-
-          watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3 \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee export_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
-            | head -n1 || true
-          )
-          echo "Export flow run: $RUN_ID"
-
+          # TODO: remove for production — skipping actual export for testing
           TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
           S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
-
           echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Generated S3 key: $S3_KEY"
+          echo "[TEST] Skipped export. S3 key: $S3_KEY"
 
   import-to-c1-qa:
     needs: export-c1-dev
@@ -168,37 +142,9 @@ jobs:
           uv sync --all-extras --dev
 
       - name: Import to cloud-one-mdb-qa from S3
-        env:
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
-          set -xeuo pipefail
-
-          S3_KEY="${{ needs.export-c1-dev.outputs.s3_key }}"
-
-          PARAMS=$(jq -n \
-            --arg key "$S3_KEY" \
-            '{
-              "mdb_id": "cloud-one-mdb-qa",
-              "bucket": "cloudone-mdb-data",
-              "key": $key,
-              "clear_db": true
-            }')
-
-          echo "Running mdb-import-s3 with params: $PARAMS"
-
-          watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3 \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee import_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1 || true
-          )
-          echo "Import flow run: $RUN_ID"
+          # TODO: remove for production — skipping actual import for testing
+          echo "[TEST] Skipped import. S3 key: ${{ needs.export-c1-dev.outputs.s3_key }}"
 
   verify-promotion:
     needs: [import-to-c1-qa, detect-updated-models]
@@ -244,6 +190,8 @@ jobs:
       - name: Update last_promoted_sha in sync_status.yml
         env:
           NEW_SHA: ${{ github.sha }}
+          # TODO: push to main in production — currently pushing to current branch for testing
+          BRANCH: ${{ github.ref_name }}
         run: |
           set -xeuo pipefail
           python -c "
@@ -257,7 +205,7 @@ jobs:
           git config user.email "actions@github.com"
           git add config/sync_status.yml
           git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
-          git push
+          git push origin HEAD:${BRANCH}
 
   slack-notification:
     needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, verify-promotion]
