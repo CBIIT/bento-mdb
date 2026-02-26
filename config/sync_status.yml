@@ -1,8 +1,8 @@
 NCIt:
-  last_updated: "202602"
-  date_format: "%Y%m"
+  last_updated: '202602'
+  date_format: '%Y%m'
 caDSR:
-  last_updated: "2019-04-20"
-  date_format: "%Y-%m-%d"
+  last_updated: '2019-04-20'
+  date_format: '%Y-%m-%d'
 promotion:
-  last_promoted_sha: "2efeeaf1ed525a48a6e0816b6e6ba460ec88c5ee"
+  last_promoted_sha: 84d65c07b85c7ba57059c86ec6419f779abcb03c
