@@ -145,8 +145,8 @@ CDS:
   - version: 11.0.3
     tag: 11.0.3-GC_Release
   latest_version: 11.0.3
-  latest_prerelease_commit: ee5b731de82a9396cf2f2d14417110d249ea5305
-  latest_prerelease_version: 11.0.3
+  latest_prerelease_commit: aace2284406ca84baa1b2abc0f31e69d545887f1
+  latest_prerelease_version: 11.0.4
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
@@ -264,7 +264,7 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 1.3.0
-  latest_prerelease_commit: fc08743df9f819a7de74838195698b461d193563
+  latest_prerelease_commit: 9ca8c2c7ff5634bd143fa1233121d169860e9591
   latest_prerelease_version: 1.3.0
 PDC:
   repository: CBIIT/pdc-model
