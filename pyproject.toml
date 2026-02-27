@@ -28,7 +28,6 @@ dependencies = [
 
 [project.scripts]
 check_new_mdfs = "scripts.check_new_mdfs:main"
-check_promotion = "scripts.check_promotion:main"
 get_pvs_and_synonyms = "scripts.get_pvs_and_synonyms:main"
 make_model_cde_changelog = "scripts.make_model_cde_changelog:main"
 make_model_changelog = "scripts.make_model_changelog:main"

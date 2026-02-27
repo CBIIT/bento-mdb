@@ -44,16 +44,22 @@ jobs:
         id: detect
         run: |
           set -xeuo pipefail
-          MODELS=$(check_promotion detect-updated --format space 2>/dev/null || true)
-          if [ -z "$MODELS" ]; then
-            echo "No updated models detected."
-            echo "model_filters=" >> $GITHUB_OUTPUT
-          else
-            echo "Updated models: $MODELS"
-            # Build a JSON array for use as Prefect flow parameter, e.g. ["CDS","CTDC"]
-            MODELS_JSON=$(printf '%s\n' $MODELS | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "model_filters=$MODELS_JSON" >> $GITHUB_OUTPUT
-          fi
+          python -c "
+          import json
+          import os
+          from bento_mdb.flows.check_promotion import get_updated_models, read_last_promoted_sha
+          ref = read_last_promoted_sha()
+          models = get_updated_models(ref) if ref else []
+          out_path = os.environ.get('GITHUB_OUTPUT', '')
+          if out_path:
+              with open(out_path, 'a') as f:
+                  val = json.dumps(models) if models else ''
+                  f.write('model_filters=' + val + '\n')
+          if models:
+              print('Updated models:', models)
+          else:
+              print('No updated models detected.')
+          "
 
   check-dev-mdf-sync:
     needs: detect-updated-models

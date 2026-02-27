@@ -7,15 +7,21 @@ A single flow triggered at two stages of the data promotion pipeline:
                 Check 2: Confirm DEV and QA are in sync.
                 (both run after import)
 
+When models_filter is not provided, the flow can compute it from optional
+``since`` (git ref) or from config/sync_status.yml (last_promoted_sha).
+
 The flow raises ValueError on any failure so Prefect marks the run as FAILED.
 """
 
 from __future__ import annotations
 
+import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+import yaml
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
@@ -26,6 +32,7 @@ from bento_mdb.model_cdes import get_yaml_files_from_spec, load_model_specs_from
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _MDB_MODELS_PATH = _REPO_ROOT / "config/mdb_models.yml"
+_SYNC_STATUS_PATH = _REPO_ROOT / "config/sync_status.yml"
 
 
 # ── shared helpers ─────────────────────────────────────────────────────────────
@@ -47,6 +54,59 @@ def _load_specs(models_filter: list[str] | None) -> dict:
     if not models_filter:
         return all_specs
     return {k: v for k, v in all_specs.items() if k in models_filter}
+
+
+def read_last_promoted_sha() -> str | None:
+    """Return the SHA in config/sync_status.yml under promotion.last_promoted_sha."""
+    try:
+        with _SYNC_STATUS_PATH.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        return data.get("promotion", {}).get("last_promoted_sha")
+    except Exception:
+        return None
+
+
+def find_updated_models(since: str) -> list[str]:
+    """Return model handles whose latest_version changed between *since* and HEAD.
+
+    Parses the git diff of config/mdb_models.yml. Only lines that change
+    ``latest_version:`` (not ``latest_prerelease_version:``) are considered.
+    """
+    result = subprocess.run(
+        ["git", "diff", f"{since}..HEAD", "--", str(_MDB_MODELS_PATH)],
+        capture_output=True,
+        text=True,
+        cwd=_REPO_ROOT,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+
+    updated: list[str] = []
+    current_model: str | None = None
+    for line in result.stdout.splitlines():
+        hunk = re.match(r"^@@.*@@\s+(\w+):", line)
+        if hunk:
+            current_model = hunk.group(1)
+        elif (
+            re.match(r"^\+\s+latest_version:", line)
+            and "prerelease" not in line
+            and current_model
+            and current_model not in updated
+        ):
+            updated.append(current_model)
+    return updated
+
+
+def get_updated_models(since: str | None = None) -> list[str]:
+    """Return model handles with updated latest_version since the given ref.
+
+    If *since* is None, uses promotion.last_promoted_sha from config/sync_status.yml.
+    Returns empty list if no ref is available or no updates found.
+    """
+    ref = since or read_last_promoted_sha()
+    if not ref:
+        return []
+    return find_updated_models(ref)
 
 
 def _query_handles(mdb: MDB, model: str, version: str) -> tuple[set, set, set]:
@@ -212,13 +272,19 @@ def check_promotion_flow(
     dev_mdb_id: str = "cloud-one-mdb-dev",
     qa_mdb_id: str = "cloud-one-mdb-qa",
     models_filter: list[str] | None = None,
+    since: str | None = None,
 ) -> None:
     """Promotion validation flow.
 
     stage="pre"  — Check 0: MDF vs MDB-DEV (run before export).
     stage="post" — Check 1: MDF vs MDB-QA, Check 2: MDB-DEV vs MDB-QA (run after import).
+
+    When models_filter is None, it is computed from *since* or from
+    config/sync_status.yml (last_promoted_sha) via get_updated_models().
     """
     logger = get_run_logger()
+    if models_filter is None and (since or read_last_promoted_sha()):
+        models_filter = get_updated_models(since)
     specs = _load_specs(models_filter)
 
     if stage == "pre":
