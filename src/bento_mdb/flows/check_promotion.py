@@ -147,21 +147,24 @@ def check_model_dev(model: str, spec: dict, mdb_id: str) -> _DiffResult:
     logger.info("=== Diff: %s v%s (MDF vs MDB-DEV) ===", model, mdb_version)
 
     mdb = _connect(mdb_id)
-    mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
-    mdb_nodes, mdb_rels, mdb_props = _query_handles(mdb, model, mdb_version)
+    try:
+        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
+        mdb_nodes, mdb_rels, mdb_props = _query_handles(mdb, model, mdb_version)
 
-    _log_diff(logger, "NODES",         mdf_nodes, mdb_nodes, "MDF", "MDB-DEV")
-    _log_diff(logger, "RELATIONSHIPS", mdf_rels,  mdb_rels,  "MDF", "MDB-DEV")
-    _log_diff(logger, "PROPERTIES",    mdf_props, mdb_props, "MDF", "MDB-DEV")
+        _log_diff(logger, "NODES",         mdf_nodes, mdb_nodes, "MDF", "MDB-DEV")
+        _log_diff(logger, "RELATIONSHIPS", mdf_rels,  mdb_rels,  "MDF", "MDB-DEV")
+        _log_diff(logger, "PROPERTIES",    mdf_props, mdb_props, "MDF", "MDB-DEV")
 
-    inserts  = (len(mdf_nodes - mdb_nodes) + len(mdf_rels - mdb_rels)
-                + len(mdf_props - mdb_props))
-    removals = (len(mdb_nodes - mdf_nodes) + len(mdb_rels - mdf_rels)
-                + len(mdb_props - mdf_props))
-    logger.info("Expected inserts=%d  removals=%d", inserts, removals)
-    if inserts == 0 and removals == 0:
-        logger.info("DEV is up to date with MDF.")
-    return _DiffResult(model, mdb_version, inserts, removals)
+        inserts  = (len(mdf_nodes - mdb_nodes) + len(mdf_rels - mdb_rels)
+                    + len(mdf_props - mdb_props))
+        removals = (len(mdb_nodes - mdf_nodes) + len(mdb_rels - mdf_rels)
+                    + len(mdb_props - mdf_props))
+        logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+        if inserts == 0 and removals == 0:
+            logger.info("DEV is up to date with MDF.")
+        return _DiffResult(model, mdb_version, inserts, removals)
+    finally:
+        mdb.close()
 
 
 @task(name="check-model-qa")
@@ -173,21 +176,24 @@ def check_model_qa(model: str, spec: dict, mdb_id: str) -> _DiffResult:
     logger.info("=== Diff: %s v%s (MDF vs MDB-QA) ===", model, mdb_version)
 
     mdb = _connect(mdb_id)
-    mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
-    qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb, model, mdb_version)
+    try:
+        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
+        qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb, model, mdb_version)
 
-    _log_diff(logger, "NODES",         mdf_nodes, qa_nodes, "MDF", "MDB-QA")
-    _log_diff(logger, "RELATIONSHIPS", mdf_rels,  qa_rels,  "MDF", "MDB-QA")
-    _log_diff(logger, "PROPERTIES",    mdf_props, qa_props, "MDF", "MDB-QA")
+        _log_diff(logger, "NODES",         mdf_nodes, qa_nodes, "MDF", "MDB-QA")
+        _log_diff(logger, "RELATIONSHIPS", mdf_rels,  qa_rels,  "MDF", "MDB-QA")
+        _log_diff(logger, "PROPERTIES",    mdf_props, qa_props, "MDF", "MDB-QA")
 
-    inserts  = (len(mdf_nodes - qa_nodes) + len(mdf_rels - qa_rels)
-                + len(mdf_props - qa_props))
-    removals = (len(qa_nodes - mdf_nodes) + len(qa_rels - mdf_rels)
-                + len(qa_props - mdf_props))
-    logger.info("Expected inserts=%d  removals=%d", inserts, removals)
-    if inserts == 0 and removals == 0:
-        logger.info("Expected inserts: 0; the data promotion completed successfully and QA is fully in sync with MDF.")
-    return _DiffResult(model, mdb_version, inserts, removals)
+        inserts  = (len(mdf_nodes - qa_nodes) + len(mdf_rels - qa_rels)
+                    + len(mdf_props - qa_props))
+        removals = (len(qa_nodes - mdf_nodes) + len(qa_rels - mdf_rels)
+                    + len(qa_props - mdf_props))
+        logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+        if inserts == 0 and removals == 0:
+            logger.info("Expected inserts: 0; the data promotion completed successfully and QA is fully in sync with MDF.")
+        return _DiffResult(model, mdb_version, inserts, removals)
+    finally:
+        mdb.close()
 
 
 @task(name="check-model-sync")
@@ -200,21 +206,25 @@ def check_model_sync(model: str, spec: dict, dev_mdb_id: str, qa_mdb_id: str) ->
 
     mdb_dev = _connect(dev_mdb_id)
     mdb_qa  = _connect(qa_mdb_id)
-    dev_nodes, dev_rels, dev_props = _query_handles(mdb_dev, model, mdb_version)
-    qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb_qa,  model, mdb_version)
+    try:
+        dev_nodes, dev_rels, dev_props = _query_handles(mdb_dev, model, mdb_version)
+        qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb_qa,  model, mdb_version)
 
-    _log_diff(logger, "NODES",         dev_nodes, qa_nodes, "DEV", "QA")
-    _log_diff(logger, "RELATIONSHIPS", dev_rels,  qa_rels,  "DEV", "QA")
-    _log_diff(logger, "PROPERTIES",    dev_props, qa_props, "DEV", "QA")
+        _log_diff(logger, "NODES",         dev_nodes, qa_nodes, "DEV", "QA")
+        _log_diff(logger, "RELATIONSHIPS", dev_rels,  qa_rels,  "DEV", "QA")
+        _log_diff(logger, "PROPERTIES",    dev_props, qa_props, "DEV", "QA")
 
-    inserts  = (len(dev_nodes - qa_nodes) + len(dev_rels - qa_rels)
-                + len(dev_props - qa_props))
-    removals = (len(qa_nodes - dev_nodes) + len(qa_rels - dev_rels)
-                + len(qa_props - dev_props))
-    logger.info("Expected inserts=%d  removals=%d", inserts, removals)
-    if inserts == 0 and removals == 0:
-        logger.info("Expected inserts: 0; DEV and QA are fully in sync.")
-    return _DiffResult(model, mdb_version, inserts, removals)
+        inserts  = (len(dev_nodes - qa_nodes) + len(dev_rels - qa_rels)
+                    + len(dev_props - qa_props))
+        removals = (len(qa_nodes - dev_nodes) + len(qa_rels - dev_rels)
+                    + len(qa_props - dev_props))
+        logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+        if inserts == 0 and removals == 0:
+            logger.info("Expected inserts: 0; DEV and QA are fully in sync.")
+        return _DiffResult(model, mdb_version, inserts, removals)
+    finally:
+        mdb_dev.close()
+        mdb_qa.close()
 
 
 # ── flow ───────────────────────────────────────────────────────────────────────
