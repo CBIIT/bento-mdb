@@ -24,11 +24,11 @@ from pathlib import Path
 from typing import Literal
 
 from prefect import flow, get_run_logger, task
-from prefect.blocks.system import Secret
 
 from bento_mdf.mdf import MDF
 from bento_meta.mdb import MDB
 
+from bento_mdb.mdb_utils import init_mdb_connection
 from bento_mdb.model_cdes import get_yaml_files_from_spec, load_model_specs_from_yaml
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -38,15 +38,8 @@ _MDB_MODELS_PATH = _REPO_ROOT / "config/mdb_models.yml"
 # ── shared helpers ─────────────────────────────────────────────────────────────
 
 def _connect(mdb_id: str) -> MDB:
-    uri = Secret.load(f"{mdb_id}-uri").get()
-    user = Secret.load(f"{mdb_id}-usr").get()
-    password = Secret.load(f"{mdb_id}-pwd").get()
-    if uri.startswith("jdbc:neo4j:"):
-        uri = uri.replace("jdbc:neo4j:", "")
-    conn = MDB(uri=uri, user=user, password=password)
-    if conn.driver is None:
-        raise ConnectionError(f"Failed to connect to MDB '{mdb_id}' at {uri}")
-    return conn
+    """Return a validated MDB connection (uses init_mdb_connection, allow_empty for diff-only use)."""
+    return init_mdb_connection(mdb_id, allow_empty=True)
 
 
 def _load_specs(models_filter: list[str] | None) -> dict:
