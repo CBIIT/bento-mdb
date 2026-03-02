@@ -1,4 +1,4 @@
-"""Unit tests for promotion logic (flow module) and detect-updated CLI."""
+"""Unit tests for promotion logic (flow module)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from bento_mdb.flows.check_promotion import (
     _load_specs,
     _query_handles,
     find_updated_models,
+    get_updated_models,
     read_last_promoted_sha,
 )
 
@@ -154,3 +155,22 @@ class TestFindUpdatedModels:
     def test_empty_or_failed_returns_empty(self) -> None:
         assert self._mock_diff("") == []
         assert self._mock_diff("...", returncode=1) == []
+
+
+# ── get_updated_models ────────────────────────────────────────────────────────
+
+class TestGetUpdatedModels:
+    def test_returns_empty_when_no_ref(self) -> None:
+        with patch.object(flow_module, "read_last_promoted_sha", return_value=None):
+            assert get_updated_models() == []
+
+    def test_uses_since_when_given(self) -> None:
+        with patch.object(flow_module, "find_updated_models", return_value=["CDS", "CTDC"]) as mock_find:
+            assert get_updated_models("abc123") == ["CDS", "CTDC"]
+            mock_find.assert_called_once_with("abc123")
+
+    def test_uses_read_last_promoted_sha_when_since_none(self) -> None:
+        with patch.object(flow_module, "read_last_promoted_sha", return_value="ref456"):
+            with patch.object(flow_module, "find_updated_models", return_value=[]) as mock_find:
+                assert get_updated_models() == []
+                mock_find.assert_called_once_with("ref456")
