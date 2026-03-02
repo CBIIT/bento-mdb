@@ -97,7 +97,7 @@ def _load_mdf_handles(spec: dict, model: str, version: str) -> tuple[set, set, s
     return nodes, rels, props
 
 
-def _log_diff(logger, label: str, a_set: set, b_set: set, a_lbl: str, b_lbl: str) -> int:
+def _log_diff(logger, label: str, a_set: set, b_set: set, a_lbl: str, b_lbl: str) -> None:
     new     = sorted(a_set - b_set)
     removed = sorted(b_set - a_set)
     logger.info(
@@ -109,7 +109,6 @@ def _log_diff(logger, label: str, a_set: set, b_set: set, a_lbl: str, b_lbl: str
         logger.info("  <- NEW      %s", h)
     for h in removed:
         logger.info("  -> REMOVED  %s", h)
-    return len(new) + len(removed)
 
 
 @dataclass
