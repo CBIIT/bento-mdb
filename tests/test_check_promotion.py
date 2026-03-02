@@ -9,6 +9,7 @@ import pytest
 
 from bento_mdb.flows.check_promotion import (
     _load_mdf_handles,
+    _load_specs,
     check_model_dev,
     check_model_qa,
     check_promotion_flow,
@@ -23,6 +24,20 @@ SAMPLE_MDF_PATH = TEST_DIR / "samples" / "test_mdf.yml"
 SPEC = {"latest_version": "1.2.3"}
 MODEL = "TEST"
 VERSION = "1.2.3"
+
+
+# ── _load_specs ───────────────────────────────────────────────────────────────
+
+def test_load_specs_raises_on_unknown_models() -> None:
+    """models_filter with a model not in config raises ValueError."""
+    with pytest.raises(ValueError, match=r"Unknown model\(s\) requested in models_filter: NOTINCONFIG"):
+        _load_specs(["NOTINCONFIG"])
+
+
+def test_load_specs_returns_subset_when_all_known() -> None:
+    """models_filter with existing models returns only those (from real config)."""
+    specs = _load_specs(["C3DC"])  # C3DC exists in config/mdb_models.yml
+    assert list(specs.keys()) == ["C3DC"]
 
 
 # ── Check 0: MDF vs DEV ──────────────────────────────────────────────────────

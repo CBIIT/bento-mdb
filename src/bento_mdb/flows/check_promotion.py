@@ -46,7 +46,13 @@ def _load_specs(models_filter: list[str] | None) -> dict:
     all_specs = load_model_specs_from_yaml(_MDB_MODELS_PATH)
     if not models_filter:
         return all_specs
-    return {k: v for k, v in all_specs.items() if k in models_filter}
+    unknown_models = [m for m in models_filter if m not in all_specs]
+    if unknown_models:
+        raise ValueError(
+            "Unknown model(s) requested in models_filter: "
+            + ", ".join(sorted(unknown_models))
+        )
+    return {k: all_specs[k] for k in models_filter}
 
 
 def _query_handles(mdb: MDB, model: str, version: str) -> tuple[set, set, set]:
