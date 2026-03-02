@@ -5,4 +5,5 @@ caDSR:
   last_updated: '2019-04-20'
   date_format: '%Y-%m-%d'
 promotion:
-  last_promoted_sha: 4fa24260e84b1ccfdd47f5ffb8cd2e418349c2a5
+  # SHA of commit that last changed config/mdb_models.yml; used by data promotion workflow to detect updated models
+  last_promoted_sha: 9deffc2e15e80f93ca470cf4333a32d210211921

@@ -8,7 +8,8 @@ A single flow triggered at two stages of the data promotion pipeline:
                 (both run after import)
 
 When models_filter is not provided, the flow can compute it from optional
-``since`` (git ref) or from config/sync_status.yml (last_promoted_sha).
+``since`` (git ref) or from config/sync_status.yml (last_promoted_sha,
+the SHA of the commit that last changed config/mdb_models.yml).
 
 The flow raises ValueError on any failure so Prefect marks the run as FAILED.
 """
@@ -57,7 +58,11 @@ def _load_specs(models_filter: list[str] | None) -> dict:
 
 
 def read_last_promoted_sha() -> str | None:
-    """Return the SHA in config/sync_status.yml under promotion.last_promoted_sha."""
+    """Return the SHA in config/sync_status.yml under promotion.last_promoted_sha.
+
+    The workflow sets this to the SHA of the commit that last changed
+    config/mdb_models.yml (after each successful promotion).
+    """
     try:
         with _SYNC_STATUS_PATH.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -100,7 +105,8 @@ def find_updated_models(since: str) -> list[str]:
 def get_updated_models(since: str | None = None) -> list[str]:
     """Return model handles with updated latest_version since the given ref.
 
-    If *since* is None, uses promotion.last_promoted_sha from config/sync_status.yml.
+    If *since* is None, uses promotion.last_promoted_sha from config/sync_status.yml
+    (the SHA of the commit that last changed mdb_models.yml).
     Returns empty list if no ref is available or no updates found.
     """
     ref = since or read_last_promoted_sha()
