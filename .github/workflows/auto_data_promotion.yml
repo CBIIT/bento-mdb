@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Uses last_promoted_sha from config/sync_status.yml (SHA of last commit that changed mdb_models.yml).
+      # Uses last_promoted_sha from config/sync_status.yml. Run when latest_version or latest_prerelease_* changed for a model.
       - name: Detect updated models since last promotion
         id: detect
         run: |
@@ -36,23 +36,22 @@ jobs:
             echo "No updated models detected (no last_promoted_sha)."
             exit 0
           fi
-          # Parse git diff for model names with changed latest_version (ignore prerelease).
+          # Collect model names that have latest_version or latest_prerelease_commit or latest_prerelease_version changed.
           current=""
           updated=""
           while IFS= read -r line; do
             if [[ "$line" =~ ^@@.*@@[[:space:]]+([A-Za-z0-9_-]+): ]]; then
               current="${BASH_REMATCH[1]}"
             fi
-            if [[ "$line" =~ ^\+[[:space:]]+latest_version: ]] && [[ "$line" != *prerelease* ]] && [[ -n "$current" ]]; then
+            if [[ -n "$current" ]] && [[ "$line" =~ ^[+-] ]] && [[ "$line" =~ (latest_version:|latest_prerelease_commit:|latest_prerelease_version:) ]]; then
               updated="${updated:+$updated }$current"
               current=""
             fi
           done < <(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
           if [ -z "$updated" ]; then
             echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected."
+            echo "No updated models detected (no latest_version / latest_prerelease_* change)."
           else
-            # Build JSON array for Prefect (e.g. ["CDS","CTDC"]).
             arr=$(echo "$updated" | tr ' ' '\n' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "model_filters=$arr" >> "$GITHUB_OUTPUT"
             echo "Updated models: $updated"
@@ -259,4 +258,4 @@ jobs:
           status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && 'failure' || 'success' }}
           message: |
             *Data Promotion: CloudOne Dev → QA*
-            ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && format('https://github.com/{0}/actions/runs/{1}', github.repository, github.run_id) || 'Success' }}
+            ${{ format('https://github.com/{0}/actions/runs/{1}', github.repository, github.run_id) }}
