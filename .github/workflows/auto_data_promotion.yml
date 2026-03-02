@@ -260,13 +260,13 @@ jobs:
           export NEW_SHA=$(git log -1 --format=%H -- config/mdb_models.yml)
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          python -c "
+          python - << 'PY'
           import yaml, pathlib, os
           p = pathlib.Path('config/sync_status.yml')
           d = yaml.safe_load(p.read_text())
           d.setdefault('promotion', {})['last_promoted_sha'] = os.environ['NEW_SHA']
           p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
-          "
+          PY
           git add config/sync_status.yml
           git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
           git push origin ${{ github.ref_name }}
