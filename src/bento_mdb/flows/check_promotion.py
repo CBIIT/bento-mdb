@@ -64,8 +64,14 @@ def _query_handles(mdb: MDB, model: str, version: str) -> tuple[set, set, set]:
             result = mdb.get_with_statement(cypher, p)
             return result if result is not None else []
         except Exception as exc:
-            logger.warning("Query failed: %s", exc)
-            return []
+            logger.exception(
+                "Query failed for model=%s version=%s cypher=%r: %s",
+                model,
+                version,
+                cypher,
+                exc,
+            )
+            raise
 
     nodes = {r["handle"] for r in _q(
         "MATCH (n:node {model:$model, version:$version}) RETURN n.handle AS handle"
