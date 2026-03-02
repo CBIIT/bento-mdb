@@ -25,37 +25,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Uses last_promoted_sha from config/sync_status.yml. Run when latest_version or latest_prerelease_* changed for a model.
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
       - name: Detect updated models since last promotion
         id: detect
         run: |
-          set -euo pipefail
-          ref=$(grep 'last_promoted_sha:' config/sync_status.yml | sed -E "s/.*last_promoted_sha: *['\"]?([a-f0-9]+)['\"]?.*/\1/" | tr -d ' \r' || true)
-          if [ -z "$ref" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected (no last_promoted_sha)."
-            exit 0
-          fi
-          # Collect model names that have latest_version or latest_prerelease_commit or latest_prerelease_version changed.
-          current=""
-          updated=""
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^@@.*@@[[:space:]]+([A-Za-z0-9_-]+): ]]; then
-              current="${BASH_REMATCH[1]}"
-            fi
-            if [[ -n "$current" ]] && [[ "$line" =~ ^[+-] ]] && [[ "$line" =~ (latest_version:|latest_prerelease_commit:|latest_prerelease_version:) ]]; then
-              updated="${updated:+$updated }$current"
-              current=""
-            fi
-          done < <(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
-          if [ -z "$updated" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected (no latest_version / latest_prerelease_* change)."
-          else
-            arr=$(echo "$updated" | tr ' ' '\n' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "model_filters=$arr" >> "$GITHUB_OUTPUT"
-            echo "Updated models: $updated"
-          fi
+          set -xeuo pipefail
+          python -c "
+          import json
+          import os
+          from bento_mdb.flows.check_promotion import get_updated_models, read_last_promoted_sha
+          ref = read_last_promoted_sha()
+          models = get_updated_models(ref) if ref else []
+          out_path = os.environ.get('GITHUB_OUTPUT', '')
+          if out_path:
+              with open(out_path, 'a') as f:
+                  val = json.dumps(models) if models else ''
+                  f.write('model_filters=' + val + '\n')
+          if models:
+              print('Updated models:', models)
+          else:
+              print('No updated models detected.')
+          "
 
   check-dev-mdf-sync:
     needs: detect-updated-models
@@ -119,12 +123,38 @@ jobs:
 
       - name: Export cloud-one-mdb-dev to S3
         id: export
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
-          # TODO: remove for production — skipping actual export for testing
+          set -xeuo pipefail
+
+          PARAMS=$(jq -n \
+            '{
+              "mdb_id": "cloud-one-mdb-dev",
+              "bucket": "cloudone-mdb-data"
+            }')
+
+          echo "Running mdb-export-s3 with params: $PARAMS"
+
+          watch_out=$(
+            prefect deployment run mdb-export-s3/mdb-export-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee export_watch.log
+          )
+
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+            | head -n1 || true
+          )
+          echo "Export flow run: $RUN_ID"
+
           TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
           S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
+
           echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "[TEST] Skipped export. S3 key: $S3_KEY"
+          echo "Generated S3 key: $S3_KEY"
 
   import-to-c1-qa:
     needs: export-c1-dev
@@ -221,19 +251,13 @@ jobs:
             --params "$PARAMS" \
             --watch
 
-      # last_promoted_sha = SHA of the commit that last changed config/mdb_models.yml.
-      # Used by detect-updated to find models whose latest_version changed since then.
       - name: Update last_promoted_sha in sync_status.yml
         env:
           NEW_SHA: ${{ github.sha }}
-          # TODO: push to main in production — currently pushing to current branch for testing
-          BRANCH: ${{ github.ref_name }}
         run: |
           set -xeuo pipefail
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git checkout -- .
-          git pull --rebase origin ${BRANCH}
           python -c "
           import yaml, pathlib, os
           p = pathlib.Path('config/sync_status.yml')
@@ -243,7 +267,7 @@ jobs:
           "
           git add config/sync_status.yml
           git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
-          git push origin HEAD:${BRANCH}
+          git push origin ${{ github.ref_name }}
 
   slack-notification:
     needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, verify-promotion]
