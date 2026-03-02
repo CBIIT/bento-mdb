@@ -11,9 +11,6 @@ from bento_mdb.flows.check_promotion import (
     _DiffResult,
     _load_specs,
     _query_handles,
-    find_updated_models,
-    get_updated_models,
-    read_last_promoted_sha,
 )
 
 # Import for patch targets
@@ -119,58 +116,3 @@ class TestDiffResult:
 
     def test_failed_when_removals(self) -> None:
         assert not _DiffResult("CDS", "1.0", inserts=0, removals=1).passed
-
-
-# ── read_last_promoted_sha ────────────────────────────────────────────────────
-
-class TestReadLastPromotedSha:
-    def test_reads_sha(self, tmp_path) -> None:
-        yml = tmp_path / "sync_status.yml"
-        yml.write_text("promotion:\n  last_promoted_sha: abc123\n")
-        with patch.object(flow_module, "_SYNC_STATUS_PATH", yml):
-            assert read_last_promoted_sha() == "abc123"
-
-    def test_returns_none_when_missing(self, tmp_path) -> None:
-        with patch.object(flow_module, "_SYNC_STATUS_PATH", tmp_path / "missing.yml"):
-            assert read_last_promoted_sha() is None
-
-
-# ── find_updated_models ────────────────────────────────────────────────────────
-
-class TestFindUpdatedModels:
-    def _mock_diff(self, stdout: str, returncode: int = 0) -> list[str]:
-        mock = MagicMock(returncode=returncode, stdout=stdout)
-        with patch.object(flow_module, "subprocess") as subprocess_mod:
-            subprocess_mod.run.return_value = mock
-            return find_updated_models("abc123")
-
-    def test_detects_version_bump(self) -> None:
-        diff = "@@ -1 +1 @@ CDS:\n-  latest_version: 1.0\n+  latest_version: 1.1\n"
-        assert self._mock_diff(diff) == ["CDS"]
-
-    def test_ignores_prerelease_change(self) -> None:
-        diff = "@@ -1 +1 @@ ICDC:\n-  latest_prerelease_commit: abc\n+  latest_prerelease_commit: def\n"
-        assert self._mock_diff(diff) == []
-
-    def test_empty_or_failed_returns_empty(self) -> None:
-        assert self._mock_diff("") == []
-        assert self._mock_diff("...", returncode=1) == []
-
-
-# ── get_updated_models ────────────────────────────────────────────────────────
-
-class TestGetUpdatedModels:
-    def test_returns_empty_when_no_ref(self) -> None:
-        with patch.object(flow_module, "read_last_promoted_sha", return_value=None):
-            assert get_updated_models() == []
-
-    def test_uses_since_when_given(self) -> None:
-        with patch.object(flow_module, "find_updated_models", return_value=["CDS", "CTDC"]) as mock_find:
-            assert get_updated_models("abc123") == ["CDS", "CTDC"]
-            mock_find.assert_called_once_with("abc123")
-
-    def test_uses_read_last_promoted_sha_when_since_none(self) -> None:
-        with patch.object(flow_module, "read_last_promoted_sha", return_value="ref456"):
-            with patch.object(flow_module, "find_updated_models", return_value=[]) as mock_find:
-                assert get_updated_models() == []
-                mock_find.assert_called_once_with("ref456")
