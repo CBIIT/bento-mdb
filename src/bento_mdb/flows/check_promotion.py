@@ -1,11 +1,15 @@
 """Promotion validation flow.
+Check 0 — Confirm DEV is up to date before promotion starts
+Compare MDF source files against MDB(DEV). Run before export (stage="pre").
 
-A single flow triggered at two stages of the data promotion pipeline:
+Check 1 — Confirm QA received all promoted models
+Compare MDF vs MDB(QA). After promotion, if Expected inserts: 0, the data
+promotion completed successfully and QA is fully in sync with MDF.
+Run after import (stage="post").
 
-  stage="pre"   Check 0: Confirm DEV is in sync with MDF — run before export.
-  stage="post"  Check 1: Confirm QA received all promoted models.
-                Check 2: Confirm DEV and QA are in sync.
-                (both run after import)
+Check 2 — Check DEV DB and QA DB are in sync
+Compare MDB-DEV vs MDB-QA. If Expected inserts: 0, DEV and QA are fully in sync.
+Run after import (stage="post").
 
 models_filter is passed from the workflow (YAML detect step). When None,
 all models from config/mdb_models.yml are used.
@@ -136,11 +140,11 @@ def _log_summary(logger, results: list[_DiffResult]) -> None:
 
 @task(name="check-model-dev")
 def check_model_dev(model: str, spec: dict, mdb_id: str) -> _DiffResult:
-    """Check 0: Compare MDF source against MDB-DEV for one model."""
+    """Check 0: Confirm DEV is up to date before promotion — compare MDF source against MDB(DEV)."""
     logger = get_run_logger()
     version = spec["latest_version"]
     mdb_version = version.lstrip("v")
-    logger.info("=== Check 0: %s v%s (MDF vs MDB-DEV) ===", model, mdb_version)
+    logger.info("=== Diff: %s v%s (MDF vs MDB-DEV) ===", model, mdb_version)
 
     mdb = _connect(mdb_id)
     mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
@@ -155,16 +159,18 @@ def check_model_dev(model: str, spec: dict, mdb_id: str) -> _DiffResult:
     removals = (len(mdb_nodes - mdf_nodes) + len(mdb_rels - mdf_rels)
                 + len(mdb_props - mdf_props))
     logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+    if inserts == 0 and removals == 0:
+        logger.info("DEV is up to date with MDF.")
     return _DiffResult(model, mdb_version, inserts, removals)
 
 
 @task(name="check-model-qa")
 def check_model_qa(model: str, spec: dict, mdb_id: str) -> _DiffResult:
-    """Check 1: Compare MDF source against MDB-QA for one model."""
+    """Check 1: Confirm QA received all promoted models — compare MDF vs MDB(QA)."""
     logger = get_run_logger()
     version = spec["latest_version"]
     mdb_version = version.lstrip("v")
-    logger.info("=== Check 1: %s v%s (MDF vs MDB-QA) ===", model, mdb_version)
+    logger.info("=== Diff: %s v%s (MDF vs MDB-QA) ===", model, mdb_version)
 
     mdb = _connect(mdb_id)
     mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
@@ -179,16 +185,18 @@ def check_model_qa(model: str, spec: dict, mdb_id: str) -> _DiffResult:
     removals = (len(qa_nodes - mdf_nodes) + len(qa_rels - mdf_rels)
                 + len(qa_props - mdf_props))
     logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+    if inserts == 0 and removals == 0:
+        logger.info("Expected inserts: 0; the data promotion completed successfully and QA is fully in sync with MDF.")
     return _DiffResult(model, mdb_version, inserts, removals)
 
 
 @task(name="check-model-sync")
 def check_model_sync(model: str, spec: dict, dev_mdb_id: str, qa_mdb_id: str) -> _DiffResult:
-    """Check 2: Compare MDB-DEV against MDB-QA for one model."""
+    """Check 2: Check DEV DB and QA DB are in sync — compare MDB-DEV vs MDB-QA."""
     logger = get_run_logger()
     version = spec["latest_version"]
     mdb_version = version.lstrip("v")
-    logger.info("=== Check 2: %s v%s (MDB-DEV vs MDB-QA) ===", model, mdb_version)
+    logger.info("=== Diff: %s v%s (MDB-DEV vs MDB-QA) ===", model, mdb_version)
 
     mdb_dev = _connect(dev_mdb_id)
     mdb_qa  = _connect(qa_mdb_id)
@@ -204,6 +212,8 @@ def check_model_sync(model: str, spec: dict, dev_mdb_id: str, qa_mdb_id: str) ->
     removals = (len(qa_nodes - dev_nodes) + len(qa_rels - dev_rels)
                 + len(qa_props - dev_props))
     logger.info("Expected inserts=%d  removals=%d", inserts, removals)
+    if inserts == 0 and removals == 0:
+        logger.info("Expected inserts: 0; DEV and QA are fully in sync.")
     return _DiffResult(model, mdb_version, inserts, removals)
 
 
@@ -218,8 +228,9 @@ def check_promotion_flow(
 ) -> None:
     """Promotion validation flow.
 
-    stage="pre"  — Check 0: MDF vs MDB-DEV (run before export).
-    stage="post" — Check 1: MDF vs MDB-QA, Check 2: MDB-DEV vs MDB-QA (run after import).
+    Check 0 (stage=pre):  Confirm DEV is up to date — MDF vs MDB(DEV). Run before export.
+    Check 1 (stage=post): Confirm QA received all promoted models — MDF vs MDB(QA).
+    Check 2 (stage=post): Check DEV and QA are in sync — MDB-DEV vs MDB-QA.
 
     models_filter is passed from the workflow (detect step in YAML). When None, all models are used.
     """
@@ -228,7 +239,7 @@ def check_promotion_flow(
 
     if stage == "pre":
         logger.info("=" * 60)
-        logger.info("Check 0 — MDF vs MDB-DEV  (pre-promotion validation)")
+        logger.info("Check 0 — Confirm DEV is up to date before promotion (MDF vs MDB-DEV)")
         logger.info("=" * 60)
 
         results = [check_model_dev(model, spec, dev_mdb_id) for model, spec in specs.items()]
@@ -240,18 +251,18 @@ def check_promotion_flow(
                 f"Check 0 FAILED — {len(failed)}/{len(results)} model(s) out of sync with MDF: "
                 + ", ".join(r.model for r in failed)
             )
-        logger.info("Check 0 PASSED — all models in DEV are in sync with MDF.")
+        logger.info("Check 0 PASSED — DEV is up to date with MDF.")
 
     elif stage == "post":
         logger.info("=" * 60)
-        logger.info("Check 1 — MDF vs MDB-QA  (post-promotion validation)")
+        logger.info("Check 1 — Confirm QA received all promoted models (MDF vs MDB-QA)")
         logger.info("=" * 60)
 
         qa_results = [check_model_qa(model, spec, qa_mdb_id) for model, spec in specs.items()]
         _log_summary(logger, qa_results)
 
         logger.info("=" * 60)
-        logger.info("Check 2 — MDB-DEV vs MDB-QA  (tier sync validation)")
+        logger.info("Check 2 — Check DEV DB and QA DB are in sync (MDB-DEV vs MDB-QA)")
         logger.info("=" * 60)
 
         sync_results = [
@@ -266,7 +277,7 @@ def check_promotion_flow(
                 f"Post-promotion checks FAILED — {len(failed)} check(s) did not pass: "
                 + ", ".join(f"{r.model}(v{r.version})" for r in failed)
             )
-        logger.info("Post-promotion checks PASSED — QA is fully in sync with MDF and DEV.")
+        logger.info("Post-promotion checks PASSED — QA received all promoted models and DEV/QA are in sync.")
 
     else:
         raise ValueError(f"Unknown stage: {stage!r}. Must be 'pre' or 'post'.")
