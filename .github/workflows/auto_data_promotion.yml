@@ -1,7 +1,7 @@
 name: Data Promotion (Dev to QA)
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   schedule:
@@ -15,7 +15,90 @@ on:
         default: false
 
 jobs:
+  detect-updated-models:
+    runs-on: ubuntu-latest
+    outputs:
+      model_filters: ${{ steps.detect.outputs.model_filters }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Detect updated models since last promotion
+        id: detect
+        run: |
+          set -xeuo pipefail
+          python -c "
+          import json
+          import os
+          from bento_mdb.flows.check_promotion import get_updated_models, read_last_promoted_sha
+          ref = read_last_promoted_sha()
+          models = get_updated_models(ref) if ref else []
+          out_path = os.environ.get('GITHUB_OUTPUT', '')
+          if out_path:
+              with open(out_path, 'a') as f:
+                  val = json.dumps(models) if models else ''
+                  f.write('model_filters=' + val + '\n')
+          if models:
+              print('Updated models:', models)
+          else:
+              print('No updated models detected.')
+          "
+
+  check-dev-mdf-sync:
+    needs: detect-updated-models
+    if: ${{ needs.detect-updated-models.outputs.model_filters != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Check 0 — Confirm DEV is in sync with MDF
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+          PARAMS=$(jq -n \
+            --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
+            '{"stage": "pre", "models_filter": $filters}')
+          prefect deployment run 'check-promotion/check-promotion' \
+            --params "$PARAMS" \
+            --watch
+
   export-c1-dev:
+    needs: check-dev-mdf-sync
     runs-on: ubuntu-latest
     outputs:
       s3_key: ${{ steps.export.outputs.s3_key }}
@@ -129,8 +212,65 @@ jobs:
           )
           echo "Import flow run: $RUN_ID"
 
+  verify-promotion:
+    needs: [import-to-c1-qa, detect-updated-models]
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Check 1+2 — Confirm QA received all promoted models and is in sync with DEV
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+          PARAMS=$(jq -n \
+            --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
+            '{"stage": "post", "models_filter": $filters}')
+          prefect deployment run 'check-promotion/check-promotion' \
+            --params "$PARAMS" \
+            --watch
+
+      - name: Update last_promoted_sha in sync_status.yml
+        env:
+          NEW_SHA: ${{ github.sha }}
+        run: |
+          set -xeuo pipefail
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          python -c "
+          import yaml, pathlib, os
+          p = pathlib.Path('config/sync_status.yml')
+          d = yaml.safe_load(p.read_text())
+          d.setdefault('promotion', {})['last_promoted_sha'] = os.environ['NEW_SHA']
+          p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
+          "
+          git add config/sync_status.yml
+          git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
+          git push origin ${{ github.ref_name }}
+
   slack-notification:
-    needs: [export-c1-dev, import-to-c1-qa]
+    needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, verify-promotion]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -139,8 +279,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure') && 'failure' || 'success' }}
+          status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && 'failure' || 'success' }}
           message: |
-            *Data Promotion: CloudOne Dev → QA*
-            ${{ needs.export-c1-dev.result == 'success' && '✔️' || needs.export-c1-dev.result == 'failure' && '❌' || '⊘' }} export-c1-dev (cloud-one-mdb-dev → S3)
-            ${{ needs.import-to-c1-qa.result == 'success' && '✔️' || needs.import-to-c1-qa.result == 'failure' && '❌' || '⊘' }} import-to-c1-qa (S3 → cloud-one-mdb-qa)
+            <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Data Promotion: CloudOne Dev → QA>
+            ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && 'Failure' || 'Success' }}
