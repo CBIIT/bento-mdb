@@ -361,7 +361,9 @@ jobs:
         run: |
           set -xeuo pipefail
           # This checks MDF vs Stage and QA vs Stage
-          # Note: Stage has prerelease data pruned, so comparison should work correctly
+          # Note: check-promotion flow queries only latest_version nodes (not prerelease versions),
+          # so even though QA has prerelease data and Stage doesn't, the comparison should work correctly
+          # because we're comparing only the latest_version nodes which should be the same.
           PARAMS=$(jq -n \
             --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
             '{
