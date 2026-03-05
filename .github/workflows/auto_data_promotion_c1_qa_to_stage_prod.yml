@@ -396,6 +396,7 @@ jobs:
             --watch
 
       # last_promoted_sha_stage_prod = SHA of the commit that last changed config/mdb_models.yml.
+      # Used by detect-updated to find models whose latest_version changed since then.
       - name: Update last_promoted_sha_stage_prod in sync_status.yml
         run: |
           set -xeuo pipefail
