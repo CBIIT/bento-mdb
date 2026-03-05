@@ -267,7 +267,7 @@ jobs:
 
   export-c1-stage:
     needs: prune-stage-prerelease
-    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.prune-stage-prerelease.result == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       s3_key: ${{ steps.export.outputs.s3_key }}
@@ -354,16 +354,17 @@ jobs:
           uv pip install --system -e .
           uv sync --all-extras --dev
 
-      - name: Check Stage — Confirm Stage received all promoted models (MDF vs Stage, QA vs Stage)
+      - name: Check Stage — Confirm Stage received all promoted models (QA vs Stage)
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
           set -xeuo pipefail
-          # This checks MDF vs Stage and QA vs Stage
-          # Note: check-promotion flow queries only latest_version nodes (not prerelease versions),
-          # so even though QA has prerelease data and Stage doesn't, the comparison should work correctly
-          # because we're comparing only the latest_version nodes which should be the same.
+          # This checks MDF vs Stage (Check 1) and QA vs Stage (Check 2)
+          # Important: check-promotion flow queries only latest_version nodes (e.g., v1.0, not v1.0-abc1234)
+          # - QA may have prerelease nodes (v1.0-abc1234) but those are separate from latest_version nodes
+          # - Stage has prerelease pruned (removed all v*-* nodes), so it only has latest_version nodes
+          # - Comparison only checks latest_version nodes, so sync should match despite prerelease differences
           PARAMS=$(jq -n \
             --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
             '{
