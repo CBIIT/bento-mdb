@@ -4,3 +4,5 @@ NCIt:
 caDSR:
   last_updated: "2019-04-20"
   date_format: "%Y-%m-%d"
+promotion:
+  last_promoted_sha: 9deffc2e15e80f93ca470cf4333a32d210211921
