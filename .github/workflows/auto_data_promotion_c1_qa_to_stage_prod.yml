@@ -4,9 +4,6 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches:
-      - DATATEAM-463-FEATURE
   schedule:
     - cron: "0 8 * * *" # runs daily at 3:00 AM EST (8:00 UTC)
   workflow_dispatch:
@@ -233,7 +230,7 @@ jobs:
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 0
-          ref: DATATEAM-463-FEATURE
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
@@ -302,7 +299,7 @@ jobs:
           set -xeuo pipefail
 
           S3_KEY="${{ needs.verify-stage-promotion.outputs.s3_key }}"
-          # Note: Using Stage export (prerelease already pruned) instead of QA export
+          # Note: Using QA export key from verify-stage-promotion; no separate Stage export/prune step in this workflow
 
           PARAMS=$(jq -n \
             --arg key "$S3_KEY" \

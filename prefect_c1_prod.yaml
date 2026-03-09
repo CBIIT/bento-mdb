@@ -179,6 +179,6 @@ deployments:
   parameters: {}
   schedule: null
   work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-prod-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
