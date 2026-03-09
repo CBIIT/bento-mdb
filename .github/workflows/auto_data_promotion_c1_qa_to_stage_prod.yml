@@ -209,21 +209,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS"
 
-          # TODO: Uncomment when ready to actually import to Stage
-          # watch_out=$(
-          #   prefect deployment run mdb-import-s3/mdb-import-s3 \
-          #     --params "$PARAMS" \
-          #     --watch \
-          #     --watch-interval 30 2>&1 | tee import_watch.log
-          # )
-          #
-          # RUN_ID=$(
-          #   grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-          #   | head -n1 || true
-          # )
-          # echo "Import flow run: $RUN_ID"
+          watch_out=$(
+            prefect deployment run mdb-import-s3/mdb-import-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee import_watch.log
+          )
 
-          echo "test"
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+            | head -n1 || true
+          )
+          echo "Import flow run: $RUN_ID"
 
   verify-stage-promotion:
     needs: [import-to-c1-stage, detect-updated-models]
@@ -318,21 +315,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS"
 
-          # TODO: Uncomment when ready to actually import to Production
-          # watch_out=$(
-          #   prefect deployment run mdb-import-s3/mdb-import-s3 \
-          #     --params "$PARAMS" \
-          #     --watch \
-          #     --watch-interval 30 2>&1 | tee import_watch.log
-          # )
-          #
-          # RUN_ID=$(
-          #   grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-          #   | head -n1 || true
-          # )
-          # echo "Import flow run: $RUN_ID"
+          watch_out=$(
+            prefect deployment run mdb-import-s3/mdb-import-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee import_watch.log
+          )
 
-          echo "test"
+         RUN_ID=$(
+           grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+           | head -n1 || true
+         )
+         echo "Import flow run: $RUN_ID"
 
   verify-prod-promotion:
     needs: [import-to-c1-prod, detect-updated-models]
