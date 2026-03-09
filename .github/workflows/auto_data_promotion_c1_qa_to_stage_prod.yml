@@ -4,9 +4,6 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches:
-      - DATATEAM-463-FEATURE
   schedule:
     - cron: "0 8 * * *" # runs daily at 3:00 AM EST (8:00 UTC)
   workflow_dispatch:
