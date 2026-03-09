@@ -101,7 +101,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-qa",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion' \
+          prefect deployment run 'check-promotion-upper/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -270,7 +270,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-stage",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion' \
+          prefect deployment run 'check-promotion-upper/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -375,7 +375,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-prod",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion' \
+          prefect deployment run 'check-promotion-upper/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -394,7 +394,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-prod",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion' \
+          prefect deployment run 'check-promotion-upper/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 

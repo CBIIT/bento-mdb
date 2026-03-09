@@ -170,3 +170,15 @@ deployments:
     name: mdb-8gb-prefect-prod-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: check-promotion-upper
+  version:
+  tags: []
+  concurrency_limit:
+  description: "Verify model promotion across environments: pre-promotion checks (QA vs MDF/DEV), post-promotion checks (Stage vs QA/MDF, Prod vs QA/MDF, Stage vs Prod)."
+  entrypoint: src/bento_mdb/flows/check_promotion.py:check_promotion_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
