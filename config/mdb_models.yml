@@ -266,7 +266,7 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 1.3.0
-  latest_prerelease_commit: 1ad8ff644cbbf6add6bdffeffd098f3af38a6555
+  latest_prerelease_commit: 7412a28c8aea3d627582b70e66335b230f9171ec
   latest_prerelease_version: 2.0.0
 PDC:
   repository: CBIIT/pdc-model
