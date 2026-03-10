@@ -8,7 +8,7 @@ on:
       environment:
         description: 'Which account the ECR repository is in'
         type: choice
-        default: fnl-leidos
+        default: ECR-cbiit-cloudone
         options:
           - fnl-leidos
           - ECR-cbiit-cloudone
