@@ -1,4 +1,4 @@
-FROM python:3.13.12-slim-trixie
+FROM python:3.12-alpine
 
 EXPOSE 8000/tcp
 
