@@ -1,8 +1,10 @@
-FROM python:3.12-alpine
+FROM python:3.13.11-alpine3.23
 
 EXPOSE 8000/tcp
 
 WORKDIR /app
+
+RUN apk update && apk upgrade
 
 # Install git for pip to clone from GitHub
 RUN apk add --no-cache git
