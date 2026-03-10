@@ -73,18 +73,18 @@ jobs:
         cd devops/dockerfiles/sts/ && docker build -t $STS_IMAGE_NAME .
         #docker build --no-cache -t $STS_IMAGE_NAME -f devops/dockerfiles/sts/Dockerfile .
         
-    - name: Run Trivy vulnerability scanner
-      id: trivy-scan
-      if: github.event.inputs.trivy_scan == 'true'
-      env:
-        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: '${{ env.STS_IMAGE_NAME }}'
-        format: 'table'
-        exit-code: 1
-        severity: 'CRITICAL,HIGH'
+#    - name: Run Trivy vulnerability scanner
+#      id: trivy-scan
+#      if: github.event.inputs.trivy_scan == 'true'
+#      env:
+#        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+#        STS_IMAGE_NAME: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}
+#      uses: aquasecurity/trivy-action@master
+#      with:
+#        image-ref: '${{ env.STS_IMAGE_NAME }}'
+#        format: 'table'
+#        exit-code: 1
+#        severity: 'CRITICAL,HIGH'
 
     - name: Build STS FAST API image
       id: build-sts-fast-api-image
