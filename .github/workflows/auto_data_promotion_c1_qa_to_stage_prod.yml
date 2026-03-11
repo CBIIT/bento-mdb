@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 8 * * 6" # runs weekly on Saturday at 3:00 AM EST (8:00 UTC)
+    - cron: "0 17 * * 6" # runs weekly on Saturday at 12:00 PM EST (17:00 UTC)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -219,13 +219,105 @@ jobs:
           )
           echo "Import flow run: $RUN_ID"
 
+  prune-c1-stage:
+    needs: import-to-c1-stage
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Prune prerelease from cloud-one-mdb-stage
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+          PARAMS=$(jq -n '{"mdb_id": "cloud-one-mdb-stage", "dry_run": false}')
+          echo "Running mdb-prune-prerelease with params: $PARAMS"
+          prefect deployment run mdb-prune-prerelease/prune-prerelease-prod \
+            --params "$PARAMS" \
+            --watch
+
+  export-c1-stage:
+    needs: prune-c1-stage
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+    runs-on: ubuntu-latest
+    outputs:
+      s3_key: ${{ steps.export.outputs.s3_key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Export cloud-one-mdb-stage to S3
+        id: export
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+          PARAMS=$(jq -n \
+            '{
+              "mdb_id": "cloud-one-mdb-stage",
+              "bucket": "cloudone-mdb-data"
+            }')
+          echo "Running mdb-export-s3 (stage) with params: $PARAMS"
+          watch_out=$(
+            prefect deployment run mdb-export-s3/mdb-export-s3 \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee export_watch.log
+          )
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+            | head -n1 || true
+          )
+          echo "Export flow run: $RUN_ID"
+          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+          S3_KEY="${TODAY}__cloud-one-mdb-stage.graphml"
+          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+          echo "Generated S3 key: $S3_KEY"
+
   verify-stage-promotion:
-    needs: [import-to-c1-stage, detect-updated-models]
+    needs: [import-to-c1-stage, export-c1-stage, detect-updated-models]
     if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' }}
     runs-on: ubuntu-latest
     outputs:
-      s3_key: ${{ needs.import-to-c1-stage.outputs.s3_key }}
+      s3_key: ${{ needs.export-c1-stage.outputs.s3_key }}
     steps:
+      - name: Output Stage S3 key
+        run: echo "export-c1-stage s3_key=${{ needs.export-c1-stage.outputs.s3_key }}"
+
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
@@ -269,7 +361,7 @@ jobs:
             --watch
 
   import-to-c1-prod:
-    needs: [verify-stage-promotion]
+    needs: [export-c1-stage, verify-stage-promotion]
     if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.verify-stage-promotion.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
@@ -298,8 +390,8 @@ jobs:
         run: |
           set -xeuo pipefail
 
-          S3_KEY="${{ needs.verify-stage-promotion.outputs.s3_key }}"
-          # Note: Using QA export key from verify-stage-promotion; no separate Stage export/prune step in this workflow
+          # Use Stage export key directly from export-c1-stage (pruned data)
+          S3_KEY="${{ needs.export-c1-stage.outputs.s3_key }}"
 
           PARAMS=$(jq -n \
             --arg key "$S3_KEY" \
@@ -310,7 +402,7 @@ jobs:
               "clear_db": true
             }')
 
-          echo "Running mdb-import-s3 with params: $PARAMS"
+          echo "Running mdb-import-s3 with params: $PARAMS (key=$S3_KEY)"
 
           watch_out=$(
             prefect deployment run mdb-import-s3/mdb-import-s3 \
@@ -409,7 +501,7 @@ jobs:
           git push origin ${{ github.ref_name }}
 
   slack-notification:
-    needs: [detect-updated-models, check-qa-ready, export-c1-qa, import-to-c1-stage, verify-stage-promotion, import-to-c1-prod, verify-prod-promotion]
+    needs: [detect-updated-models, check-qa-ready, export-c1-qa, import-to-c1-stage, prune-c1-stage, export-c1-stage, verify-stage-promotion, import-to-c1-prod, verify-prod-promotion]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -418,7 +510,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-qa-ready.result == 'failure' || needs.export-c1-qa.result == 'failure' || needs.import-to-c1-stage.result == 'failure' || needs.verify-stage-promotion.result == 'failure' || needs.import-to-c1-prod.result == 'failure' || needs.verify-prod-promotion.result == 'failure') && 'failure' || 'success' }}
+          status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-qa-ready.result == 'failure' || needs.export-c1-qa.result == 'failure' || needs.import-to-c1-stage.result == 'failure' || needs.prune-c1-stage.result == 'failure' || needs.export-c1-stage.result == 'failure' || needs.verify-stage-promotion.result == 'failure' || needs.import-to-c1-prod.result == 'failure' || needs.verify-prod-promotion.result == 'failure') && 'failure' || 'success' }}
           message: |
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Data Promotion: CloudOne QA → Stage → Production>
             ${{ (needs.detect-updated-models.result == 'failure' || needs.check-qa-ready.result == 'failure' || needs.export-c1-qa.result == 'failure' || needs.import-to-c1-stage.result == 'failure' || needs.verify-stage-promotion.result == 'failure' || needs.import-to-c1-prod.result == 'failure' || needs.verify-prod-promotion.result == 'failure') && 'Failure' || 'Success' }}
