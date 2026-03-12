@@ -4,7 +4,7 @@ EXPOSE 8000/tcp
 
 WORKDIR /app
 
-RUN apk update && apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache && apk upgrade zlib --no-cache
 
 # Install git for pip to clone from GitHub
 RUN apk add --no-cache git
