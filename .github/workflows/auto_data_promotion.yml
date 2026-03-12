@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 6 * * *" # runs daily at 1:00 AM EST
+    - cron: "0 8 * * *" # runs daily at 3:00 AM EST
   workflow_dispatch:
     inputs:
       dry_run:
