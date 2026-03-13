@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 17 * * 6" # runs weekly on Saturday at 12:00 PM EST (17:00 UTC)
+    - cron: "0 8 * * 6" # runs weekly on Saturday at 3:00 AM EST (8:00 UTC)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,42 +25,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Uses last_promoted_sha_stage_prod from config/sync_status.yml (SHA of last commit that changed mdb_models.yml).
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: uv sync --all-extras
+
+      # Uses last_promoted_sha_stage_prod from config/sync_status.yml.
       - name: Detect updated models since last promotion
         id: detect
         run: |
           set -euo pipefail
           ref=$(grep 'last_promoted_sha_stage_prod:' config/sync_status.yml | sed -E "s/.*last_promoted_sha_stage_prod: *['\"]?([a-f0-9]+)['\"]?.*/\1/" | tr -d ' \r' || true)
           if [ -z "$ref" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
+            echo "model_filters=[]" >> "$GITHUB_OUTPUT"
             echo "No updated models detected (no last_promoted_sha_stage_prod)."
             exit 0
           fi
-          # Parse git diff: model is "updated" if latest_version changed (prerelease fields are ignored).
-          current=""
-          updated=""
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^@@.*@@[[:space:]]+([A-Za-z0-9_-]+): ]]; then
-              current="${BASH_REMATCH[1]}"
-            fi
-            if [[ -n "$current" ]] && [[ "$line" =~ ^\+[[:space:]]+latest_version: ]]; then
-              updated="${updated:+$updated }$current"
-              current=""
-            fi
-          done < <(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
-          if [ -z "$updated" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected."
-          else
-            # Build JSON array for Prefect (e.g. ["CDS","CTDC"]).
-            arr=$(echo "$updated" | tr ' ' '\n' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "model_filters=$arr" >> "$GITHUB_OUTPUT"
-            echo "Updated models: $updated"
-          fi
+          diff=$(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
+          result=$(echo "$diff" | python -c "
+          import sys, json
+          from bento_mdb.promotion_detect import parse_diff
+          print(json.dumps({'model_filters': parse_diff(sys.stdin.read())}))
+          ")
+          echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
 
   check-qa-ready:
     needs: detect-updated-models
-    if: ${{ needs.detect-updated-models.outputs.model_filters != '' }}
+    if: ${{ needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -143,7 +142,7 @@ jobs:
           echo "Running mdb-export-s3 with params: $PARAMS"
 
           watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3-prod \
+            prefect deployment run mdb-export-s3/db-export-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee export_watch.log
@@ -206,18 +205,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS"
 
-          watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3-prod \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee import_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1 || true
-          )
-          echo "Import flow run: $RUN_ID"
+          # watch_out=$(
+          #   prefect deployment run mdb-import-s3/mdb-import-s3 \
+          #     --params "$PARAMS" \
+          #     --watch \
+          #     --watch-interval 30 2>&1 | tee import_watch.log
+          # )
+          #
+          # RUN_ID=$(
+          #   grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+          #   | head -n1 || true
+          # )
+          # echo "Import flow run: $RUN_ID"
 
   prune-c1-stage:
     needs: import-to-c1-stage
@@ -293,7 +292,7 @@ jobs:
             }')
           echo "Running mdb-export-s3 (stage) with params: $PARAMS"
           watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3-prod \
+            prefect deployment run mdb-export-s3/mdb-import-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee export_watch.log
@@ -310,7 +309,7 @@ jobs:
 
   verify-stage-promotion:
     needs: [import-to-c1-stage, export-c1-stage, detect-updated-models]
-    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' }}
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     outputs:
       s3_key: ${{ needs.export-c1-stage.outputs.s3_key }}
@@ -319,7 +318,7 @@ jobs:
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}
+          ref: DATATEAM-463-FEAT
 
       - name: Set up Python
         uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
@@ -351,7 +350,9 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-qa",
               "qa_mdb_id": "cloud-one-mdb-stage",
-              "models_filter": $filters
+              "models_filter": $filters,
+              "source_label": "QA",
+              "target_label": "Stage"
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
@@ -402,7 +403,7 @@ jobs:
           echo "Running mdb-import-s3 with params: $PARAMS (key=$S3_KEY)"
 
           watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3-prod \
+            prefect deployment run mdb-import-s3/db-export-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee import_watch.log
@@ -416,7 +417,7 @@ jobs:
 
   verify-prod-promotion:
     needs: [import-to-c1-prod, detect-updated-models]
-    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' }}
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -453,7 +454,9 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-qa",
               "qa_mdb_id": "cloud-one-mdb-prod",
-              "models_filter": $filters
+              "models_filter": $filters,
+              "source_label": "QA",
+              "target_label": "Prod"
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
@@ -472,7 +475,9 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-stage",
               "qa_mdb_id": "cloud-one-mdb-prod",
-              "models_filter": $filters
+              "models_filter": $filters,
+              "source_label": "Stage",
+              "target_label": "Prod"
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
