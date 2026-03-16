@@ -11,8 +11,13 @@ from __future__ import annotations
 
 import logging
 import re
+from pathlib import Path
+
+from bento_mdb.model_cdes import load_model_specs_from_yaml
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_SPECS_PATH = Path("config/mdb_models.yml")
 
 
 # Context line: @@ ... ModelName:
@@ -30,11 +35,20 @@ def _ensure_model(data: dict[str, dict], model: str) -> None:
         data[model] = dict(_DEFAULT_MODEL_ENTRY)
 
 
-def parse_diff(diff_text: str, current_specs: dict | None = None) -> list[dict]:
+def parse_diff(
+    diff_text: str,
+    is_prod_release: bool = False,
+) -> list[dict]:
     """Parse git diff of mdb_models.yml. Returns a list of dicts per updated model (see module docstring for shape).
-    If current_specs is provided (e.g. from load_model_specs_from_yaml), prerelease_commit-only changes
-    get prerelease_version built as base-commit using the spec.
+    Loads specs from config/mdb_models.yml so prerelease_commit-only changes get prerelease_version
+    built as base-commit from the spec.
+    If is_prod_release is True, only include release (latest_version) updates — for QA→Stage→Prod.
     """
+    try:
+        current_specs = load_model_specs_from_yaml(_DEFAULT_SPECS_PATH)
+    except Exception as e:
+        logger.debug("Could not load %s: %s", _DEFAULT_SPECS_PATH, e)
+        current_specs = {}
     if not logging.getLogger().handlers:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     lines = diff_text.splitlines()
@@ -78,9 +92,16 @@ def parse_diff(diff_text: str, current_specs: dict | None = None) -> list[dict]:
             commit = d.get("prerelease_commit")
             if base and commit:
                 prerelease_version = f"{base}-{commit}"
+            elif commit and current_specs and model in current_specs:
+                spec = current_specs[model]
+                base = spec.get("latest_prerelease_version") or spec.get("latest_version")
+                prerelease_version = f"{base}-{commit}" if base else None
             else:
                 prerelease_version = base
             prerelease_version = prerelease_version if prerelease_version else None
+        # QA→Stage→Prod: only include release (latest_version) updates
+        if is_prod_release and not saw_release:
+            continue
         out.append({
             "model": model,
             "latest_version": d.get("latest_version"),
@@ -90,11 +111,9 @@ def parse_diff(diff_text: str, current_specs: dict | None = None) -> list[dict]:
         })
     if out:
         for item in out:
-            kind = "release" if not item["has_prerelease_update"] else "prerelease"
             logger.info(
-                "  %s: %s (latest_version=%s, prerelease_version=%s, prerelease_commit=%s)",
+                "  %s (latest_version=%s, prerelease_version=%s, prerelease_commit=%s)",
                 item["model"],
-                kind,
                 item["latest_version"],
                 item["prerelease_version"],
                 item.get("prerelease_commit"),

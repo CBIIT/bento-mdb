@@ -252,10 +252,16 @@ def _model_filters_to_names(models_filter: list[dict] | list[str] | None) -> lis
 
 def _version_for_check(item: dict, spec: dict) -> str | None:
     """Return version string to use for Check 0 from a model_filters item and spec.
-    Use has_prerelease_update: True → check prerelease_version; False → check latest_version (release).
+    Use has_prerelease_update: True → check prerelease (version or spec base + commit); False → latest_version.
     """
-    if item.get("has_prerelease_update") and item.get("prerelease_version"):
-        return item["prerelease_version"]
+    if item.get("has_prerelease_update"):
+        if item.get("prerelease_version"):
+            return item["prerelease_version"]
+        # Only prerelease_commit in diff: build version from spec
+        commit = item.get("prerelease_commit")
+        if commit:
+            base = spec.get("latest_prerelease_version") or spec.get("latest_version")
+            return f"{base}-{commit}" if base else None
     return item.get("latest_version") or spec.get("latest_version")
 
 
