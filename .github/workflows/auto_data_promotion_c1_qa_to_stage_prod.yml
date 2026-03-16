@@ -141,24 +141,24 @@ jobs:
 
           echo "Running mdb-export-s3 with params: $PARAMS"
 
-          watch_out=$(
-            prefect deployment run mdb-export-s3/db-export-s3-prod \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee export_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
-            | head -n1 || true
-          )
-          echo "Export flow run: $RUN_ID"
-
-          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
-          S3_KEY="${TODAY}__cloud-one-mdb-qa.graphml"
-
-          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Generated S3 key: $S3_KEY"
+#          watch_out=$(
+#            prefect deployment run mdb-export-s3/db-export-s3-prod \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee export_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Export flow run: $RUN_ID"
+#
+#          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+#          S3_KEY="${TODAY}__cloud-one-mdb-qa.graphml"
+#
+#          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+#          echo "Generated S3 key: $S3_KEY"
 
   import-to-c1-stage:
     needs: export-c1-qa
@@ -205,18 +205,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS"
 
-          # watch_out=$(
-          #   prefect deployment run mdb-import-s3/mdb-import-s3 \
-          #     --params "$PARAMS" \
-          #     --watch \
-          #     --watch-interval 30 2>&1 | tee import_watch.log
-          # )
-          #
-          # RUN_ID=$(
-          #   grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-          #   | head -n1 || true
-          # )
-          # echo "Import flow run: $RUN_ID"
+#           watch_out=$(
+#             prefect deployment run mdb-import-s3/mdb-import-s3 \
+#               --params "$PARAMS" \
+#               --watch \
+#               --watch-interval 30 2>&1 | tee import_watch.log
+#           )
+#
+#           RUN_ID=$(
+#             grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+#             | head -n1 || true
+#           )
+#           echo "Import flow run: $RUN_ID"
 
   prune-c1-stage:
     needs: import-to-c1-stage
@@ -249,9 +249,9 @@ jobs:
           set -xeuo pipefail
           PARAMS=$(jq -n '{"mdb_id": "cloud-one-mdb-stage", "dry_run": false}')
           echo "Running mdb-prune-prerelease with params: $PARAMS"
-          prefect deployment run mdb-prune-prerelease/prune-prerelease-prod \
-            --params "$PARAMS" \
-            --watch
+#          prefect deployment run mdb-prune-prerelease/prune-prerelease-prod \
+#            --params "$PARAMS" \
+#            --watch
 
   export-c1-stage:
     needs: prune-c1-stage
@@ -291,21 +291,21 @@ jobs:
               "bucket": "cloudone-mdb-data"
             }')
           echo "Running mdb-export-s3 (stage) with params: $PARAMS"
-          watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-import-s3-prod \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee export_watch.log
-          )
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
-            | head -n1 || true
-          )
-          echo "Export flow run: $RUN_ID"
-          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
-          S3_KEY="${TODAY}__cloud-one-mdb-stage.graphml"
-          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Generated S3 key: $S3_KEY"
+#          watch_out=$(
+#            prefect deployment run mdb-export-s3/mdb-import-s3-prod \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee export_watch.log
+#          )
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Export flow run: $RUN_ID"
+#          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+#          S3_KEY="${TODAY}__cloud-one-mdb-stage.graphml"
+#          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+#          echo "Generated S3 key: $S3_KEY"
 
   verify-stage-promotion:
     needs: [import-to-c1-stage, export-c1-stage, detect-updated-models]
@@ -402,18 +402,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS (key=$S3_KEY)"
 
-          watch_out=$(
-            prefect deployment run mdb-import-s3/db-export-s3-prod \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee import_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1 || true
-          )
-          echo "Import flow run: $RUN_ID"
+#          watch_out=$(
+#            prefect deployment run mdb-import-s3/db-export-s3-prod \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee import_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Import flow run: $RUN_ID"
 
   verify-prod-promotion:
     needs: [import-to-c1-prod, detect-updated-models]
@@ -491,16 +491,16 @@ jobs:
           export NEW_SHA=$(git log -1 --format=%H -- config/mdb_models.yml)
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          python - << 'PY'
-          import yaml, pathlib, os
-          p = pathlib.Path('config/sync_status.yml')
-          d = yaml.safe_load(p.read_text())
-          d.setdefault('promotion', {})['last_promoted_sha_stage_prod'] = os.environ['NEW_SHA']
-          p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
-          PY
-          git add config/sync_status.yml
-          git diff --cached --quiet || git commit -m "chore: update last_promoted_sha_stage_prod to ${NEW_SHA}"
-          git push origin ${{ github.ref_name }}
+#          python - << 'PY'
+#          import yaml, pathlib, os
+#          p = pathlib.Path('config/sync_status.yml')
+#          d = yaml.safe_load(p.read_text())
+#          d.setdefault('promotion', {})['last_promoted_sha_stage_prod'] = os.environ['NEW_SHA']
+#          p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
+#          PY
+#          git add config/sync_status.yml
+#          git diff --cached --quiet || git commit -m "chore: update last_promoted_sha_stage_prod to ${NEW_SHA}"
+#          git push origin ${{ github.ref_name }}
 
   slack-notification:
     needs: [detect-updated-models, check-qa-ready, export-c1-qa, import-to-c1-stage, prune-c1-stage, export-c1-stage, verify-stage-promotion, import-to-c1-prod, verify-prod-promotion]
