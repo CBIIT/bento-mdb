@@ -15,9 +15,49 @@ on:
         default: false
 
 jobs:
-  import-to-c1-qa:
-#    needs: export-c1-dev
-#    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+  detect-updated-models:
+    runs-on: ubuntu-latest
+    outputs:
+      model_filters: ${{ steps.detect.outputs.model_filters }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: uv sync --all-extras
+
+      - name: Detect updated models since last promotion
+        id: detect
+        run: |
+          set -euo pipefail
+          ref=$(grep 'last_promoted_sha:' config/sync_status.yml | sed -E "s/.*last_promoted_sha: *['\"]?([a-f0-9]+)['\"]?.*/\1/" | tr -d ' \r' || true)
+          if [ -z "$ref" ]; then
+            echo "model_filters=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          diff=$(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
+          result=$(echo "$diff" | uv run python -c "
+          import sys, json
+          from bento_mdb.promotion_detect import parse_diff
+          print(json.dumps({'model_filters': parse_diff(sys.stdin.read())}))
+          ")
+          echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
+
+  check-dev-mdf-sync:
+    needs: detect-updated-models
+    if: ${{ needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,35 +78,130 @@ jobs:
           uv pip install --system -e .
           uv sync --all-extras --dev
 
-      - name: Import to cloud-one-mdb-qa from S3
+      - name: Check 0 — Confirm DEV is in sync with MDF
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
           set -xeuo pipefail
-
-          S3_KEY="2026-03-13__cloud-one-mdb-dev.graphml"
-
           PARAMS=$(jq -n \
-            --arg key "$S3_KEY" \
-            '{
-              "mdb_id": "cloud-one-mdb-dev",
-              "bucket": "cloudone-mdb-data",
-              "key": $key,
-              "clear_db": true
-            }')
-
-          echo "Running mdb-import-s3 with params: $PARAMS"
-
-          watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3 \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee import_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1 || true
-          )
-          echo "Import flow run: $RUN_ID"
+            --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
+            '{"stage": "pre", "models_filter": $filters}')
+          prefect deployment run 'check-promotion/check-promotion' \
+            --params "$PARAMS" \
+            --watch
+#
+#  export-c1-dev:
+#    needs: [detect-updated-models, check-dev-mdf-sync]
+#    runs-on: ubuntu-latest
+#    outputs:
+#      s3_key: ${{ steps.export.outputs.s3_key }}
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+#        with:
+#          python-version-file: ".python-version"
+#
+#      - name: Install uv
+#        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+#        with:
+#          version: "0.5.10"
+#
+#      - name: Install dependencies and project
+#        run: |
+#          uv pip install --system -e .
+#          uv sync --all-extras --dev
+#
+#      - name: Export cloud-one-mdb-dev to S3
+#        id: export
+#        env:
+#          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+#          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+#        run: |
+#          set -xeuo pipefail
+#
+#          PARAMS=$(jq -n \
+#            '{
+#              "mdb_id": "cloud-one-mdb-dev",
+#              "bucket": "cloudone-mdb-data"
+#            }')
+#
+#          echo "Running mdb-export-s3 with params: $PARAMS"
+#
+#          watch_out=$(
+#            prefect deployment run mdb-export-s3/mdb-export-s3 \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee export_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Export flow run: $RUN_ID"
+#
+#          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+#          S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
+#
+#          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+#          echo "Generated S3 key: $S3_KEY"
+#
+#  import-to-c1-qa:
+##    needs: export-c1-dev
+##    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+#        with:
+#          python-version-file: ".python-version"
+#
+#      - name: Install uv
+#        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+#        with:
+#          version: "0.5.10"
+#
+#      - name: Install dependencies and project
+#        run: |
+#          uv pip install --system -e .
+#          uv sync --all-extras --dev
+#
+#      - name: Import to cloud-one-mdb-qa from S3
+#        env:
+#          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+#          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+#        run: |
+#          set -xeuo pipefail
+#
+#          S3_KEY="2026-03-13__cloud-one-mdb-dev.graphml"
+#
+#          PARAMS=$(jq -n \
+#            --arg key "$S3_KEY" \
+#            '{
+#              "mdb_id": "cloud-one-mdb-dev",
+#              "bucket": "cloudone-mdb-data",
+#              "key": $key,
+#              "clear_db": true
+#            }')
+#
+#          echo "Running mdb-import-s3 with params: $PARAMS"
+#
+#          watch_out=$(
+#            prefect deployment run mdb-import-s3/mdb-import-s3 \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee import_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Import flow run: $RUN_ID"
