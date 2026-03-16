@@ -30,8 +30,11 @@ def _ensure_model(data: dict[str, dict], model: str) -> None:
         data[model] = dict(_DEFAULT_MODEL_ENTRY)
 
 
-def parse_diff(diff_text: str) -> list[dict]:
-    """Parse git diff of mdb_models.yml. Returns a list of dicts per updated model (see module docstring for shape)."""
+def parse_diff(diff_text: str, current_specs: dict | None = None) -> list[dict]:
+    """Parse git diff of mdb_models.yml. Returns a list of dicts per updated model (see module docstring for shape).
+    If current_specs is provided (e.g. from load_model_specs_from_yaml), prerelease_commit-only changes
+    get prerelease_version built as base-commit using the spec.
+    """
     if not logging.getLogger().handlers:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     lines = diff_text.splitlines()
@@ -82,17 +85,19 @@ def parse_diff(diff_text: str) -> list[dict]:
             "model": model,
             "latest_version": d.get("latest_version"),
             "prerelease_version": prerelease_version,
+            "prerelease_commit": d.get("prerelease_commit") if not saw_release else None,
             "has_prerelease_update": not saw_release,
         })
     if out:
         for item in out:
             kind = "release" if not item["has_prerelease_update"] else "prerelease"
             logger.info(
-                "  %s: %s (latest_version=%s, prerelease_version=%s)",
+                "  %s: %s (latest_version=%s, prerelease_version=%s, prerelease_commit=%s)",
                 item["model"],
                 kind,
                 item["latest_version"],
                 item["prerelease_version"],
+                item.get("prerelease_commit"),
             )
         logger.info("Detected %d updated model(s)", len(out))
     else:
