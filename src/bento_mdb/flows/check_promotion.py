@@ -257,8 +257,7 @@ def _version_for_check(item: dict, spec: dict) -> str | None:
     if item.get("has_prerelease_update"):
         if item.get("prerelease_version"):
             return item["prerelease_version"]
-        # Only prerelease_commit in diff: build version from spec. Use latest_prerelease_version only
-        # so MDF URL resolution (which uses that key for path) stays consistent.
+        # Only prerelease_commit in diff: build version from spec
         commit = item.get("prerelease_commit")
         if commit:
             base = spec.get("latest_prerelease_version")
