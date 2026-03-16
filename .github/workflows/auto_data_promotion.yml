@@ -48,12 +48,11 @@ jobs:
             exit 0
           fi
           diff=$(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
-          result=$(echo "$diff" | uv run python - <<'PY'
+          result=$(echo "$diff" | uv run python -c "
           import sys, json
           from bento_mdb.promotion_detect import parse_diff
           print(json.dumps({'model_filters': parse_diff(sys.stdin.read())}))
-          PY
-          )
+          ")
           echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
 
   check-dev-mdf-sync:
