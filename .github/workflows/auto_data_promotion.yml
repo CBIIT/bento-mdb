@@ -132,24 +132,24 @@ jobs:
 
           echo "Running mdb-export-s3 with params: $PARAMS"
 
-          watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3 \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee export_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
-            | head -n1 || true
-          )
-          echo "Export flow run: $RUN_ID"
-
-          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
-          S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
-
-          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
-          echo "Generated S3 key: $S3_KEY"
+#          watch_out=$(
+#            prefect deployment run mdb-export-s3/mdb-export-s3 \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee export_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" export_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Export flow run: $RUN_ID"
+#
+#          TODAY=$(TZ="America/New_York" date +"%Y-%m-%d")
+#          S3_KEY="${TODAY}__cloud-one-mdb-dev.graphml"
+#
+#          echo "s3_key=$S3_KEY" >> $GITHUB_OUTPUT
+#          echo "Generated S3 key: $S3_KEY"
 
   import-to-c1-qa:
     needs: export-c1-dev
@@ -194,18 +194,18 @@ jobs:
 
           echo "Running mdb-import-s3 with params: $PARAMS"
 
-          watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3 \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30 2>&1 | tee import_watch.log
-          )
-
-          RUN_ID=$(
-            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
-            | head -n1 || true
-          )
-          echo "Import flow run: $RUN_ID"
+#          watch_out=$(
+#            prefect deployment run mdb-import-s3/mdb-import-s3 \
+#              --params "$PARAMS" \
+#              --watch \
+#              --watch-interval 30 2>&1 | tee import_watch.log
+#          )
+#
+#          RUN_ID=$(
+#            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" import_watch.log \
+#            | head -n1 || true
+#          )
+#          echo "Import flow run: $RUN_ID"
 
   verify-promotion:
     needs: [import-to-c1-qa, detect-updated-models]
@@ -248,22 +248,22 @@ jobs:
 
       # last_promoted_sha = SHA of the commit that last changed config/mdb_models.yml.
       # Used by detect-updated to find models whose latest_version changed since then.
-      - name: Update last_promoted_sha in sync_status.yml
-        run: |
-          set -xeuo pipefail
-          export NEW_SHA=$(git log -1 --format=%H -- config/mdb_models.yml)
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          python - << 'PY'
-          import yaml, pathlib, os
-          p = pathlib.Path('config/sync_status.yml')
-          d = yaml.safe_load(p.read_text())
-          d.setdefault('promotion', {})['last_promoted_sha'] = os.environ['NEW_SHA']
-          p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
-          PY
-          git add config/sync_status.yml
-          git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
-          git push origin ${{ github.ref_name }}
+#      - name: Update last_promoted_sha in sync_status.yml
+#        run: |
+#          set -xeuo pipefail
+#          export NEW_SHA=$(git log -1 --format=%H -- config/mdb_models.yml)
+#          git config user.name "GitHub Actions Bot"
+#          git config user.email "actions@github.com"
+#          python - << 'PY'
+#          import yaml, pathlib, os
+#          p = pathlib.Path('config/sync_status.yml')
+#          d = yaml.safe_load(p.read_text())
+#          d.setdefault('promotion', {})['last_promoted_sha'] = os.environ['NEW_SHA']
+#          p.write_text(yaml.dump(d, default_flow_style=False, sort_keys=False))
+#          PY
+#          git add config/sync_status.yml
+#          git diff --cached --quiet || git commit -m "chore: update last_promoted_sha to ${NEW_SHA}"
+#          git push origin ${{ github.ref_name }}
 
   slack-notification:
     needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, verify-promotion]
