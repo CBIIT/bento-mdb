@@ -318,6 +318,8 @@ jobs:
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}
+
       - name: Set up Python
         uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
         with:
@@ -348,9 +350,7 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-qa",
               "qa_mdb_id": "cloud-one-mdb-stage",
-              "models_filter": $filters,
-              "source_label": "QA",
-              "target_label": "Stage"
+              "models_filter": $filters
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
@@ -452,9 +452,7 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-qa",
               "qa_mdb_id": "cloud-one-mdb-prod",
-              "models_filter": $filters,
-              "source_label": "QA",
-              "target_label": "Prod"
+              "models_filter": $filters
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
@@ -473,9 +471,7 @@ jobs:
               "stage": "post",
               "dev_mdb_id": "cloud-one-mdb-stage",
               "qa_mdb_id": "cloud-one-mdb-prod",
-              "models_filter": $filters,
-              "source_label": "Stage",
-              "target_label": "Prod"
+              "models_filter": $filters
             }')
           prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
