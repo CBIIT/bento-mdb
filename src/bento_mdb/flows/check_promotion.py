@@ -149,10 +149,11 @@ def _log_summary(logger, results: list[_DiffResult]) -> None:
 # ── tasks ──────────────────────────────────────────────────────────────────────
 
 @task(name="check-model-dev")
-def check_model_dev(model: str, spec: dict, mdb_id: str) -> _DiffResult:
-    """Check 0: Confirm DEV is up to date before promotion — compare MDF source against MDB(DEV)."""
+def check_model_dev(model: str, spec: dict, mdb_id: str, version: str) -> _DiffResult:
+    """Check 0: Confirm DEV is up to date before promotion — compare MDF source against MDB(DEV).
+    version is passed from the flow (latest_version or prerelease_version per model_filters item).
+    """
     logger = get_run_logger()
-    version = spec["latest_version"]
     mdb_version = version.lstrip("v")
     logger.info("=== Diff: %s v%s (MDF vs MDB-DEV) ===", model, mdb_version)
 
@@ -242,12 +243,34 @@ def check_model_sync(model: str, spec: dict, dev_mdb_id: str, qa_mdb_id: str) ->
 
 # ── flow ───────────────────────────────────────────────────────────────────────
 
+def _model_filters_to_names(models_filter: list[dict] | list[str] | None) -> list[str] | None:
+    """Return list of model names from models_filter (list of dicts with 'model' key or list of strings)."""
+    if models_filter is None:
+        return None
+    return [m["model"] if isinstance(m, dict) else m for m in models_filter]
+
+
+def _version_for_check(item: dict, spec: dict) -> str | None:
+    """Return version string to use for Check 0 from a model_filters item and spec.
+    Use has_prerelease_update: True → check prerelease (version or spec base + commit); False → latest_version.
+    """
+    if item.get("has_prerelease_update"):
+        if item.get("prerelease_version"):
+            return item["prerelease_version"]
+        # Only prerelease_commit in diff: build version from spec
+        commit = item.get("prerelease_commit")
+        if commit:
+            base = spec.get("latest_prerelease_version") or spec.get("latest_version")
+            return f"{base}-{commit}" if base else None
+    return item.get("latest_version") or spec.get("latest_version")
+
+
 @flow(name="check-promotion")
 def check_promotion_flow(
     stage: Literal["pre", "post"],
     dev_mdb_id: str = "cloud-one-mdb-dev",
     qa_mdb_id: str = "cloud-one-mdb-qa",
-    models_filter: list[str] | None = None,
+    models_filter: list[dict] | list[str] | None = None,
 ) -> None:
     """Promotion validation flow.
 
@@ -256,24 +279,39 @@ def check_promotion_flow(
     Check 2 (stage=post): Check source and target in sync — MDB(dev_mdb_id) vs MDB(qa_mdb_id).
                           dev_mdb_id/qa_mdb_id can be e.g. DEV/QA, QA/Stage, Stage/Prod.
 
-    models_filter is passed from the workflow (detect step in YAML). When None, all models are used.
+    models_filter: from workflow detect step. List of dicts with model, latest_version,
+                   prerelease_version, has_prerelease_update (True → check prerelease, False → check official release).
     """
     logger = get_run_logger()
-    specs = _load_specs(models_filter)
+    model_names = _model_filters_to_names(models_filter)
+    specs = _load_specs(model_names)
+    use_items = isinstance(models_filter, list) and len(models_filter) > 0 and isinstance(models_filter[0], dict)
 
     if stage == "pre":
         logger.info("=" * 60)
         logger.info("Check 0 — Confirm DEV is up to date before promotion (MDF vs MDB-DEV)")
         logger.info("=" * 60)
 
-        results = [check_model_dev(model, spec, dev_mdb_id) for model, spec in specs.items()]
+        results = []
+        if use_items:
+            for item in models_filter:
+                model = item["model"]
+                if model not in specs:
+                    continue
+                spec = specs[model]
+                version = _version_for_check(item, spec)
+                if version:
+                    results.append(check_model_dev(model, spec, dev_mdb_id, version))
+        else:
+            for model, spec in specs.items():
+                results.append(check_model_dev(model, spec, dev_mdb_id, spec["latest_version"]))
         _log_summary(logger, results)
 
         failed = [r for r in results if not r.passed]
         if failed:
             raise ValueError(
-                f"Check 0 FAILED — {len(failed)}/{len(results)} model(s) out of sync with MDF: "
-                + ", ".join(r.model for r in failed)
+                f"Check 0 FAILED — {len(failed)}/{len(results)} check(s) out of sync with MDF: "
+                + ", ".join(f"{r.model}(v{r.version})" for r in failed)
             )
         logger.info("Check 0 PASSED — DEV is up to date with MDF.")
 
@@ -282,20 +320,30 @@ def check_promotion_flow(
         target_label = _mdb_label(qa_mdb_id)
 
         logger.info("=" * 60)
+        # When models_filter is list of dicts, use per-model version (prerelease or release); else use specs as-is.
+        if use_items:
+            post_specs = {}
+            for item in models_filter:
+                model = item["model"]
+                if model not in specs:
+                    continue
+                # Version to verify: prerelease (e.g. 2.1.0-abc1234) when has_prerelease_update, else latest_version.
+                v = _version_for_check(item, specs[model])
+                if v:
+                    logger.info("Post check: verifying %s v%s", model, v)
+                    post_specs[model] = {**specs[model], "latest_version": v}
+        else:
+            post_specs = specs
+
         logger.info("Check 1 — Confirm %s received all promoted models (MDF vs MDB-%s)", target_label, target_label)
         logger.info("=" * 60)
-
-        qa_results = [check_model_qa(model, spec, qa_mdb_id) for model, spec in specs.items()]
+        qa_results = [check_model_qa(model, spec, qa_mdb_id) for model, spec in post_specs.items()]
         _log_summary(logger, qa_results)
 
         logger.info("=" * 60)
         logger.info("Check 2 — Check %s and %s are in sync (MDB-%s vs MDB-%s)", source_label, target_label, source_label, target_label)
         logger.info("=" * 60)
-
-        sync_results = [
-            check_model_sync(model, spec, dev_mdb_id, qa_mdb_id)
-            for model, spec in specs.items()
-        ]
+        sync_results = [check_model_sync(model, spec, dev_mdb_id, qa_mdb_id) for model, spec in post_specs.items()]
         _log_summary(logger, sync_results)
 
         failed = [r for r in qa_results + sync_results if not r.passed]

@@ -76,7 +76,7 @@ class TestCheckModelDev:
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
         )
-        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb")
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
         assert result.passed
         assert result.model == MODEL
         assert result.version == VERSION
@@ -94,7 +94,7 @@ class TestCheckModelDev:
             rels=[],
             props=[],
         )
-        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb")
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
         assert not result.passed
         assert result.inserts > 0
         assert result.removals == 0
@@ -113,7 +113,7 @@ class TestCheckModelDev:
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
         )
-        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb")
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
         assert not result.passed
         assert result.inserts == 0
         assert result.removals > 0
