@@ -48,8 +48,6 @@ def parse_diff(
     except Exception as e:
         logger.debug("Could not load %s: %s", _DEFAULT_SPECS_PATH, e)
         current_specs = {}
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     lines = diff_text.splitlines()
     logger.info("Parsing diff of mdb_models.yml (%d lines)", len(lines))
     # Per-model: release_version, prerelease_base, prerelease_commit, saw_release
@@ -92,7 +90,8 @@ def parse_diff(
                 prerelease_version = f"{base}-{commit}"
             elif commit and current_specs and model in current_specs:
                 spec = current_specs[model]
-                base = spec.get("latest_prerelease_version") or spec.get("latest_version")
+                # Downstream MDF URL uses latest_prerelease_version for path; do not fall back to latest_version.
+                base = spec.get("latest_prerelease_version")
                 prerelease_version = f"{base}-{commit}" if base else None
             else:
                 prerelease_version = base

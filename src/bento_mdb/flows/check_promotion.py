@@ -257,10 +257,11 @@ def _version_for_check(item: dict, spec: dict) -> str | None:
     if item.get("has_prerelease_update"):
         if item.get("prerelease_version"):
             return item["prerelease_version"]
-        # Only prerelease_commit in diff: build version from spec
+        # Only prerelease_commit in diff: build version from spec. Use latest_prerelease_version only
+        # so MDF URL resolution (which uses that key for path) stays consistent.
         commit = item.get("prerelease_commit")
         if commit:
-            base = spec.get("latest_prerelease_version") or spec.get("latest_version")
+            base = spec.get("latest_prerelease_version")
             return f"{base}-{commit}" if base else None
     return item.get("latest_version") or spec.get("latest_version")
 
@@ -300,8 +301,16 @@ def check_promotion_flow(
                     continue
                 spec = specs[model]
                 version = _version_for_check(item, spec)
-                if version:
-                    results.append(check_model_dev(model, spec, dev_mdb_id, version))
+                if not version:
+                    raise ValueError(
+                        f"Cannot resolve version for model {model!r} from filter "
+                        "(check prerelease_version / latest_version in filter item)."
+                    )
+                results.append(check_model_dev(model, spec, dev_mdb_id, version))
+            if not results:
+                raise ValueError(
+                    "No models from filter could be checked (all models missing from specs)."
+                )
         else:
             for model, spec in specs.items():
                 results.append(check_model_dev(model, spec, dev_mdb_id, spec["latest_version"]))
@@ -329,9 +338,17 @@ def check_promotion_flow(
                     continue
                 # Version to verify: prerelease (e.g. 2.1.0-abc1234) when has_prerelease_update, else latest_version.
                 v = _version_for_check(item, specs[model])
-                if v:
-                    logger.info("Post check: verifying %s v%s", model, v)
-                    post_specs[model] = {**specs[model], "latest_version": v}
+                if not v:
+                    raise ValueError(
+                        f"Cannot resolve version for model {model!r} from filter "
+                        "(check prerelease_version / latest_version in filter item)."
+                    )
+                logger.info("Post check: verifying %s v%s", model, v)
+                post_specs[model] = {**specs[model], "latest_version": v}
+            if not post_specs:
+                raise ValueError(
+                    "No models from filter could be verified (all models missing from specs)."
+                )
         else:
             post_specs = specs
 

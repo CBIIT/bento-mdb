@@ -82,7 +82,7 @@ def test_parse_diff_two_models_both_prerelease_only() -> None:
     assert all(x["has_prerelease_update"] for x in out)
 
 
-def test_parse_diff_latest_version_line_with_prerelease_in_value_ignored() -> None:
+def test_parse_diff_latest_prerelease_version_line_ignored() -> None:
     diff = _diff("@@ -40,7 +40,7 @@ X:", "  latest_prerelease_version: 1.0.0")
     out = parse_diff(diff)
     assert len(out) == 1
