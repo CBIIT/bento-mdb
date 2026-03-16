@@ -321,20 +321,30 @@ def check_promotion_flow(
         target_label = _mdb_label(qa_mdb_id)
 
         logger.info("=" * 60)
+        # When models_filter is list of dicts, use per-model version (prerelease or release); else use specs as-is.
+        if use_items:
+            post_specs = {}
+            for item in models_filter:
+                model = item["model"]
+                if model not in specs:
+                    continue
+                # Version to verify: prerelease (e.g. 2.1.0-abc1234) when has_prerelease_update, else latest_version.
+                v = _version_for_check(item, specs[model])
+                if v:
+                    logger.info("Post check: verifying %s v%s", model, v)
+                    post_specs[model] = {**specs[model], "latest_version": v}
+        else:
+            post_specs = specs
+
         logger.info("Check 1 — Confirm %s received all promoted models (MDF vs MDB-%s)", target_label, target_label)
         logger.info("=" * 60)
-
-        qa_results = [check_model_qa(model, spec, qa_mdb_id) for model, spec in specs.items()]
+        qa_results = [check_model_qa(model, spec, qa_mdb_id) for model, spec in post_specs.items()]
         _log_summary(logger, qa_results)
 
         logger.info("=" * 60)
         logger.info("Check 2 — Check %s and %s are in sync (MDB-%s vs MDB-%s)", source_label, target_label, source_label, target_label)
         logger.info("=" * 60)
-
-        sync_results = [
-            check_model_sync(model, spec, dev_mdb_id, qa_mdb_id)
-            for model, spec in specs.items()
-        ]
+        sync_results = [check_model_sync(model, spec, dev_mdb_id, qa_mdb_id) for model, spec in post_specs.items()]
         _log_summary(logger, sync_results)
 
         failed = [r for r in qa_results + sync_results if not r.passed]
