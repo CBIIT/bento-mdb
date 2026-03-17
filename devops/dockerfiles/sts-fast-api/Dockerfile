@@ -12,8 +12,8 @@ RUN apk add --no-cache git
 # Upgrade pip to latest version
 RUN pip install --no-cache-dir --upgrade pip
 
-# Install bento-sts-fastapi from GitHub (unreleased)
-RUN pip install --no-cache-dir git+https://github.com/CBIIT/bento-sts-fastapi.git@main
+# Install bento-sts from GitHub (unreleased)
+RUN pip install --no-cache-dir git+https://github.com/CBIIT/bento-sts.git@main
 
 ENV PYTHONUNBUFFERED=1
 
