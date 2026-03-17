@@ -25,46 +25,39 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Uses last_promoted_sha from config/sync_status.yml (SHA of last commit that changed mdb_models.yml).
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: uv sync --all-extras
+
       - name: Detect updated models since last promotion
         id: detect
         run: |
           set -euo pipefail
           ref=$(grep 'last_promoted_sha:' config/sync_status.yml | sed -E "s/.*last_promoted_sha: *['\"]?([a-f0-9]+)['\"]?.*/\1/" | tr -d ' \r' || true)
           if [ -z "$ref" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected (no last_promoted_sha)."
+            echo "model_filters=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Parse git diff: model is "updated" if latest_version or prerelease fields changed.
-          current=""
-          updated=""
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^@@.*@@[[:space:]]+([A-Za-z0-9_-]+): ]]; then
-              current="${BASH_REMATCH[1]}"
-            fi
-            if [[ -n "$current" ]] && {
-              [[ "$line" =~ ^\+[[:space:]]+latest_version: ]] && [[ "$line" != *prerelease* ]] || \
-              [[ "$line" =~ ^\+[[:space:]]+latest_prerelease_commit: ]] || \
-              [[ "$line" =~ ^\+[[:space:]]+latest_prerelease_version: ]]
-            }; then
-              updated="${updated:+$updated }$current"
-              current=""
-            fi
-          done < <(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
-          if [ -z "$updated" ]; then
-            echo "model_filters=" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected."
-          else
-            # Build JSON array for Prefect (e.g. ["CDS","CTDC"]).
-            arr=$(echo "$updated" | tr ' ' '\n' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "model_filters=$arr" >> "$GITHUB_OUTPUT"
-            echo "Updated models: $updated"
-          fi
+          diff=$(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
+          result=$(echo "$diff" | uv run python -c "
+          import sys, json
+          from bento_mdb.promotion_detect import parse_diff
+          print(json.dumps({'model_filters': parse_diff(sys.stdin.read())}))
+          ")
+          echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
 
   check-dev-mdf-sync:
     needs: detect-updated-models
-    if: ${{ needs.detect-updated-models.outputs.model_filters != '' }}
+    if: ${{ needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
