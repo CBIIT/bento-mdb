@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog 
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog 
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="1" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
+// ---------- CREATE VALUESET ----------
+    MERGE (vs:value_set {nanoid: "6ucHaW"})
+    ON CREATE SET
+        vs._commit = "test-Uberon-20260317",
+        vs.handle = "uberon_terms_valueset"
+
+    WITH vs
+
+    MATCH (t:term {origin_name:"UBERON"})
+    MERGE (vs)-[:has_term]->(t)
+
+    // ---------- CDE MAPPINGS ----------
+    UNWIND [
+  { cde_handle: "disease_primary_site_of_disease_uberon_identifier", origin_id: "14883047", property_handle: "primary_site", property_desc: "Anatomical site of disease in primary diagnosis for this diagnosis in Uberon terminology", property_nanoid: "r0cex9", concept_nanoid: "3VEeso", tag_nanoid: "ruXxem", commit: "test-Uberon-20260317" },
+  { cde_handle: "disease_tissue_or_organ_of_origin_anatomic_site_uberon_identifier", origin_id: "14883058", property_handle: "anatomic_site", property_desc: "Anatomical site of disease, tissue or organ of disease origin in this diagnosis in Uberon terminology", property_nanoid: "24gYXq", concept_nanoid: "YDDHdX", tag_nanoid: "2qEsRa", commit: "test-Uberon-20260317" },
+  { cde_handle: "disease_site_of_resection_or_biopsy_uberon_identifier", origin_id: "14883054", property_handle: "site_of_resection", property_desc: "Site of resection or biopsy done for this diagnosis in Uberon terminology", property_nanoid: "9rZpeR", concept_nanoid: "CEY8kz", tag_nanoid: "YNgzbT", commit: "test-Uberon-20260317" },
+  { cde_handle: "specimen_original_anatomic_site_uberon_identifier", origin_id: "12083894", property_handle: "specimen_anatomic_site_id", property_desc: "Specimen original anatomic site ID from Uberon", property_nanoid: "or457J", concept_nanoid: "SiFAu2", tag_nanoid: "VQAmhu", commit: "test-Uberon-20260317" },
+  { cde_handle: "specimen_original_anatomic_site_uberon_name", origin_id: "12299653", property_handle: "specimen_anatomic_site_name", property_desc: "Specimen original anatomic site name from Uberon", property_nanoid: "xRQdG0", concept_nanoid: "StzHZe", tag_nanoid: "rgho5m", commit: "test-Uberon-20260317" }
+] AS row
+
+    MATCH (cde:term {
+        handle: row.cde_handle,
+        origin_id: row.origin_id,
+        origin_name: "caDSR",
+        origin_version: "1.00"
+    })
+
+    MERGE (p:property {nanoid: row.property_nanoid})
+    ON CREATE SET
+        p._commit = row.commit,
+        p.handle = row.property_handle,
+        p.desc = row.property_desc,
+        p.is_key = false,
+        p.is_nullable = false,
+        p.is_required = false,
+        p.is_strict = true,
+        p.model = "UBERON",
+        p.value_domain = "value_set",
+        p.version = "2025-12-04"
+
+    MERGE (c:concept {nanoid: row.concept_nanoid})
+    ON CREATE SET
+        c._commit = row.commit
+
+    MERGE (tag:tag {nanoid: row.tag_nanoid})
+    ON CREATE SET
+        tag.key = "mapping_src",
+        tag.value = "UBERON",
+        tag._commit = row.commit
+
+    MERGE (c)-[:has_tag]->(tag)
+    MERGE (p)-[:has_concept]->(c)
+    MERGE (cde)-[:represents]->(c)
+    MERGE (p)-[:has_value_set]->(vs)
+    ]]></neo4j:cypher>
+  </changeSet>
+
+</databaseChangeLog>
