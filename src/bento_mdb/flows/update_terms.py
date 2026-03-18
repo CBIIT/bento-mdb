@@ -188,27 +188,23 @@ def update_terms(
     *,
     no_commit: bool = False,
 ) -> None:
-    """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
+    """Test stub: create a dummy changelog file and commit it to GitHub."""
     logger = get_run_logger()
     today = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d")
 
-    mdb_cdes = get_current_mdb_cdes(mdb_id)
-    update_cde_spec = update_mdb_cdes_from_term_sources(mdb_cdes)
-
-    # convert annotation updates to liquibase changelog
-    changelog = convert_model_cdes_to_changelog(update_cde_spec, author, commit)
     output_dir = Path().cwd() / "data/output/term_changelogs"
     changelog_file = output_dir / f"{mdb_id}_{today}_term_updates.xml"
     changelog_file.parent.mkdir(parents=True, exist_ok=True)
-    changelog.save_to_file(str(changelog_file), encoding="UTF-8")
-
-    if changelog.count_changesets() == 0:
-        logger.info("No changesets to commit")
-        no_commit = True
+    changelog_file.write_text(
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f"<!-- test commit by {author} at {today} -->\n"
+        f"<databaseChangeLog/>\n",
+        encoding="utf-8",
+    )
+    logger.info("Created test changelog file: %s", changelog_file)
 
     if not no_commit:
-        logger.info("Committing changes...")
+        logger.info("Committing test file...")
         commit_new_files([changelog_file])
 
-    # Print changlog file as JSON for GitHub Actions
     make_changelog_output_more_visible(changelog_file)
