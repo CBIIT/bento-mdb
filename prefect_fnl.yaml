@@ -50,29 +50,6 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-lower-queue
     job_variables: {}
-- name: update-mdb-and-dh
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update the Neo4j database and datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_mdb_and_dh.py:update_mdb_and_dh_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
-- name: update-datahub
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_dh.py:update_datahub_flow
-  parameters: {}
-  work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
 - name: update-terms
   version:
   tags: []
