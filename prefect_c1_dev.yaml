@@ -2,6 +2,7 @@ name: mdb-updates-c1-dev
 prefect-version: 3.3.4
 
 pull:
+#  TEST
 - prefect.deployments.steps.git_clone:
     id: clone-step
     branch: main
@@ -50,35 +51,11 @@ deployments:
     name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-lower-queue
     job_variables: {}
-- name: update-mdb-and-dh
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update the Neo4j database and datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_mdb_and_dh.py:update_mdb_and_dh_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
-- name: update-datahub
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_dh.py:update_datahub_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
 - name: update-terms
   version:
   tags: []
   concurrency_limit:
-  description: Check for term source updates and update MDB and DH
+  description: heck for term source updates and generate/commit term changelogs
   entrypoint: src/bento_mdb/flows/update_terms.py:update_terms
   parameters: {}
   schedule: null
@@ -152,18 +129,6 @@ deployments:
   concurrency_limit:
   description: Run arbitrary Cypher queries on MDB.
   entrypoint: src/bento_mdb/flows/run_cypher.py:run_cypher_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
-- name: update-c1-lower
-  version:
-  tags: []
-  concurrency_limit:
-  description: Orchestrate update of Cloud One Dev and QA MDBs from graphml file.
-  entrypoint: src/bento_mdb/flows/update_c1_lower.py:update_c1_lower_flow
   parameters: {}
   schedule: null
   work_pool:

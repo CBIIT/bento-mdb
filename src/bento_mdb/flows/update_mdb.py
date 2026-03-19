@@ -49,8 +49,6 @@ def set_defaults_file(
     uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue
     user = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    if mdb_id.startswith("og-mdb"):
-        password = ""  # can't set empty string in prefect secrets
 
     # create liquibase log file
     log_file = tempfile.NamedTemporaryFile(suffix=".log", delete=False)  # noqa: SIM115

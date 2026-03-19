@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-  <include file="CDS_changelog_11.0.0-46b7020-null-CDE-part1.xml" relativeToChangelogFile="true"/>
-  <include file="CDS_changelog_11.0.0-46b7020-null-CDE-part2.xml" relativeToChangelogFile="true"/>
-  <include file="CDS_changelog_11.0.0-46b7020-null-CDE-part3.xml" relativeToChangelogFile="true"/>
-  <include file="CDS_changelog_11.0.0-46b7020-null-CDE-part4.xml" relativeToChangelogFile="true"/>
-</databaseChangeLog>
