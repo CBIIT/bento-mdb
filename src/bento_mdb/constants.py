@@ -17,13 +17,9 @@ VALID_MDB_IDS = [
     "cloud-one-mdb-qa",
     "cloud-one-mdb-stage",
     "cloud-one-mdb-prod",
-    "og-mdb-dev",
-    "og-mdb-nightly",
-    "og-mdb-prod",
 ]
 
 MDB_IDS_WITH_PRERELEASES = [
-    "og-mdb-nightly",
     "fnl-mdb-dev",
     "cloud-one-mdb-dev",
 ]
@@ -51,11 +47,6 @@ MDB_REL_TYPES = [
 GITHUB_TOKEN_SECRET = "mdb-updates-github-token"  # noqa: S105
 GITHUB_TOKEN_SECRET_NWM = "nwm-github-token"  # noqa: S105
 MDB_UPDATES_GH_REPO = "CBIIT/bento-mdb"
-DH_TERMS_GH_REPO = "CBIIT/crdc-datahub-terms"
-VALID_TIERS = {
-    "lower": ["dev", "dev2", "qa", "qa2"],
-    "upper": ["stage", "prod"],
-}
 
 # =============================================================================
 # caDSR CDE Constants
