@@ -54,7 +54,7 @@ deployments:
   version:
   tags: []
   concurrency_limit:
-  description: Check for term source updates and update MDB and DH
+  description: heck for term source updates and generate/commit term changelogs
   entrypoint: src/bento_mdb/flows/update_terms.py:update_terms
   parameters: {}
   schedule: null
