@@ -134,6 +134,18 @@ deployments:
     name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: update-c1-lower
+  version:
+  tags: []
+  concurrency_limit:
+  description: Orchestrate update of Cloud One Dev and QA MDBs from graphml file.
+  entrypoint: src/bento_mdb/flows/update_c1_lower.py:update_c1_lower_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
 - name: check-promotion
   version:
   tags: []
