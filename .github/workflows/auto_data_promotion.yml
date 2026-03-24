@@ -209,7 +209,7 @@ jobs:
 
   verify-promotion:
     needs: [import-to-c1-qa, detect-updated-models]
-    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' }}
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
