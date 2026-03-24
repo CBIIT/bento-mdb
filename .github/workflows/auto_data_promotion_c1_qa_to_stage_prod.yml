@@ -44,11 +44,15 @@ jobs:
         run: |
           set -euo pipefail
           ref=$(grep 'last_promoted_sha_stage_prod:' config/sync_status.yml | sed -E "s/.*last_promoted_sha_stage_prod: *['\"]?([a-f0-9]+)['\"]?.*/\1/" | tr -d ' \r' || true)
+          echo "ref=$ref"
           if [ -z "$ref" ]; then
+            echo "No last_promoted_sha_stage_prod found — setting model_filters=[] and skipping."
             echo "model_filters=[]" >> "$GITHUB_OUTPUT"
-            echo "No updated models detected (no last_promoted_sha_stage_prod)."
             exit 0
           fi
           diff=$(git diff "$ref..HEAD" -- config/mdb_models.yml 2>/dev/null || true)
+          echo "diff length: ${#diff}"
           result=$(echo "$diff" | uv run python -c "import sys, json; from bento_mdb.promotion_detect import parse_diff; print(json.dumps({'model_filters': parse_diff(sys.stdin.read(), is_prod_release=True)}))")
-          echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
+          model_filters_val=$(echo "$result" | jq -c '.model_filters')
+          echo "model_filters=$model_filters_val"
+          echo "model_filters=$model_filters_val" >> "$GITHUB_OUTPUT"
