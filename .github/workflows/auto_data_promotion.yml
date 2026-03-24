@@ -92,7 +92,6 @@ jobs:
             --watch
 
   export-c1-dev:
-    needs: check-dev-mdf-sync
     runs-on: ubuntu-latest
     outputs:
       s3_key: ${{ steps.export.outputs.s3_key }}
