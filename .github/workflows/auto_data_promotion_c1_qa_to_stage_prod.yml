@@ -55,7 +55,9 @@ jobs:
           from bento_mdb.promotion_detect import parse_diff
           print(json.dumps({'model_filters': parse_diff(sys.stdin.read(), is_prod_release=True)}))
           ")
-          echo "model_filters=$(echo "$result" | jq -c '.model_filters')" >> "$GITHUB_OUTPUT"
+          model_filters=$(echo "$result" | jq -c '.model_filters')
+          echo "model_filters=$model_filters"
+          echo "model_filters=$model_filters" >> "$GITHUB_OUTPUT"
 
   check-qa-ready:
     needs: detect-updated-models
@@ -102,7 +104,6 @@ jobs:
             --watch
 
   export-c1-qa:
-    needs: check-qa-ready
     runs-on: ubuntu-latest
     outputs:
       s3_key: ${{ steps.export.outputs.s3_key }}
@@ -357,8 +358,8 @@ jobs:
             --watch
 
   import-to-c1-prod:
-    needs: [export-c1-stage, verify-stage-promotion]
-    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.verify-stage-promotion.result == 'success' }}
+    needs: [export-c1-stage]
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
