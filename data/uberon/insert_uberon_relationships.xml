@@ -10,17 +10,29 @@
   <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
 
+    CALL {
+
     CREATE INDEX term_value_origin IF NOT EXISTS
     FOR (t:term)
     ON (t.value, t.origin_name);
+
+    }
+
+    CALL {
 
     CREATE INDEX term_value IF NOT EXISTS
     FOR (t:term)
     ON (t.value);
 
+    }
+
+    CALL {
+
     CREATE INDEX concept_nanoid IF NOT EXISTS
     FOR (c:concept)
     ON (c.nanoid);
+
+    }
 
     CALL {
     
