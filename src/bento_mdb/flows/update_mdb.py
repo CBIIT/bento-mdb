@@ -9,6 +9,7 @@ import stat
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+import time
 
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -99,7 +100,7 @@ def run_liquibase_update(  # noqa: C901, PLR0912
     err_capture = io.StringIO()
     try:
         with redirect_stdout(out_capture), redirect_stderr(err_capture):
-            if dry_run:
+            if dry_run: # dry run is still putting stuff in the database - it executes mdb.put_with_statement(cypher_statement)
                 logger.info("Running updateSQL (dry run)...")
                 plb.updateSQL()
             else:
@@ -252,6 +253,8 @@ def liquibase_update_flow(
     
     total_changesets = len(changesets)
     logger.info("Found %d changesets in changelog file", total_changesets)
+    start = time.time()
+
     
     if total_changesets == 0:
         msg = "No changesets found in changelog file"
@@ -263,9 +266,17 @@ def liquibase_update_flow(
         for changeset in changesets:
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            # remove cdata wrapper
+            cypher_statement = cypher_statement.replace("<![CDATA[", "").replace("]]>", "").strip()
+            cypher_statement = cypher_statement.replace("'", "\\'")
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            mdb.put_with_statement(cypher_statement)
+            if not dry_run:
+                mdb.put_with_statement(cypher_statement)
+                end = time.time()
+            else:
+                print(cypher_statement[:1000])  # preview only
+            logger.info(f"Changelog {num} took {end-start:.2f} seconds")
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:
@@ -275,3 +286,75 @@ def liquibase_update_flow(
         mdb.close()
 
     logger.info("Liquibase finished.")
+    total_end = time.time()
+    logger.info(f"TOTAL RUN TIME: {end-start:.2f} seconds")
+
+@flow(name="liquibase-data-ingestion-pipeline")
+def liquibase_ingestion_flow(
+    changelog_file: str,
+    mdb_id: str,
+    max_changesets: int = 5,
+    dry_run: bool = False,
+):
+    """
+    Wrapper flow to:
+    1. Split large changelog into smaller chunks
+    2. Run existing liquibase_update_flow on each chunk sequentially
+
+    Designed to minimize changes to existing logic while improving performance and logging.
+    """
+
+    logger = get_run_logger()
+    logger.info("Starting Uberon relationships pipeline")
+
+    # Split changelog
+    try:
+        logger.info(f"Splitting changelog file: {changelog_file}")
+        split_files = split_changelog_file(
+            changelog_file,
+            max_changesets
+        )
+
+        if not split_files:
+            raise ValueError("No split files were generated.")
+
+        logger.info(f"Successfully split into {len(split_files)} files")
+        logger.info(f"Generated files: {[str(f) for f in split_files]}")
+
+    except Exception as e:
+        logger.exception("Failed during changelog splitting")
+        raise RuntimeError(f"Changelog splitting failed: {e}")
+
+    # Process each chunk
+    total_success = 0
+    total_failed = 0
+
+    for idx, file in enumerate(split_files):
+        logger.info(f"Processing chunk {idx+1}/{len(split_files)}: {file}")
+
+        try:
+            liquibase_update_flow(
+                changelog_file=str(file),
+                mdb_id=mdb_id,
+                dry_run=dry_run
+            )
+
+            logger.info(f"Chunk {idx+1} completed successfully")
+            total_success += 1
+
+        except Exception as e:
+            logger.exception(f"Chunk {idx+1} FAILED: {file}")
+            total_failed += 1
+
+            # Continue processing remaining chunks
+            continue
+
+    # log final summary
+    logger.info("Pipeline execution complete")
+    logger.info(f"Successful chunks: {total_success}")
+    logger.info(f"Failed chunks: {total_failed}")
+
+    if total_failed > 0:
+        raise RuntimeError(
+            f"{total_failed} chunks failed during execution. Check logs for details."
+        )

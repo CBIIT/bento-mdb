@@ -9,6 +9,21 @@
 
   <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
+
+    CREATE INDEX term_value_origin IF NOT EXISTS
+    FOR (t:term)
+    ON (t.value, t.origin_name);
+
+    CREATE INDEX term_value IF NOT EXISTS
+    FOR (t:term)
+    ON (t.value);
+
+    CREATE INDEX concept_nanoid IF NOT EXISTS
+    FOR (c:concept)
+    ON (c.nanoid);
+
+    CALL {
+    
 UNWIND [
   { concept_nanoid: "WWWoQf", tag_nanoid: "sciQa7", commit: "CDEPV-20260317", primary_term: "ventral tegmental nucleus", synonyms: [{ raw: "ventral tegmental nuclei [FMA:72435]", value: "ventral tegmental nuclei", ref: "FMA:72435", is_uberon: false }, { raw: "ventral tegmental nucleus of Gudden [FMA:72435]", value: "ventral tegmental nucleus of Gudden", ref: "FMA:72435", is_uberon: false }, { raw: "deep tegmental nucleus of Gudden [FMA:72435]", value: "deep tegmental nucleus of Gudden", ref: "FMA:72435", is_uberon: false }, { raw: "ventral tegmental nucleus (gudden) [FMA:72435]", value: "ventral tegmental nucleus (gudden)", ref: "FMA:72435", is_uberon: false }, { raw: "ventral raphe tegmental nucleus [FMA:72435]", value: "ventral raphe tegmental nucleus", ref: "FMA:72435", is_uberon: false }] },
   { concept_nanoid: "4judTY", tag_nanoid: "UmdfAy", commit: "CDEPV-20260317", primary_term: "wall of central canal of spinal cord", synonyms: [{ raw: "wall of central canal [FMA:242780]", value: "wall of central canal", ref: "FMA:242780", is_uberon: false }] },
@@ -256,8 +271,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "sCS1H9", tag_nanoid: "Ey0aSu", commit: "CDEPV-20260317", primary_term: "stomach lumen", synonyms: [{ raw: "cavity of stomach [FMA:14585]", value: "cavity of stomach", ref: "FMA:14585", is_uberon: false }] },
@@ -506,8 +524,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "02bJWw", tag_nanoid: "20hB38", commit: "CDEPV-20260317", primary_term: "navicular bone of pes", synonyms: [{ raw: "navicular of foot [FMA:24499]", value: "navicular of foot", ref: "FMA:24499", is_uberon: false }, { raw: "os tarsi centrale [NominaAnatomicaVeterinaria:2005]", value: "os tarsi centrale", ref: "NominaAnatomicaVeterinaria:2005", is_uberon: false }, { raw: "centrale (hind) [AAO:0000924]", value: "centrale (hind)", ref: "AAO:0000924", is_uberon: false }, { raw: "navicular bone of foot [FMA:24499]", value: "navicular bone of foot", ref: "FMA:24499", is_uberon: false }, { raw: "navicular", value: "navicular", ref: null, is_uberon: false }, { raw: "navicular of pes", value: "navicular of pes", ref: null, is_uberon: false }, { raw: "os naviculare [FMA:TA]", value: "os naviculare", ref: "FMA:TA", is_uberon: false }, { raw: "os naviculare [FMA:24499]", value: "os naviculare", ref: "FMA:24499", is_uberon: false }, { raw: "os naviculare pedis [BTO:0002356]", value: "os naviculare pedis", ref: "BTO:0002356", is_uberon: false }] },
@@ -756,8 +777,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "EDRWGy", tag_nanoid: "cSWRD9", commit: "CDEPV-20260317", primary_term: "long bone epiphyseal plate hypertrophic zone", synonyms: [{ raw: "epiphyseal plate hypertrophic zone", value: "epiphyseal plate hypertrophic zone", ref: null, is_uberon: false }] },
@@ -1006,8 +1030,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "RcP59T", tag_nanoid: "EWZPsw", commit: "CDEPV-20260317", primary_term: "distal phalanx of pedal digit 5", synonyms: [{ raw: "distal phalanx of 5th toe [OBOL:automatic]", value: "distal phalanx of 5th toe", ref: "OBOL:automatic", is_uberon: false }, { raw: "distal phalanx of pedal digit V [https://github.com/obophenotype/uberon/issues/458]", value: "distal phalanx of pedal digit V", ref: "https://github.com/obophenotype/uberon/issues/458", is_uberon: false }, { raw: "distal phalanx of foot digit 5 [OBOL:automatic]", value: "distal phalanx of foot digit 5", ref: "OBOL:automatic", is_uberon: false }, { raw: "distal phalanx of little toe [FMA:32631]", value: "distal phalanx of little toe", ref: "FMA:32631", is_uberon: false }, { raw: "distal phalanx of the 5th toe [OBOL:automatic]", value: "distal phalanx of the 5th toe", ref: "OBOL:automatic", is_uberon: false }, { raw: "5th toe distal phalanx [OBOL:automatic]", value: "5th toe distal phalanx", ref: "OBOL:automatic", is_uberon: false }, { raw: "foot digit 5 distal phalanx [OBOL:automatic]", value: "foot digit 5 distal phalanx", ref: "OBOL:automatic", is_uberon: false }, { raw: "fifth distal phalanx of foot [FMA:32631]", value: "fifth distal phalanx of foot", ref: "FMA:32631", is_uberon: false }, { raw: "distal phalanx of fifth toe [FMA:32631]", value: "distal phalanx of fifth toe", ref: "FMA:32631", is_uberon: false }, { raw: "distal phalanx of fifth digit of foot [FMA:32631]", value: "distal phalanx of fifth digit of foot", ref: "FMA:32631", is_uberon: false }] },
@@ -1256,8 +1283,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "0D71k4", tag_nanoid: "8Buzie", commit: "CDEPV-20260317", primary_term: "pars tensa of tympanic membrane", synonyms: [{ raw: "pars tensa membranae tympanicae [FMA:TA]", value: "pars tensa membranae tympanicae", ref: "FMA:TA", is_uberon: false }, { raw: "pars tensa membranae tympanicae [FMA:56722]", value: "pars tensa membranae tympanicae", ref: "FMA:56722", is_uberon: false }, { raw: "pars tensa (membrana tympanica) [FMA:56722]", value: "pars tensa (membrana tympanica)", ref: "FMA:56722", is_uberon: false }] },
@@ -1506,8 +1536,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "hqU5mN", tag_nanoid: "5JioGw", commit: "CDEPV-20260317", primary_term: "synovial joint", synonyms: [{ raw: "articulatio synoviale", value: "articulatio synoviale", ref: null, is_uberon: false }, { raw: "diarthrosis", value: "diarthrosis", ref: null, is_uberon: false }, { raw: "diarthrosis joint", value: "diarthrosis joint", ref: null, is_uberon: false }, { raw: "diarthroses [ZFA:0005153]", value: "diarthroses", ref: "ZFA:0005153", is_uberon: false }] },
@@ -1756,8 +1789,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "YYfGmr", tag_nanoid: "QwQhhS", commit: "CDEPV-20260317", primary_term: "hemolymphoid system", synonyms: [{ raw: "hematolymphoid system", value: "hematolymphoid system", ref: null, is_uberon: false }, { raw: "lymphomyeloid complex", value: "lymphomyeloid complex", ref: null, is_uberon: false }] },
@@ -2006,8 +2042,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "3YfaXC", tag_nanoid: "XVzecv", commit: "CDEPV-20260317", primary_term: "depressor septi nasi", synonyms: [{ raw: "depressor septi [Wikipedia:Depressor_septi_nasi_muscle]", value: "depressor septi", ref: "Wikipedia:Depressor_septi_nasi_muscle", is_uberon: false }] },
@@ -2256,8 +2295,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "7oCged", tag_nanoid: "Ncbv3f", commit: "CDEPV-20260317", primary_term: "mesenchyme of hindgut", synonyms: [{ raw: "hindgut associated mesenchyme [EHDAA2:0000780]", value: "hindgut associated mesenchyme", ref: "EHDAA2:0000780", is_uberon: false }] },
@@ -2506,8 +2548,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "XcH4g7", tag_nanoid: "B2g0eq", commit: "CDEPV-20260317", primary_term: "metapodium bone 4", synonyms: [{ raw: "metapodium 4", value: "metapodium 4", ref: null, is_uberon: false }, { raw: "metapodium IV", value: "metapodium IV", ref: null, is_uberon: false }] },
@@ -2756,8 +2801,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "XYMoyK", tag_nanoid: "Ev6UZF", commit: "CDEPV-20260317", primary_term: "reproductive organ", synonyms: [{ raw: "sex organ", value: "sex organ", ref: null, is_uberon: false }, { raw: "reproductive system organ", value: "reproductive system organ", ref: null, is_uberon: false }, { raw: "genital organ", value: "genital organ", ref: null, is_uberon: false }] },
@@ -3006,8 +3054,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "Shtfzd", tag_nanoid: "HdJbwQ", commit: "CDEPV-20260317", primary_term: "supraneural 2 bone", synonyms: [{ raw: "sn2 [TAO:0001191]", value: "sn2", ref: "TAO:0001191", is_uberon: false }, { raw: "small supraneural [TAO:doi:10.1046/j.1096-3642.2002.00014.x]", value: "small supraneural", ref: "TAO:doi:10.1046/j.1096-3642.2002.00014.x", is_uberon: false }] },
@@ -3256,8 +3307,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "v6T5gN", tag_nanoid: "ki8ar9", commit: "CDEPV-20260317", primary_term: "mesenchyme of nasal septum", synonyms: [{ raw: "nasal septum mesenchyme [OBOL:automatic]", value: "nasal septum mesenchyme", ref: "OBOL:automatic", is_uberon: false }] },
@@ -3506,8 +3560,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "ebXZHK", tag_nanoid: "9ZQSFA", commit: "CDEPV-20260317", primary_term: "forelimb digital vein", synonyms: [{ raw: "forelimb digital veins [MA:0002120]", value: "forelimb digital veins", ref: "MA:0002120", is_uberon: false }, { raw: "vein of finger", value: "vein of finger", ref: null, is_uberon: false }, { raw: "vein of manual digit", value: "vein of manual digit", ref: null, is_uberon: false }] },
@@ -3756,8 +3813,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "Pw6GBn", tag_nanoid: "Dq3ZrX", commit: "CDEPV-20260317", primary_term: "right upper second secondary molar tooth", synonyms: [{ raw: "right upper second secondary molar tooth [FMA:55697]", value: "right upper second secondary molar tooth", ref: "FMA:55697", is_uberon: false }, { raw: "ADA tooth 2", value: "ADA tooth 2", ref: null, is_uberon: false }, { raw: "FDI tooth 17", value: "FDI tooth 17", ref: null, is_uberon: false }] },
@@ -4006,8 +4066,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "TvGuRM", tag_nanoid: "QpDs2n", commit: "CDEPV-20260317", primary_term: "panniculus adiposus", synonyms: [{ raw: "panniculus adiposus group", value: "panniculus adiposus group", ref: null, is_uberon: false }] },
@@ -4256,8 +4319,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "yr1zyC", tag_nanoid: "0BfWHE", commit: "CDEPV-20260317", primary_term: "presumptive midbrain hindbrain boundary", synonyms: [{ raw: "presumptive midbrain-hindbrain boundary [ZFA:0001187]", value: "presumptive midbrain-hindbrain boundary", ref: "ZFA:0001187", is_uberon: false }, { raw: "presumptive MHB [https://orcid.org/0000-0002-6601-2165]", value: "presumptive MHB", ref: "https://orcid.org/0000-0002-6601-2165", is_uberon: false }] },
@@ -4506,8 +4572,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "w6j6V3", tag_nanoid: "54uU98", commit: "CDEPV-20260317", primary_term: "lingual nerve", synonyms: [{ raw: "trigeminal nerve lingual branch", value: "trigeminal nerve lingual branch", ref: null, is_uberon: false }, { raw: "trigeminal V nerve lingual branch [MA:0001102]", value: "trigeminal V nerve lingual branch", ref: "MA:0001102", is_uberon: false }, { raw: "lingual branch of trigeminal nerve", value: "lingual branch of trigeminal nerve", ref: null, is_uberon: false }] },
@@ -4756,8 +4825,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "VmNbPY", tag_nanoid: "Z5NJ3r", commit: "CDEPV-20260317", primary_term: "preculminate fissure of cerebellum", synonyms: [{ raw: "preculminate fissure [FMA:83736]", value: "preculminate fissure", ref: "FMA:83736", is_uberon: false }, { raw: "fissura preculminalis [FMA:TA]", value: "fissura preculminalis", ref: "FMA:TA", is_uberon: false }] },
@@ -5006,8 +5078,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "MzgtsZ", tag_nanoid: "JuoqFo", commit: "CDEPV-20260317", primary_term: "lower first secondary premolar tooth", synonyms: [{ raw: "lower first permanent premolar tooth [FMA:55803]", value: "lower first permanent premolar tooth", ref: "FMA:55803", is_uberon: false }, { raw: "mandibular first secondary premolar tooth [FMA:55803]", value: "mandibular first secondary premolar tooth", ref: "FMA:55803", is_uberon: false }] },
@@ -5256,8 +5331,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "oB8NF7", tag_nanoid: "XaxwbW", commit: "CDEPV-20260317", primary_term: "L4 segment of lumbar spinal cord", synonyms: [{ raw: "L4 segment [FMA:71190]", value: "L4 segment", ref: "FMA:71190", is_uberon: false }, { raw: "fourth lumbar spinal cord segment [BIRNLEX:1352]", value: "fourth lumbar spinal cord segment", ref: "BIRNLEX:1352", is_uberon: false }, { raw: "L4 spinal cord segment [BIRNLEX:1352]", value: "L4 spinal cord segment", ref: "BIRNLEX:1352", is_uberon: false }] },
@@ -5506,8 +5584,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "9fK0z0", tag_nanoid: "cbCCdY", commit: "CDEPV-20260317", primary_term: "fasciculus of brain", synonyms: [{ raw: "brain fasciculus [FMA:83844]", value: "brain fasciculus", ref: "FMA:83844", is_uberon: false }] },
@@ -5756,8 +5837,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "xMgQfw", tag_nanoid: "0bkk3h", commit: "CDEPV-20260317", primary_term: "bulbus arteriosus outer layer", synonyms: [{ raw: "bulbus arteriosus externa [TAO:0005066]", value: "bulbus arteriosus externa", ref: "TAO:0005066", is_uberon: false }] },
@@ -6006,8 +6090,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "ndgyB1", tag_nanoid: "nBZoUY", commit: "CDEPV-20260317", primary_term: "basihyal tooth plate", synonyms: [{ raw: "basihyal toothplate [TAO:0001648]", value: "basihyal toothplate", ref: "TAO:0001648", is_uberon: false }] },
@@ -6256,8 +6343,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "d4PW8n", tag_nanoid: "6b4xGZ", commit: "CDEPV-20260317", primary_term: "medulla oblongata", synonyms: [{ raw: "bulbus [FMA:TA]", value: "bulbus", ref: "FMA:TA", is_uberon: false }, { raw: "bulbus [FMA:62004]", value: "bulbus", ref: "FMA:62004", is_uberon: false }] },
@@ -6506,8 +6596,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "G4piH0", tag_nanoid: "dP1dJ3", commit: "CDEPV-20260317", primary_term: "pharyngeal arch 7", synonyms: [{ raw: "gill arch 5 [ZFA:0001610]", value: "gill arch 5", ref: "ZFA:0001610", is_uberon: false }, { raw: "visceral arch 7 [ZFA:0001610]", value: "visceral arch 7", ref: "ZFA:0001610", is_uberon: false }] },
@@ -6756,8 +6849,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "FqpDGc", tag_nanoid: "57uf2X", commit: "CDEPV-20260317", primary_term: "pseudostratified ciliated columnar epithelium", synonyms: [{ raw: "epithelium pseudostratificatum columnare ciliatum (trachea et bronchi) [FMA:13146]", value: "epithelium pseudostratificatum columnare ciliatum (trachea et bronchi)", ref: "FMA:13146", is_uberon: false }] },
@@ -7006,8 +7102,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "9w7ZDA", tag_nanoid: "KKfbvS", commit: "CDEPV-20260317", primary_term: "manual digit 4 phalanx pre-cartilage condensation", synonyms: [{ raw: "manual digit IV phalanx pre-cartilage condensation [https://github.com/obophenotype/uberon/issues/458]", value: "manual digit IV phalanx pre-cartilage condensation", ref: "https://github.com/obophenotype/uberon/issues/458", is_uberon: false }, { raw: "fore limb digit 4 phalanx pre-cartilage condensation [OBOL:accepted]", value: "fore limb digit 4 phalanx pre-cartilage condensation", ref: "OBOL:accepted", is_uberon: false }] },
@@ -7256,8 +7355,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "5jaTNQ", tag_nanoid: "gD9kvP", commit: "CDEPV-20260317", primary_term: "forelimb blood vessel", synonyms: [{ raw: "blood vessel of upper extremity [OBOL:automatic]", value: "blood vessel of upper extremity", ref: "OBOL:automatic", is_uberon: false }, { raw: "blood vessel of anteriormost limb [OBOL:automatic]", value: "blood vessel of anteriormost limb", ref: "OBOL:automatic", is_uberon: false }, { raw: "anteriormost limb blood vessel [OBOL:automatic]", value: "anteriormost limb blood vessel", ref: "OBOL:automatic", is_uberon: false }, { raw: "fore limb blood vessel [OBOL:automatic]", value: "fore limb blood vessel", ref: "OBOL:automatic", is_uberon: false }, { raw: "blood vessel of forelimb [OBOL:automatic]", value: "blood vessel of forelimb", ref: "OBOL:automatic", is_uberon: false }, { raw: "blood vessel of fore limb [OBOL:automatic]", value: "blood vessel of fore limb", ref: "OBOL:automatic", is_uberon: false }] },
@@ -7506,8 +7608,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "QBhSBA", tag_nanoid: "gVMo6q", commit: "CDEPV-20260317", primary_term: "clivus of occipital bone", synonyms: [{ raw: "clivus [HP:0010558]", value: "clivus", ref: "HP:0010558", is_uberon: false }, { raw: "occipital bone clivus [FMA:75747]", value: "occipital bone clivus", ref: "FMA:75747", is_uberon: false }] },
@@ -7756,8 +7861,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "3fMzJM", tag_nanoid: "TCaR9z", commit: "CDEPV-20260317", primary_term: "sphincter colli muscle", synonyms: [{ raw: "sphincter colli", value: "sphincter colli", ref: null, is_uberon: false }] },
@@ -8006,8 +8114,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "ncUvg8", tag_nanoid: "bKjGk5", commit: "CDEPV-20260317", primary_term: "molar tooth 4", synonyms: [{ raw: "molar 4", value: "molar 4", ref: null, is_uberon: false }, { raw: "molar 4 tooth", value: "molar 4 tooth", ref: null, is_uberon: false }, { raw: "fourth molar tooth", value: "fourth molar tooth", ref: null, is_uberon: false }] },
@@ -8256,8 +8367,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "esf9jB", tag_nanoid: "Gq0GCW", commit: "CDEPV-20260317", primary_term: "duct of eccrine sweat gland", synonyms: [{ raw: "ductal part of eccrine sweat gland [FMA:70617]", value: "ductal part of eccrine sweat gland", ref: "FMA:70617", is_uberon: false }] },
@@ -8506,8 +8620,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "tZ3c2K", tag_nanoid: "Q9re3q", commit: "CDEPV-20260317", primary_term: "right atrioventricular canal", synonyms: [{ raw: "right atrio-ventricular canal [EHDAA2:0001719]", value: "right atrio-ventricular canal", ref: "EHDAA2:0001719", is_uberon: false }, { raw: "right AVC", value: "right AVC", ref: null, is_uberon: false }] },
@@ -8756,8 +8873,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "cmRscr", tag_nanoid: "Mpp2yQ", commit: "CDEPV-20260317", primary_term: "mesenchyme of interdigital region of pes", synonyms: [{ raw: "mesenchyme of interdigital region of hindlimb", value: "mesenchyme of interdigital region of hindlimb", ref: null, is_uberon: false }] },
@@ -9006,8 +9126,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "n8y8qn", tag_nanoid: "8evcSp", commit: "CDEPV-20260317", primary_term: "innominate bone", synonyms: [{ raw: "os coxae [FMA:TA]", value: "os coxae", ref: "FMA:TA", is_uberon: false }, { raw: "os coxae [FMA:16585]", value: "os coxae", ref: "FMA:16585", is_uberon: false }, { raw: "pelvic bone [FMA:16585]", value: "pelvic bone", ref: "FMA:16585", is_uberon: false }, { raw: "innominate bone [FMA:16585]", value: "innominate bone", ref: "FMA:16585", is_uberon: false }, { raw: "coxal bone [FMA:16585]", value: "coxal bone", ref: "FMA:16585", is_uberon: false }, { raw: "os coxa", value: "os coxa", ref: null, is_uberon: false }, { raw: "hip bone [FMA:16585]", value: "hip bone", ref: "FMA:16585", is_uberon: false }] },
@@ -9256,8 +9379,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "SiAajR", tag_nanoid: "pJA8g3", commit: "CDEPV-20260317", primary_term: "tricuspid valve leaflet", synonyms: [{ raw: "tricuspid valvular leaflet [FMA:7237]", value: "tricuspid valvular leaflet", ref: "FMA:7237", is_uberon: false }, { raw: "tricuspid valve leaflets [VHOG:0000821]", value: "tricuspid valve leaflets", ref: "VHOG:0000821", is_uberon: false }, { raw: "leaflet of tricuspid valve [FMA:7237]", value: "leaflet of tricuspid valve", ref: "FMA:7237", is_uberon: false }, { raw: "tricuspid valve leaflet [FMA:7237]", value: "tricuspid valve leaflet", ref: "FMA:7237", is_uberon: false }] },
@@ -9506,8 +9632,11 @@ UNWIND [
 
     MERGE (s)-[:represents]->(c)
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
     UNWIND [
   { concept_nanoid: "AAmgE5", tag_nanoid: "7DK6Pm", commit: "CDEPV-20260317", primary_term: "trachealis", synonyms: [{ raw: "trachealis muscle [FMA:7466]", value: "trachealis muscle", ref: "FMA:7466", is_uberon: false }, { raw: "tracheal muscle [FMA:7466]", value: "tracheal muscle", ref: "FMA:7466", is_uberon: false }] },
@@ -9744,6 +9873,9 @@ UNWIND [
     UNWIND valid_syns AS s
 
     MERGE (s)-[:represents]->(c)
+
+    }
+    
     ]]></neo4j:cypher>
   </changeSet>
 

@@ -91,7 +91,8 @@ def run_cypher_flow(
 
     for q in query:
         try:
-            result = execute_cypher(mdb, q, params)
+            q = q.strip() # remove this later
+            result = execute_cypher(mdb, q, params, is_write=False)  #remove is_write if it is a write query  
             results.append(result)
         except Exception:
             logger.exception("Query '%s' failed", q)

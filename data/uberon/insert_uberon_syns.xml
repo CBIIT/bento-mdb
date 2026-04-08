@@ -9,6 +9,8 @@
 
   <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
+    CALL {
+
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "ventral_tegmental_nuclei", nanoid: "PkmNw3", origin_name: "FMA", origin_id: "72435", origin_version: "1", origin_definition: "", value: "ventral tegmental nuclei", external_references: "ventral tegmental nuclei [FMA:72435]" },
   { _commit: "CDEPV-20260302", handle: "ventral_tegmental_nucleus_of_Gudden", nanoid: "d8iwD0", origin_name: "FMA", origin_id: "72435", origin_version: "1", origin_definition: "", value: "ventral tegmental nucleus of Gudden", external_references: "ventral tegmental nucleus of Gudden [FMA:72435]" },
@@ -1023,8 +1025,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "perichordal_tube", nanoid: "k2Muxg", origin_name: "ISBN", origin_id: "0073040584", origin_version: "1", origin_definition: "", value: "perichordal tube", external_references: "perichordal tube [ISBN:0073040584]" },
@@ -2040,8 +2045,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "crus_verticale_striae_diagonalis", nanoid: "ZJHez5", origin_name: "FMA", origin_id: "TA", origin_version: "1", origin_definition: "", value: "crus verticale striae diagonalis", external_references: "crus verticale striae diagonalis [FMA:TA]" },
@@ -3057,8 +3065,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "commissura_supramamillaris", nanoid: "vXW6AS", origin_name: "NeuroNames", origin_id: "421", origin_version: "1", origin_definition: "", value: "commissura supramamillaris", external_references: "commissura supramamillaris [NeuroNames:421]" },
@@ -4074,8 +4085,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "area_cingularis_posterior_dorsalis", nanoid: "zBXFZX", origin_name: "BIRNLEX", origin_id: "1765", origin_version: "1", origin_definition: "", value: "area cingularis posterior dorsalis", external_references: "area cingularis posterior dorsalis [BIRNLEX:1765]" },
@@ -5091,8 +5105,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "plica_rectouterina", nanoid: "qPQd6J", origin_name: "Wikipedia", origin_id: "Recto-uterine_fold", origin_version: "1", origin_definition: "", value: "plica rectouterina", external_references: "plica rectouterina [Wikipedia:Recto-uterine_fold]" },
@@ -6108,8 +6125,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "Rexed's_lamina_X", nanoid: "0MjgMg", origin_name: "NeuroNames", origin_id: "1702", origin_version: "1", origin_definition: "", value: "Rexed's lamina X", external_references: "Rexed's lamina X [NeuroNames:1702]" },
@@ -7125,8 +7145,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "galea_aponeurotica;_aponeurosis_epicranialis", nanoid: "YUZRF7", origin_name: "Wikipedia", origin_id: "Galea_aponeurotica", origin_version: "1", origin_definition: "", value: "galea aponeurotica; aponeurosis epicranialis", external_references: "galea aponeurotica; aponeurosis epicranialis [Wikipedia:Galea_aponeurotica]" },
@@ -8142,8 +8165,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "squamous_suture", nanoid: "NiwFQW", origin_name: "Wikipedia", origin_id: "Squamosal_suture", origin_version: "1", origin_definition: "", value: "squamous suture", external_references: "squamous suture [Wikipedia:Squamosal_suture]" },
@@ -9159,8 +9185,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "hairs_set", nanoid: "mzAVV5", origin_name: "FMA", origin_id: "70752", origin_version: "1", origin_definition: "", value: "hairs set", external_references: "hairs set [FMA:70752]" },
@@ -10176,8 +10205,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "globus_pallidus,_medial_part", nanoid: "N6rn7g", origin_name: "NeuroNames", origin_id: "233", origin_version: "1", origin_definition: "", value: "globus pallidus, medial part", external_references: "globus pallidus, medial part [NeuroNames:233]" },
@@ -11193,8 +11225,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "splanchnocranium_cartilage", nanoid: "5m8s1o", origin_name: "ZFA", origin_id: "0001460", origin_version: "1", origin_definition: "", value: "splanchnocranium cartilage", external_references: "splanchnocranium cartilage [ZFA:0001460]" },
@@ -12210,8 +12245,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "ossa_cuneiforme_mediale", nanoid: "tgnoGa", origin_name: "BTO", origin_id: "0002360", origin_version: "1", origin_definition: "", value: "ossa cuneiforme mediale", external_references: "ossa cuneiforme mediale [BTO:0002360]" },
@@ -13227,8 +13265,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "epithelium_of_extrahepatic_bile_duct", nanoid: "AHXk9n", origin_name: "OBOL", origin_id: "automatic", origin_version: "1", origin_definition: "", value: "epithelium of extrahepatic bile duct", external_references: "epithelium of extrahepatic bile duct [OBOL:automatic]" },
@@ -14244,8 +14285,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "triradiate_ligament", nanoid: "u7Zrn9", origin_name: "EMAPA", origin_id: "19010", origin_version: "1", origin_definition: "", value: "triradiate ligament", external_references: "triradiate ligament [EMAPA:19010]" },
@@ -15261,8 +15305,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "squamous_epithelium_of_esophagus", nanoid: "kd83yx", origin_name: "OBOL", origin_id: "automatic", origin_version: "1", origin_definition: "", value: "squamous epithelium of esophagus", external_references: "squamous epithelium of esophagus [OBOL:automatic]" },
@@ -16278,8 +16325,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "nuclei_raphes_tegmenti_mesencephali", nanoid: "AgTNfE", origin_name: "FMA", origin_id: "TA", origin_version: "1", origin_definition: "", value: "nuclei raphes tegmenti mesencephali", external_references: "nuclei raphes tegmenti mesencephali [FMA:TA]" },
@@ -17295,8 +17345,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "zone_of_skin_of_shoulder", nanoid: "UZxkkg", origin_name: "OBOL", origin_id: "automatic", origin_version: "1", origin_definition: "", value: "zone of skin of shoulder", external_references: "zone of skin of shoulder [OBOL:automatic]" },
@@ -18312,8 +18365,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "presubicular_area", nanoid: "KWQEt6", origin_name: "FMA", origin_id: "68624", origin_version: "1", origin_definition: "", value: "presubicular area", external_references: "presubicular area [FMA:68624]" },
@@ -19329,8 +19385,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "anterior_limb", nanoid: "padxwQ", origin_name: "Wikipedia", origin_id: "Anterior_limb_of_internal_capsule", origin_version: "1", origin_definition: "", value: "anterior limb", external_references: "anterior limb [Wikipedia:Anterior_limb_of_internal_capsule]" },
@@ -20346,8 +20405,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "braincase", nanoid: "KKvq8N", origin_name: "ZFA", origin_id: "0001580", origin_version: "1", origin_definition: "", value: "braincase", external_references: "braincase [ZFA:0001580]" },
@@ -21363,8 +21425,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "griseum_centrale_pontis", nanoid: "hKqGR5", origin_name: "FMA", origin_id: "72470", origin_version: "1", origin_definition: "", value: "griseum centrale pontis", external_references: "griseum centrale pontis [FMA:72470]" },
@@ -22380,8 +22445,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "musculus_spinalis_cervicis", nanoid: "t08ptH", origin_name: "BTO", origin_id: "0002623", origin_version: "1", origin_definition: "", value: "musculus spinalis cervicis", external_references: "musculus spinalis cervicis [BTO:0002623]" },
@@ -23397,8 +23465,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "recessus_epiphysis", nanoid: "71KM3G", origin_name: "NeuroNames", origin_id: "456", origin_version: "1", origin_definition: "", value: "recessus epiphysis", external_references: "recessus epiphysis [NeuroNames:456]" },
@@ -24414,8 +24485,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "parietals", nanoid: "nVGxnv", origin_name: "TAO", origin_id: "0000486", origin_version: "1", origin_definition: "", value: "parietals", external_references: "parietals [TAO:0000486]" },
@@ -25431,8 +25505,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "liver_capsule", nanoid: "UW9YrZ", origin_name: "Wikipedia", origin_id: "Fibrous_capsule_of_Glisson", origin_version: "1", origin_definition: "", value: "liver capsule", external_references: "liver capsule [Wikipedia:Fibrous_capsule_of_Glisson]" },
@@ -26448,8 +26525,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "supraoptic_nucleus,_proper", nanoid: "74jwJb", origin_name: "BAMS", origin_id: "SO", origin_version: "1", origin_definition: "", value: "supraoptic nucleus, proper", external_references: "supraoptic nucleus, proper [BAMS:SO]" },
@@ -27465,8 +27545,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "facies_interna_(os_frontale)", nanoid: "34CcHE", origin_name: "FMA", origin_id: "52856", origin_version: "1", origin_definition: "", value: "facies interna (os frontale)", external_references: "facies interna (os frontale) [FMA:52856]" },
@@ -28482,8 +28565,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "substantia_nigra,_compact_division", nanoid: "qDxmEh", origin_name: "BAMS", origin_id: "SNC", origin_version: "1", origin_definition: "", value: "substantia nigra, compact division", external_references: "substantia nigra, compact division [BAMS:SNC]" },
@@ -29499,8 +29585,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "bronchial_trunk_smooth_muscle_tissue", nanoid: "BMqRJ5", origin_name: "OBOL", origin_id: "automatic", origin_version: "1", origin_definition: "", value: "bronchial trunk smooth muscle tissue", external_references: "bronchial trunk smooth muscle tissue [OBOL:automatic]" },
@@ -30516,8 +30605,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260302", handle: "transversus_abdominus", nanoid: "9BnSJz", origin_name: "Wikipedia", origin_id: "Transversus_abdominis_muscle", origin_version: "1", origin_definition: "", value: "transversus abdominus", external_references: "transversus abdominus [Wikipedia:Transversus_abdominis_muscle]" },
@@ -30819,6 +30911,10 @@ SET t._commit = row._commit,
     t.origin_definition = row.origin_definition,
     t.value = row.value,
     t.external_references = row.external_references
+
+    }
+
+    
     ]]></neo4j:cypher>
   </changeSet>
 

@@ -9,6 +9,7 @@
 
   <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
+    CALL {
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "ventral_tegmental_nucleus", nanoid: "j6nTPn", origin_name: "UBERON", origin_id: "0002438", origin_version: "1", origin_definition: "A nucleus of brain that is part of a ventral tegmental area.", value: "ventral tegmental nucleus", external_references: "BIRNLEX:1421|SCTID:369244006|UMLS:C0175394|ZFA:0000275|DMBA:17007|HBA:9069|MA:0001031|EMAPA:35914|BAMS:VTN|neuronames:518|DHBA:12266|TAO:0000275|FMA:72435|MBA:757|BAMS:VTg" },
   { _commit: "CDEPV-20260225", handle: "seydels_palatal_process", nanoid: "sXujQN", origin_name: "UBERON", origin_id: "3000563", origin_version: "1", origin_definition: "", value: "seydels palatal process", external_references: "" },
@@ -1023,8 +1024,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "epaxial_region_somite_10", nanoid: "FXKw79", origin_name: "UBERON", origin_id: "2000991", origin_version: "1", origin_definition: "The epaxial region of somite 10 derived body wall muscle. The epaxial region is dorsal to the horizontal myoseptum. Kimmel et al, 1995.", value: "epaxial region somite 10", external_references: "ZFA:0000991" },
@@ -1277,7 +1281,7 @@ UNWIND [
   { _commit: "CDEPV-20260225", handle: "M._ulnocarpalis", nanoid: "2oHYQq", origin_name: "UBERON", origin_id: "3010741", origin_version: "1", origin_definition: "Originates along distal third of the ulna and inserts on the ulnare.", value: "M. ulnocarpalis", external_references: "" },
   { _commit: "CDEPV-20260225", handle: "pulmonary_artery", nanoid: "exhAyv", origin_name: "UBERON", origin_id: "0002012", origin_version: "1", origin_definition: "An artery that carries deoxygenated blood from heart to the lungs. They are the only arteries (other than umbilical arteries in the fetus) that carry deoxygenated blood..", value: "pulmonary artery", external_references: "SCTID:181380003|XAO:0004162|EMAPA:17008|EHDAA2:0001575|FMA:66326|UMLS:C0034052|MA:0002031|VHOG:0000982|GAID:505|AAO:0010221|EFO:0001399|MESH:D011651|EHDAA:4351|NCIT:C12774|BTO:0000778|Wikipedia:Pulmonary_artery|galen:PulmonaryArtery|CALOHA:TS-0839" },
   { _commit: "CDEPV-20260225", handle: "paravermic_lobule_III", nanoid: "UgySSk", origin_name: "UBERON", origin_id: "0028919", origin_version: "1", origin_definition: "", value: "paravermic lobule III", external_references: "NLXANAT:20081216|HBA:4718" },
-  { _commit: "CDEPV-20260225", handle: "nasal_diverticulum", nanoid: "Vx7BRD", origin_name: "UBERON", origin_id: "0012304", origin_version: "1", origin_definition: "Caudally blind-ending cutaneous pouch lined with skin that occupies the nasoincisive notch. It's ventral and medial walls is formed by the alar fold. It's lateral wall is formed by the external nares and it's dorsal wall is formed by the straight fold. Lined by pigmented predominantly hairless skin. It has an external opening located on the dorsolateral aspect of the &quot;true nostril&quot;. When the horse is exercising, obliteration of the nasal diverticulum greatly widens the nostrils increasing air intake[MURDOCH].", value: "nasal diverticulum", external_references: "" },
+  { _commit: "CDEPV-20260225", handle: "nasal_diverticulum", nanoid: "Vx7BRD", origin_name: "UBERON", origin_id: "0012304", origin_version: "1", origin_definition: "Caudally blind-ending cutaneous pouch lined with skin that occupies the nasoincisive notch. It's ventral and medial walls is formed by the alar fold. It's lateral wall is formed by the external nares and it's dorsal wall is formed by the straight fold. Lined by pigmented predominantly hairless skin. It has an external opening located on the dorsolateral aspect of the true nostril. When the horse is exercising, obliteration of the nasal diverticulum greatly widens the nostrils increasing air intake[MURDOCH].", value: "nasal diverticulum", external_references: "" },
   { _commit: "CDEPV-20260225", handle: "hypobranchial_1_bone_distal_cartilage", nanoid: "ri7n72", origin_name: "UBERON", origin_id: "2001962", origin_version: "1", origin_definition: "Pharyngeal cartilage that is part of and at the distal end of hypobranchial 1 bone, and that usually articulates with ceratobranchial 1 element. Hypobranchial 1 bone distal cartilage is paired.", value: "hypobranchial 1 bone distal cartilage", external_references: "" },
   { _commit: "CDEPV-20260225", handle: "right_inguinal_part_of_abdomen", nanoid: "jPQwR1", origin_name: "UBERON", origin_id: "0035505", origin_version: "1", origin_definition: "", value: "right inguinal part of abdomen", external_references: "NCIT:C33479|FMA:24036|SCTID:362724003|UMLS:C0230318" },
   { _commit: "CDEPV-20260225", handle: "mesenchyme_of_elbow", nanoid: "m7Y7a5", origin_name: "UBERON", origin_id: "0003318", origin_version: "1", origin_definition: "Mesenchyme that is part of a developing elbow [Automatically generated definition].", value: "mesenchyme of elbow", external_references: "EMAPA:17416|EHDAA:4170|EHDAA:6216|EHDAA2:0000432|VHOG:0001075" },
@@ -2040,8 +2044,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "cavity_of_pharynx", nanoid: "TRr39H", origin_name: "UBERON", origin_id: "0001731", origin_version: "1", origin_definition: "An anatomical space that is enclosed by a pharynx.", value: "cavity of pharynx", external_references: "FMA:54935|SCTID:180543003|EMAPA:18381|BTO:0002097|BSA:0000113|XAO:0000105|AAO:0010435" },
@@ -3057,8 +3064,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "female_organism", nanoid: "qpyFZB", origin_name: "UBERON", origin_id: "0003100", origin_version: "1", origin_definition: "Gonochoristic organism that can produce female gametes.", value: "female organism", external_references: "TAO:0000303|CARO:0000028|AAO:0010030|BILA:0000028|XAO:0003005|TGMA:0001839|SCTID:362608006|HAO:0000028|FBbt:00007011|FMA:67812|ZFA:0000303" },
@@ -4074,8 +4084,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "metanephric_nephron_tubule", nanoid: "cV5Sxo", origin_name: "UBERON", origin_id: "0005146", origin_version: "1", origin_definition: "A metanephric nephron tubule is an epithelial tube that is part of the metanephric nephron, the functional part of the metanephros[GO].", value: "metanephric nephron tubule", external_references: "" },
@@ -5091,8 +5104,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "superior_reticular_formation_medial_column", nanoid: "VWDG5q", origin_name: "UBERON", origin_id: "2000593", origin_version: "1", origin_definition: "", value: "superior reticular formation medial column", external_references: "ZFA:0000593" },
@@ -6109,8 +6125,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "adductor_mandibulae_complex", nanoid: "Yj8kqk", origin_name: "UBERON", origin_id: "2000311", origin_version: "1", origin_definition: "", value: "adductor mandibulae complex", external_references: "ZFA:0000311" },
@@ -7126,8 +7145,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "anterior_ciliary_artery", nanoid: "gcxwZu", origin_name: "UBERON", origin_id: "8920000", origin_version: "1", origin_definition: "An artery that branches from the ophthalmic artery and supplies the anterior segment of the eyeball and ciliary body.", value: "anterior ciliary artery", external_references: "FMA:49962" },
@@ -8143,8 +8165,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "Ongur,_Price,_and_Ferry_(2003)_area_10o", nanoid: "PNdEja", origin_name: "UBERON", origin_id: "0028414", origin_version: "1", origin_definition: "", value: "Ongur, Price, and Ferry (2003) area 10o", external_references: "BIRNLEX:4069" },
@@ -9160,8 +9185,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "crotaphion", nanoid: "qbv0Dr", origin_name: "UBERON", origin_id: "0013412", origin_version: "1", origin_definition: "The crotaphion refers to two points on the skull at the tips of the greater wing of sphenoid bone. It is near the pterion.", value: "crotaphion", external_references: "Wikipedia:Crotaphion" },
@@ -10177,8 +10205,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "ischial_pre-cartilage_condensation", nanoid: "0Uvhfv", origin_name: "UBERON", origin_id: "0006255", origin_version: "1", origin_definition: "An ischial endochondral element that is composed primarily of a pre-cartilage condensation.", value: "ischial pre-cartilage condensation", external_references: "VHOG:0000962|EHDAA2:0000891|EHDAA:7153|EMAPA:18348" },
@@ -11194,8 +11225,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "ileocolic_vein", nanoid: "gUyY6P", origin_name: "UBERON", origin_id: "0001219", origin_version: "1", origin_definition: "The ileocolic vein is a vein which drains the ileum, colon, and cecum. [WP,unvetted].", value: "ileocolic vein", external_references: "UMLS:C0226744|SCTID:36208008|Wikipedia:Ileocolic_vein|NCIT:C53047|MA:0002141|EMAPA:37150|FMA:15408" },
@@ -12211,8 +12245,11 @@ SET t._commit = row._commit,
     t.value = row.value,
     t.external_references = row.external_references
 
+}
 
 // -------- BATCH --------
+
+CALL {
 
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "inner_renal_medulla_interstitium", nanoid: "yEq8JY", origin_name: "UBERON", origin_id: "0005214", origin_version: "1", origin_definition: "A portion of interstitial tissue that is part of a inner medulla of kidney [Automatically generated definition].", value: "inner renal medulla interstitium", external_references: "EMAPA:28364|MA:0002620" },
@@ -13081,6 +13118,9 @@ SET t._commit = row._commit,
     t.origin_definition = row.origin_definition,
     t.value = row.value,
     t.external_references = row.external_references
+
+}
+
     ]]></neo4j:cypher>
   </changeSet>
 
