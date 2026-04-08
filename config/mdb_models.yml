@@ -270,7 +270,7 @@ PDC:
   latest_prerelease_commit: null
   latest_prerelease_version: null
 mCODE:
-  repository: CBIIT/mcode-model
+  repository: nelsonwmoore/mcode-model
   mdf_directory: model-desc
   mdf_files:
   - mcode-model.yml

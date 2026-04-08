@@ -1,6 +1,6 @@
 # models, versions, repos in MDB
 TEST1:
-  repository: CBIIT/test-model-1
+  repository: nelsonwmoore/test-model-1
   mdf_directory: model-desc
   mdf_files:
     - test-model.yml
@@ -13,7 +13,7 @@ TEST1:
   latest_prerelease_version: null
   latest_prerelease_commit: null
 TEST2:
-  repository: CBIIT/test-model-2
+  repository: nelsonwmoore/test-model-2
   mdf_directory: model-desc
   mdf_files:
     - test-model.yml
@@ -29,7 +29,7 @@ TEST2:
   latest_prerelease_version: 1.2.0
   latest_prerelease_commit: abcd12304f69bd15672c4c380c562a7f0b40f06f
 TEST3:
-  repository: CBIIT/test-model-3
+  repository: nelsonwmoore/test-model-3
   mdf_directory: model-desc
   mdf_files:
     - test-model.yaml
