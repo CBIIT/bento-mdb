@@ -1,0 +1,44 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: bento-mdb
+prefect-version: 3.4.25
+
+# build section allows you to manage and build docker images
+build: null
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push: null
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.git_clone:
+    repository: https://github.com/CBIIT/bento-mdb.git
+    branch: uberon-update
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name: uberon-relationships
+  version: null
+  tags: []
+  concurrency_limit: null
+  description: |-
+    Wrapper flow to:
+    1. Split large changelog into smaller chunks
+    2. Run existing liquibase_update_flow on each chunk sequentially
+
+    Designed to minimize changes to existing logic while improving performance and logging.
+  entrypoint: src/bento_mdb/flows/update_mdb.py:liquibase_ingestion_flow
+  parameters: {
+    "changelog_file": "data/uberon/insert_uberon_relationships.xml",
+    "mdb_id": "fnl-mdb-qa",
+    "max_changesets": 5,
+    "dry_run": false
+  }
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: null
+    job_variables: {}
+  schedules: []
