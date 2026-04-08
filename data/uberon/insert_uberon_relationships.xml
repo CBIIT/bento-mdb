@@ -7,16 +7,32 @@
         http://www.liquibase.org/xml/ns/dbchangelog 
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-  <changeSet id="1" author="Tazeen Shaukat">
-    <neo4j:cypher><![CDATA[
+  <changeSet id="1" author="Tazeen">
 
-    CREATE INDEX term_value_origin IF NOT EXISTS FOR (t:term) ON (t.value, t.origin_name);
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX term_value_origin IF NOT EXISTS
+    FOR (t:term)
+    ON (t.value, t.origin_name)
+  ]]></neo4j:cypher>
 
-    CREATE INDEX term_value IF NOT EXISTS FOR (t:term) ON (t.value);
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX term_value IF NOT EXISTS
+    FOR (t:term)
+    ON (t.value)
+  ]]></neo4j:cypher>
 
-    CREATE INDEX concept_nanoid IF NOT EXISTS FOR (c:concept) ON (c.nanoid);
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX concept_nanoid IF NOT EXISTS
+    FOR (c:concept)
+    ON (c.nanoid)
+  ]]></neo4j:cypher>
 
-    CALL {
+</changeSet>
+
+<changeSet id="2" author="Tazeen">
+  <neo4j:cypher><![CDATA[
+
+CALL {
     
 UNWIND [
   { concept_nanoid: "WWWoQf", tag_nanoid: "sciQa7", commit: "CDEPV-20260317", primary_term: "ventral tegmental nucleus", synonyms: [{ raw: "ventral tegmental nuclei [FMA:72435]", value: "ventral tegmental nuclei", ref: "FMA:72435", is_uberon: false }, { raw: "ventral tegmental nucleus of Gudden [FMA:72435]", value: "ventral tegmental nucleus of Gudden", ref: "FMA:72435", is_uberon: false }, { raw: "deep tegmental nucleus of Gudden [FMA:72435]", value: "deep tegmental nucleus of Gudden", ref: "FMA:72435", is_uberon: false }, { raw: "ventral tegmental nucleus (gudden) [FMA:72435]", value: "ventral tegmental nucleus (gudden)", ref: "FMA:72435", is_uberon: false }, { raw: "ventral raphe tegmental nucleus [FMA:72435]", value: "ventral raphe tegmental nucleus", ref: "FMA:72435", is_uberon: false }] },
