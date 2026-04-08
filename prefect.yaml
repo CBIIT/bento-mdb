@@ -3,7 +3,7 @@
 # control along with your flow code.
 
 # Generic metadata about this project
-name: bento-mdb
+name: bento-mdb-external-ingestion
 prefect-version: 3.4.25
 
 # build section allows you to manage and build docker images
@@ -15,8 +15,16 @@ push: null
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.git_clone:
+    id: clone-step
     repository: https://github.com/CBIIT/bento-mdb.git
     branch: uberon-update
+- prefect.deployments.steps.run_shell_script:
+    id: install-dependencies
+    script: sh -c "cd bento-mdb-main && uv pip install --system ."
+- prefect.deployments.steps.run_shell_script:
+    id: install-aws-cli
+    script: sh -c "apt-get update && apt-get install -y --no-install-recommends curl unzip && cd /tmp && curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' && unzip awscliv2.zip && ./aws/install --update && curl 'https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb' -o 'session-manager-plugin.deb' && dpkg -i session-manager-plugin.deb && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/awscliv2.zip /tmp/aws/ /tmp/session-manager-plugin.deb"
+
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
