@@ -4,16 +4,18 @@ EXPOSE 8000/tcp
 
 WORKDIR /app
 
-RUN apk update && apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache curl
 
 # Install git for pip to clone from GitHub
 RUN apk add --no-cache git
 
-# Upgrade pip to latest version
-RUN pip install --no-cache-dir --upgrade pip
+# Replace pip with uv and remove pip to eliminate PRISMA-2022-0168
+RUN pip install --no-cache-dir uv && \
+    pip uninstall -y pip
 
-# Install bento-sts-fastapi from GitHub (unreleased)
-RUN pip install --no-cache-dir git+https://github.com/CBIIT/bento-sts-fastapi.git@main
+# Install bento-sts-fastapi from GitHub using uv (no pip in final image)
+RUN uv pip install --no-cache --system git+https://github.com/CBIIT/bento-sts-fastapi.git@main
 
 ENV PYTHONUNBUFFERED=1
 
