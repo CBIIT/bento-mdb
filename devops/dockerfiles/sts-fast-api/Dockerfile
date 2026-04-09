@@ -1,12 +1,15 @@
-FROM python:3.14.4-slim-bookworm
+FROM python:3.14.4-alpine3.23
 
 EXPOSE 8000/tcp
 
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends git curl && \
-    rm -rf /var/lib/apt/lists/*
+# Install curl>=8.19.0 from Alpine edge to remediate CVE-2026-3805 (use-after-free in SMB reuse)
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/main 'curl>=8.19.0'
+
+# Install git for pip to clone from GitHub
+RUN apk add --no-cache git
 
 # Replace pip with uv and remove pip to eliminate PRISMA-2022-0168
 RUN pip install --no-cache-dir uv && \
@@ -18,8 +21,8 @@ RUN uv pip install --no-cache --system git+https://github.com/CBIIT/bento-sts-fa
 ENV PYTHONUNBUFFERED=1
 
 # Create non-root user for security
-RUN groupadd -g 1000 appuser && \
-    useradd -u 1000 -g appuser -s /sbin/nologin -M appuser
+RUN addgroup -g 1000 appuser && \
+    adduser -u 1000 -G appuser -s /sbin/nologin -D appuser
 
 USER appuser
 ENTRYPOINT ["uvicorn"]
