@@ -1,14 +1,12 @@
-FROM python:3.14.4-alpine3.23
+FROM python:3.14.4-slim-bookworm
 
 EXPOSE 8000/tcp
 
 WORKDIR /app
 
-RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache curl
-
-# Install git for pip to clone from GitHub
-RUN apk add --no-cache git
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends git curl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Replace pip with uv and remove pip to eliminate PRISMA-2022-0168
 RUN pip install --no-cache-dir uv && \
@@ -20,8 +18,8 @@ RUN uv pip install --no-cache --system git+https://github.com/CBIIT/bento-sts-fa
 ENV PYTHONUNBUFFERED=1
 
 # Create non-root user for security
-RUN addgroup -g 1000 appuser && \
-    adduser -u 1000 -G appuser -s /sbin/nologin -D appuser
+RUN groupadd -g 1000 appuser && \
+    useradd -u 1000 -g appuser -s /sbin/nologin -M appuser
 
 USER appuser
 ENTRYPOINT ["uvicorn"]
