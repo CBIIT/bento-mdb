@@ -144,7 +144,9 @@ CDS:
     tag: 11.0.2-GC_Release
   - version: 11.0.3
     tag: 11.0.3-GC_Release
-  latest_version: 11.0.3
+  - version: 11.0.4
+    tag: 11.0.4-GC_Release
+  latest_version: 11.0.4
   latest_prerelease_commit: 2997fdc66aef957314e5b6ed3759e20999e7ab67
   latest_prerelease_version: 11.0.4
 CTDC:
@@ -270,7 +272,7 @@ PDC:
   latest_prerelease_commit: null
   latest_prerelease_version: null
 mCODE:
-  repository: nelsonwmoore/mcode-model
+  repository: CBIIT/mcode-model
   mdf_directory: model-desc
   mdf_files:
   - mcode-model.yml
