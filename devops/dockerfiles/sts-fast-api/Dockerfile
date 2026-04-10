@@ -4,8 +4,10 @@ EXPOSE 8000/tcp
 
 WORKDIR /app
 
-# Install curl>=8.19.0 from Alpine edge to remediate CVE-2026-3805 (use-after-free in SMB reuse)
+# Fix OpenSSL CVEs (CVE-2026-31790, CVE-2026-2673) via apk upgrade -> openssl>=3.5.6-r0
+# Fix curl CVE-2026-3805 (use-after-free in SMB reuse) from Alpine edge -> curl>=8.19.0
 RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache 'openssl>=3.5.6' && \
     apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/main 'curl>=8.19.0'
 
 # Install git for pip to clone from GitHub
