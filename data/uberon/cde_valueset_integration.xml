@@ -22,6 +22,8 @@
     MATCH (t:term {origin_name:"UBERON"})
     MERGE (vs)-[:has_term]->(t)
 
+    WITH vs 
+
     // ---------- CDE MAPPINGS ----------
     UNWIND [
   { cde_handle: "disease_primary_site_of_disease_uberon_identifier", origin_id: "14883047", property_handle: "primary_site", property_desc: "Anatomical site of disease in primary diagnosis for this diagnosis in Uberon terminology", property_nanoid: "r0cex9", concept_nanoid: "3VEeso", tag_nanoid: "ruXxem", commit: "test-Uberon-20260317" },
