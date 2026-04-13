@@ -9,6 +9,8 @@
 
   <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
+    CALL {
+
 // ---------- CREATE VALUESET ----------
     MERGE (vs:value_set {nanoid: "6ucHaW"})
     ON CREATE SET
@@ -63,6 +65,9 @@
     MERGE (p)-[:has_concept]->(c)
     MERGE (cde)-[:represents]->(c)
     MERGE (p)-[:has_value_set]->(vs)
+    
+    }
+    
     ]]></neo4j:cypher>
   </changeSet>
 

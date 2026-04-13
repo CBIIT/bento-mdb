@@ -46,3 +46,21 @@ deployments:
     work_queue_name: null
     job_variables: {}
   schedules: []
+
+- name: uberon-valueset-mapping
+  version: null
+  tags: []
+  concurrency_limit:
+  description: Create valueset for uberon terms and attach with original CDEs that reference Uberon by URL
+  entrypoint: bento_mdb.flows.update_mdb:liquibase_ingestion_flow
+  parameters: {
+    changelog_file: data/uberon/cde_valueset_integration.xml
+    mdb_id: fnl-mdb-qa
+    max_changesets: 1   
+    dry_run: false
+  }
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: null
+    job_variables: {}
+  schedules: []
