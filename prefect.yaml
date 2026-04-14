@@ -56,7 +56,7 @@ deployments:
     job_variables: {}
   schedules: []
 
-- name: obib_data_ingestion
+- name: obib-data-ingestion
   version: null
   tags: []
   concurrency_limit:
