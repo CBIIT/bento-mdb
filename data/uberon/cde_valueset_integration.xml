@@ -7,7 +7,50 @@
         http://www.liquibase.org/xml/ns/dbchangelog 
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-  <changeSet id="1" author="Tazeen Shaukat">
+<changeSet id="1" author="Tazeen">
+
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX term_origin_name_idx IF NOT EXISTS
+    FOR (t:term)
+    ON (t.origin_name);
+  ]]></neo4j:cypher>
+
+    <neo4j:cypher><![CDATA[
+    CREATE INDEX vs_nanoid_idx IF NOT EXISTS
+    FOR (vs:value_set)
+    ON (vs.nanoid);
+  ]]></neo4j:cypher>
+
+
+   <neo4j:cypher><![CDATA[
+    CREATE INDEX term_cde_lookup_idx IF NOT EXISTS
+    FOR (t:term)
+    ON (t.origin_name, t.origin_id, t.handle, t.origin_version);
+  ]]></neo4j:cypher>
+
+
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX property_nanoid_idx IF NOT EXISTS
+    FOR (p:property)
+    ON (p.nanoid);
+  ]]></neo4j:cypher>
+
+
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX concept_nanoid_idx IF NOT EXISTS
+    FOR (c:concept)
+    ON (c.nanoid);
+  ]]></neo4j:cypher>
+
+    <neo4j:cypher><![CDATA[
+    CREATE INDEX tag_nanoid_idx IF NOT EXISTS
+    FOR (tag:tag)
+    ON (tag.nanoid);
+  ]]></neo4j:cypher>
+
+  </changeSet>
+
+  <changeSet id="2" author="Tazeen Shaukat"> 
     <neo4j:cypher><![CDATA[
     CALL {
 
