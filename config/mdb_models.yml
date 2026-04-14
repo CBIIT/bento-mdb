@@ -206,7 +206,7 @@ CTDC:
   - version: 1.22.1
     tag: 1.22.1
   latest_version: 1.22.1
-  latest_prerelease_commit: 57e43d7703b851950ea5b3abe56c8473f04bad24
+  latest_prerelease_commit: 3c96e1d772f76db2bae30498c3901e604563b45e
   latest_prerelease_version: 1.22.2
 GDC:
   repository: CBIIT/gdc-model
@@ -295,5 +295,5 @@ PSDC:
   - version: 1.0.0
     tag: 1.0.0
   latest_version: 1.0.0
-  latest_prerelease_commit: 267e912372b60528f7a8c5a9e6f22f0dc433e845
+  latest_prerelease_commit: 0d4ca14e2e95ce436049a62ac48afc2432902665
   latest_prerelease_version: 1.0.0
