@@ -55,3 +55,20 @@ deployments:
     work_queue_name: null
     job_variables: {}
   schedules: []
+- name: obib_data_ingestion
+  version: null
+  tags: []
+  concurrency_limit:
+  description: Ingest term nodes from the official OBIB dataset 
+  entrypoint: bento_mdb.flows.update_mdb:liquibase_ingestion_flow
+  parameters: {
+    "changelog_file": "data/obib/01_batch_insert_obib_terms.xml",
+    "mdb_id": "fnl-mdb-qa",
+    "max_changesets": 5,
+    "dry_run": false
+  }
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: null
+    job_variables: {}
+  schedules: []
