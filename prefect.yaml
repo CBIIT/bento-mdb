@@ -1,18 +1,9 @@
-# Welcome to your prefect.yaml file! You can use this file for storing and managing
-# configuration for deploying your flows. We recommend committing this file to source
-# control along with your flow code.
-
-# Generic metadata about this project
+# this yaml file is meant to configure deployment parameters for external ontology ingestion pipelines
 name: bento-mdb-external-ingestion
 prefect-version: 3.4.25
 
-# build section allows you to manage and build docker images
 build: null
-
-# push section allows you to manage if and how this project is uploaded to remote locations
 push: null
-
-# pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
@@ -22,7 +13,7 @@ pull:
     id: install-dependencies
     script: sh -c "cd bento-mdb-uberon-update && uv pip install --system ."
 
-# the deployments section allows you to provide configuration for deploying flows
+# these deployments are for external ontology ingestion workflows (uberon, obib, icdo)
 deployments:
 - name: uberon-relationships
   version: null
