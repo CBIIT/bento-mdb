@@ -73,3 +73,21 @@ deployments:
     work_queue_name: null
     job_variables: {}
   schedules: []
+
+- name: obib-valueset-mapping
+  version: null
+  tags: []
+  concurrency_limit:
+  description: Ingest term nodes from the official OBIB dataset 
+  entrypoint: src/bento_mdb/flows/update_mdb.py:liquibase_ingestion_flow
+  parameters: {
+    "changelog_file": "data/obib/03_cde_valueset_integration_obib.xml",
+    "mdb_id": "fnl-mdb-qa",
+    "max_changesets": 7,
+    "dry_run": false
+  }
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: null
+    job_variables: {}
+  schedules: []
