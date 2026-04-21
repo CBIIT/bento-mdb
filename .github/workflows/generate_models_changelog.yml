@@ -83,6 +83,10 @@ jobs:
     needs: [changes]
     runs-on: ubuntu-latest
     if: always()
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v4
+        with:
+          fetch-depth: 2
   determine-models:
     needs: changes
     if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
