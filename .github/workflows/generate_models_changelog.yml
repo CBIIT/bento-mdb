@@ -79,14 +79,6 @@ jobs:
           filters: |
             mdb_models:
               - 'config/mdb_models.yml'
-  slack-notification:
-    needs: [changes]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v4
-        with:
-          fetch-depth: 2
   determine-models:
     needs: changes
     if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
@@ -240,13 +232,7 @@ jobs:
           if [ ${#MDF_FILES_ARRAY[@]} -eq 0 ]; then
             while IFS= read -r file; do
               MDF_FILES_ARRAY+=("--mdf_files" "$file")
-            done < <(python -c "
-from bento_mdb.model_cdes import get_yaml_files_from_spec, load_model_specs_from_yaml
-from pathlib import Path
-specs = load_model_specs_from_yaml(Path('config/mdb_models.yml'))
-for f in get_yaml_files_from_spec(specs['${{ matrix.model }}'], '${{ matrix.model }}', '${{ matrix.version }}'):
-    print(f)
-")
+            done < <(python -c "from bento_mdb.model_cdes import get_yaml_files_from_spec,load_model_specs_from_yaml; from pathlib import Path; specs=load_model_specs_from_yaml(Path('config/mdb_models.yml')); [print(f) for f in get_yaml_files_from_spec(specs['${{ matrix.model }}'],'${{ matrix.model }}','${{ matrix.version }}')]")
           fi
 
           mkdir -p data/output/model_changelogs/${{ matrix.model }}/
