@@ -83,7 +83,7 @@ CCDI-DCC:
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CDS:
-  repository: CBIIT/cds-model
+  repository: knockknockyoo/cds-model
   mdf_directory: model-desc
   mdf_files:
   - cds-model.yml
