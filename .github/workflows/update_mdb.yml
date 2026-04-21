@@ -69,18 +69,13 @@ jobs:
           for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
             echo "Running $file"
 
-            if [ ! -f "$file" ]; then
-              echo "Warning: Changelog file $file does not exist, skipping"
-              continue
-            fi
-
             PARAMS=$(jq -n \
-            --arg file "$file" \
+            --arg key "$file" \
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
             '{
-              "changelog_file": $file,
+              "key": $key,
               "mdb_id": $id,
               "log_level": $log_level,
               "dry_run": $dry_run

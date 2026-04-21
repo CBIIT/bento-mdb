@@ -218,39 +218,34 @@ def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]
 
 @flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
-    changelog_file: str = "",
-    mdb_id: str = "",
+    key: str,
+    mdb_id: str,
     log_level: str = "info",
     *,
-    bucket: str = "",
-    key: str = "",
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
-    if bucket and key:
-        s3 = boto3.client("s3")
+    bucket = Secret.load("s3-changelog-bucket").get()
 
-        prefix = "model_changelogs/"
-        logger.info("Listing objects in s3://%s/%s", bucket, prefix)
-        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-        objects = response.get("Contents", [])
-        if objects:
-            for obj in objects:
-                logger.info("  Found object: %s (size: %d bytes)", obj["Key"], obj["Size"])
-        else:
-            logger.info("  No objects found under prefix: %s", prefix)
+    s3 = boto3.client("s3")
 
-        logger.info("Downloading s3://%s/%s", bucket, key)
-        with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
-            s3.download_fileobj(bucket, key, tmp)
-            tmp_path = tmp.name
-        logger.info("Downloaded to temp file: %s", tmp_path)
-        changelog_file = tmp_path
+    prefix = "model_changelogs/"
+    logger.info("Listing objects in s3://%s/%s", bucket, prefix)
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    objects = response.get("Contents", [])
+    if objects:
+        for obj in objects:
+            logger.info("  Found object: %s (size: %d bytes)", obj["Key"], obj["Size"])
+    else:
+        logger.info("  No objects found under prefix: %s", prefix)
 
-    if not changelog_file:
-        raise ValueError("Either changelog_file or (bucket + key) must be provided.")
+    logger.info("Downloading s3://%s/%s", bucket, key)
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
+        s3.download_fileobj(bucket, key, tmp)
+        changelog_file = tmp.name
+    logger.info("Downloaded to temp file: %s", changelog_file)
 
     # # read from changelog file and run the Cypher statements on the MDB
     # with open(changelog_file, "r") as f:
