@@ -128,10 +128,13 @@ jobs:
           
           # If specific model/version/mdfs provided, use them
           if [ "${{ inputs.model }}" != "" ] && [ "${{ inputs.version }}" != "" ]; then
+            MDF_INPUT='${{ inputs.mdf_files }}'
+            MDF_JSON=$([ -n "$MDF_INPUT" ] && echo "$MDF_INPUT" || echo '[]')
             MODEL_INFO=$(jq -n \
               --arg model "${{ inputs.model }}" \
               --arg version "${{ inputs.version }}" \
-              '{"model": $model, "version": $version, "mdf_files": []}')
+              --argjson mdf_files "$MDF_JSON" \
+              '{"model": $model, "version": $version, "mdf_files": $mdf_files}')
             echo "{\"include\": [$MODEL_INFO]}" > matrix.json
           else
             # Generate matrix for database
@@ -232,6 +235,18 @@ jobs:
             for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
               MDF_FILES_ARRAY+=("--mdf_files" "$file")
             done
+          fi
+
+          if [ ${#MDF_FILES_ARRAY[@]} -eq 0 ]; then
+            while IFS= read -r file; do
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
+            done < <(python -c "
+from bento_mdb.model_cdes import get_yaml_files_from_spec, load_model_specs_from_yaml
+from pathlib import Path
+specs = load_model_specs_from_yaml(Path('config/mdb_models.yml'))
+for f in get_yaml_files_from_spec(specs['${{ matrix.model }}'], '${{ matrix.model }}', '${{ matrix.version }}'):
+    print(f)
+")
           fi
 
           mkdir -p data/output/model_changelogs/${{ matrix.model }}/
