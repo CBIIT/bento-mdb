@@ -79,8 +79,120 @@ jobs:
           filters: |
             mdb_models:
               - 'config/mdb_models.yml'
-  generate-changelogs:
+  determine-models:
+    needs: changes
+    if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
     runs-on: ubuntu-latest
+    outputs:
+      affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Generate Model Version Matrix
+        id: set-matrix
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+        run: |
+          set -xeuo pipefail
+          trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
+
+          # Use provided MDB ID or default to cloud-one-mdb-dev
+          MDB_ID="${{ inputs.mdb_id || 'cloud-one-mdb-dev' }}"
+          
+          # If specific model/version/mdfs provided, use them
+          if [ "${{ inputs.model }}" != "" ] && [ "${{ inputs.version }}" != "" ]; then
+            MODEL_INFO=$(jq -n \
+              --arg model "${{ inputs.model }}" \
+              --arg version "${{ inputs.version }}" \
+              '{"model": $model, "version": $version, "mdf_files": []}')
+            echo "{\"include\": [$MODEL_INFO]}" > matrix.json
+          else
+            # Generate matrix for database
+            PARAMS=$(jq -n \
+              --arg mdb_id "$MDB_ID" \
+              --arg model_specs_yaml "${{ inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+              --argjson datahub_only "${{ inputs.datahub_only || false }}" \
+              '{
+                "mdb_id": $mdb_id,
+                "model_specs_yaml": $model_specs_yaml,
+                "datahub_only": $datahub_only
+              }')
+            
+            echo "Running Prefect deployment with params: $PARAMS"
+
+            watch_out=$(
+              prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+                --params "$PARAMS" \
+                --watch \
+                --watch-interval 30 2>&1 | tee watch.log
+            )
+            echo "watch_out=$watch_out"
+            
+            RUN_ID=$(
+              grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
+              | head -n1
+            )
+            echo "Run ID: $RUN_ID"
+
+            echo "Waiting for logs to be available..."
+            sleep 10
+
+            LOG_FILE="${RUN_ID}_run.log"
+            prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+            
+            echo "Checking for MATRIX_JSON in logs:"
+            grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in logs"
+            
+            MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOG_FILE" \
+              | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+              || echo "")
+
+            if [ -n "$MATRIX_OUTPUT" ]; then
+              echo "$MATRIX_OUTPUT" > matrix.json
+              echo "Matrix extracted successfully"
+            else
+              echo "Warning: Could not extract matrix from deployment output"
+              echo "{\"include\": []}" > matrix.json
+            fi
+          fi
+
+          # validate json
+          if ! jq . matrix.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON in matrix.json"
+            exit 1
+          fi
+
+          MATRIX=$(cat matrix.json)
+          MATRIX_COMPACT=$(echo "$MATRIX" | jq -c .)
+          
+          echo "model_matrix=$MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          echo "Matrix: $MATRIX"
+
+  generate-changelogs:
+    needs: determine-models
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
+      fail-fast: false
     continue-on-error: true
     steps:
       - name: Checkout repository
@@ -107,21 +219,26 @@ jobs:
         run: |
           set -e
 
-          mkdir -p data/output/model_changelogs/CDS/
+          MDF_FILES_ARRAY=()
+          if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
+            for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
+            done
+          fi
+
+          mkdir -p data/output/model_changelogs/${{ matrix.model }}/
 
           make_model_changelog \
-          --model_handle "CDS" \
-          --model_version "11.0.7" \
-          --mdf_files "https://raw.githubusercontent.com/knockknockyoo/cds-model/11.0.7/model-desc/cds-model.yml" \
-          --mdf_files "https://raw.githubusercontent.com/knockknockyoo/cds-model/11.0.7/model-desc/cds-model-props.yml" \
-          --output_file_path "data/output/model_changelogs/CDS/CDS_changelog_11.0.7.xml" \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          "${MDF_FILES_ARRAY[@]}" \
+          --output_file_path "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
           --author "GitHub Actions" \
           --_commit "${{ github.sha }}" \
-          --latest_version true \
-          --add_rollback false
+          --latest_version ${{ fromJson('true') }} \
+          --add_rollback ${{ fromJson('false') }}
 
       - name: Get Model PVs and Synonyms
-        if: false
         run: |
           set -e
 
@@ -140,7 +257,6 @@ jobs:
           "${MDF_FILES_ARRAY[@]}"
 
       - name: Make Model CDE Changelog
-        if: false
         run: |
           set -e
 
@@ -161,7 +277,7 @@ jobs:
           retention-days: 1
 
       - name: Report Status
-        if: false
+        if: always()
         run: |
           echo "## Changelog Generation Status for ${{ matrix.model }} v${{ matrix.version }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" == "success" ]; then
@@ -176,7 +292,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
   upload-changelogs-s3:
-    needs: [generate-changelogs]
+    needs: [determine-models, generate-changelogs]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -214,6 +330,7 @@ jobs:
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+          AFFECTED_MODELS: ${{ needs.determine-models.outputs.affected_models }}
         run: |
           S3_KEYS="[]"
           HAS_FAILURE=false
@@ -247,7 +364,7 @@ jobs:
                 fi
               done
             done
-          done < <(echo '{"include":[{"model":"CDS","version":"11.0.7"}]}' | jq -r '.include[] | "\(.model):\(.version)"')
+          done < <(echo "$AFFECTED_MODELS" | jq -r '.include[] | "\(.model):\(.version)"')
 
           if [ "$HAS_FAILURE" = true ]; then
             echo "One or more uploads failed."
