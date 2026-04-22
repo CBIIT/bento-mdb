@@ -313,41 +313,29 @@ jobs:
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
-          AFFECTED_MODELS: ${{ needs.determine-models.outputs.affected_models }}
         run: |
           S3_KEYS="[]"
           HAS_FAILURE=false
 
-          while IFS= read -r model_version; do
-            IFS=':' read -r model version <<< "$model_version"
+          while IFS= read -r file; do
+            S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
 
-            for artifact_dir in changelog-*/; do
-              for file in \
-                "${artifact_dir}model_changelogs/${model}/${model}_changelog_${version}.xml" \
-                "${artifact_dir}model_changelogs/${model}/${model}_${version}_cde_changelog.xml"; do
-                if [ -f "$file" ]; then
-                  S3_KEY="model_changelogs/${model}/$(basename "$file")"
-                  CONTENT=$(cat "$file")
+            PARAMS=$(jq -n \
+              --arg key "$S3_KEY" \
+              --rawfile content "$file" \
+              '{"s3_key": $key, "changelog_content": $content}')
 
-                  PARAMS=$(jq -n \
-                    --arg key "$S3_KEY" \
-                    --arg content "$CONTENT" \
-                    '{"s3_key": $key, "changelog_content": $content}')
+            DEPLOY_OUTPUT=$(prefect deployment run upload-changelog-s3/upload-changelog-s3 --params "$PARAMS" --watch 2>&1)
+            echo "$DEPLOY_OUTPUT"
 
-                  DEPLOY_OUTPUT=$(prefect deployment run upload-changelog-s3/upload-changelog-s3 --params "$PARAMS" --watch 2>&1)
-                  echo "$DEPLOY_OUTPUT"
-
-                  if echo "$DEPLOY_OUTPUT" | grep -q "Completed"; then
-                    echo "Uploaded: $S3_KEY"
-                    S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
-                  else
-                    echo "ERROR: Failed to upload $S3_KEY"
-                    HAS_FAILURE=true
-                  fi
-                fi
-              done
-            done
-          done < <(echo "$AFFECTED_MODELS" | jq -r '.include[] | "\(.model):\(.version)"')
+            if echo "$DEPLOY_OUTPUT" | grep -q "Completed"; then
+              echo "Uploaded: $S3_KEY"
+              S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
+            else
+              echo "ERROR: Failed to upload $S3_KEY"
+              HAS_FAILURE=true
+            fi
+          done < <(find changelog-*/model_changelogs -name "*.xml" 2>/dev/null)
 
           if [ "$HAS_FAILURE" = true ]; then
             echo "One or more uploads failed."
