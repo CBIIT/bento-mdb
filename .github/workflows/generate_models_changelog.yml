@@ -118,50 +118,37 @@ jobs:
           # Use provided MDB ID or default to cloud-one-mdb-dev
           MDB_ID="${{ inputs.mdb_id || 'cloud-one-mdb-dev' }}"
           
-          # If specific model/version/mdfs provided, use them
-          if [ "${{ inputs.model }}" != "" ] && [ "${{ inputs.version }}" != "" ]; then
-            MODEL_INFO="{\"model\": \"${{ inputs.model }}\", \"version\": \"${{ inputs.version }}\", \"mdf_files\": [${{ inputs.mdf_files || '[]' }}]}"
-            echo "{\"include\": [$MODEL_INFO]}" > matrix.json
-          else
-            # Generate matrix for database
-            PARAMS=$(jq -n \
-              --arg mdb_id "$MDB_ID" \
-              --arg model_specs_yaml "${{ inputs.models_spec_path || 'config/mdb_models.yml' }}" \
-              --argjson datahub_only "${{ inputs.datahub_only || false }}" \
-              '{
-                "mdb_id": $mdb_id,
-                "model_specs_yaml": $model_specs_yaml,
-                "datahub_only": $datahub_only
-              }')
-            
-            echo "Running Prefect deployment with params: $PARAMS"
+          # Generate matrix for database
+          PARAMS='{"mdb_id": "cloud-one-mdb-dev", "model_specs_yaml": "config/mdb_models.yml", "datahub_only": false}'
 
-            watch_out=$(
-              prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
-                --params "$PARAMS" \
-                --watch \
-                --watch-interval 30 2>&1 | tee watch.log
-            )
-            echo "watch_out=$watch_out"
-            
-            RUN_ID=$(
-              grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
-              | head -n1
-            )
-            echo "Run ID: $RUN_ID"
+          echo "Running Prefect deployment with params: $PARAMS"
 
-            echo "Waiting for logs to be available..."
-            sleep 10
+          watch_out=$(
+            prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30 2>&1 | tee watch.log
+          )
+          echo "watch_out=$watch_out"
 
-            LOG_FILE="${RUN_ID}_run.log"
-            prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
-            
-            echo "Checking for MATRIX_JSON in logs:"
-            grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in logs"
-            
-            MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOG_FILE" \
-              | grep -oP 'MATRIX_JSON:\K\{.*\}' \
-              || echo "")
+          RUN_ID=$(
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
+            | head -n1
+          )
+          echo "Run ID: $RUN_ID"
+
+          echo "Waiting for logs to be available..."
+          sleep 10
+
+          LOG_FILE="${RUN_ID}_run.log"
+          prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+
+          echo "Checking for MATRIX_JSON in logs:"
+          grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in logs"
+
+          MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOG_FILE" \
+            | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+            || echo "")
 
             if [ -n "$MATRIX_OUTPUT" ]; then
               echo "$MATRIX_OUTPUT" > matrix.json
