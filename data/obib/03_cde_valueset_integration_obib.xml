@@ -15,98 +15,98 @@
     ON (t.origin_name);
   ]]></neo4j:cypher>
 
-    <neo4j:cypher><![CDATA[
-    CREATE INDEX vs_nanoid_idx IF NOT EXISTS
-    FOR (vs:value_set)
-    ON (vs.nanoid);
-  ]]></neo4j:cypher>
-
-
-   <neo4j:cypher><![CDATA[
+  <!-- CDE LOOKUP -->
+  <neo4j:cypher><![CDATA[
     CREATE INDEX term_cde_lookup_idx IF NOT EXISTS
     FOR (t:term)
     ON (t.origin_name, t.origin_id, t.handle, t.origin_version);
   ]]></neo4j:cypher>
 
-
+  <!-- CRDC TERM MERGE SUPPORT -->
   <neo4j:cypher><![CDATA[
-    CREATE INDEX property_nanoid_idx IF NOT EXISTS
-    FOR (p:property)
-    ON (p.nanoid);
+    CREATE INDEX term_crdc_lookup_idx IF NOT EXISTS
+    FOR (t:term)
+    ON (t.origin_name, t.origin_id);
   ]]></neo4j:cypher>
 
-
+  <!-- VALUE SET LOOKUP -->
   <neo4j:cypher><![CDATA[
-    CREATE INDEX concept_nanoid_idx IF NOT EXISTS
-    FOR (c:concept)
-    ON (c.nanoid);
+    CREATE INDEX vs_nanoid_idx IF NOT EXISTS
+    FOR (vs:value_set)
+    ON (vs.nanoid);
   ]]></neo4j:cypher>
 
-    <neo4j:cypher><![CDATA[
-    CREATE INDEX tag_nanoid_idx IF NOT EXISTS
-    FOR (tag:tag)
-    ON (tag.nanoid);
-  ]]></neo4j:cypher>
-
+  <!-- Optional -->
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX vs_handle_idx IF NOT EXISTS
+    FOR (vs:value_set)
+    ON (vs.handle);
+    ]]></neo4j:cypher>
   </changeSet>
+
 
   <changeSet id="2" author="Tazeen Shaukat"> 
     <neo4j:cypher><![CDATA[ 
     CALL {
     // Cypher Migration File
-// Generated: 2026-03-30 18:03:40.816444
+    // Generated: 2026-03-30 18:03:40.816444
 
 
 
 
-// ---------- CREATE VALUESET ----------
-MERGE (vs:value_set {nanoid: "Pmz0m6"})
-ON CREATE SET
-    vs._commit = "test-OBIB-20260330",
-    vs.handle = "obib_terms_valueset"
+    // ---------- CREATE VALUESET and ATTACH OBIB TERMS ----------
+    MERGE (vs:value_set {nanoid: "Pmz0m6"})
+    ON CREATE SET
+        vs._commit = "test-OBIB-20260330",
+        vs.handle = "obib_terms_valueset"
 
-WITH vs
+    WITH vs
 
-MATCH (t:term {origin_name:"OBIB"})
-MERGE (vs)-[:has_term]->(t)
+    MATCH (t:term {origin_name:"OBIB"})
+    MERGE (vs)-[:has_term]->(t)
 
-WITH vs
+    WITH vs
 
-// ---------- CDE MAPPING ----------
-MATCH (cde:term {
-    handle: "specimen_material_obib_source",
-    origin_id: "11253427",
-    origin_name: "caDSR",
-    origin_version: "1.00"
-})
+    // ---------- CREATE CRDC TERM ----------
+    MERGE (ref:term {
+        origin_name: "CRDC",
+        origin_id: "CRDC0002"
+    })
+    ON CREATE SET ref._commit = "CDEPV-20260421"
+    ON CREATE SET ref.nanoid = "F781bv"
+    ON CREATE SET ref.origin_version = "1"
+    ON CREATE SET ref.value = "obib value set reference"
+    ON CREATE SET ref.handle = "obib_valueset_reference"
 
-MERGE (p:property {nanoid: "mwNH2d"})
-ON CREATE SET
-    p._commit = "test-OBIB-20260330",
-    p.handle = "specimen_material_obib_source",
-    p.desc = "Specimen material source using OBIB terminology",
-    p.is_key = false,
-    p.is_nullable = false,
-    p.is_required = false,
-    p.is_strict = true,
-    p.model = "OBIB",
-    p.value_domain = "value_set",
-    p.version = "2023-04-05"
+    WITH vs, ref
 
-MERGE (c:concept {nanoid: "8TCpea"})
-ON CREATE SET
-    c._commit = "test-OBIB-20260330"
+    // ---------- CREATE TAGS ----------
+    MERGE (tag1:tag {key: "provenance", value: "CTOS experts"})
+    ON CREATE SET tag1._commit = "test-OBIB-20260330"
 
-MERGE (tag:tag {nanoid: "iKtxAy"})
-ON CREATE SET
-    tag.key = "mapping_src",
-    tag.value = "OBIB",
-    tag._commit = "test-OBIB-20260330"
+    MERGE (tag2:tag {key: "added", value: "04-21-2026"})
+    ON CREATE SET tag2._commit = "test-OBIB-20260330"
 
-MERGE (c)-[:has_tag]->(tag)
-MERGE (p)-[:has_concept]->(c)
-MERGE (cde)-[:represents]->(c)
-MERGE (p)-[:has_value_set]->(vs)
+    MERGE (ref)-[:has_tag]->(tag1)
+    MERGE (ref)-[:has_tag]->(tag2)
+
+    WITH vs, ref
+
+    // ---------- LINK CRDC TERM TO VALUESET ----------
+    MERGE (ref)-[:specifies_value_set]->(vs)
+
+    WITH vs
+
+    // ---------- CDE MAPPING ----------
+    MATCH (cde:term {
+        handle: "specimen_material_obib_source",
+        origin_id: "11253427",
+        origin_name: "caDSR",
+        origin_version: "1.00"
+    })
+
+    WITH cde, vs
+    MERGE (cde)-[:specifies_value_set]->(vs)
     }  
     ]]></neo4j:cypher>
   </changeSet>
