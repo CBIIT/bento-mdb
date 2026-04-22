@@ -150,13 +150,12 @@ jobs:
             | grep -oP 'MATRIX_JSON:\K\{.*\}' \
             || echo "")
 
-            if [ -n "$MATRIX_OUTPUT" ]; then
-              echo "$MATRIX_OUTPUT" > matrix.json
-              echo "Matrix extracted successfully"
-            else
-              echo "Warning: Could not extract matrix from deployment output"
-              echo "{\"include\": []}" > matrix.json
-            fi
+          if [ -n "$MATRIX_OUTPUT" ]; then
+            echo "$MATRIX_OUTPUT" > matrix.json
+            echo "Matrix extracted successfully"
+          else
+            echo "Warning: Could not extract matrix from deployment output"
+            echo "{\"include\": []}" > matrix.json
           fi
 
           # validate json
