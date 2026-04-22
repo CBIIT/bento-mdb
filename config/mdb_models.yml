@@ -64,8 +64,6 @@ CDS:
     tag: 11.0.4-GC_Release
   - version: 11.0.6
     tag: 11.0.6
-  - version: 11.0.7
-    tag: 11.0.7
-  latest_version: 11.0.7
+  latest_version: 11.0.4
   latest_prerelease_commit: 2997fdc66aef957314e5b6ed3759e20999e7ab67
   latest_prerelease_version: 11.0.4
