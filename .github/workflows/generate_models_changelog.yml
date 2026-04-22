@@ -3,6 +3,7 @@ name: Generate Model Changelogs
 permissions:
   contents: read
   actions: write
+  id-token: write
 
 
 on:
@@ -57,6 +58,12 @@ on:
       PREFECT_API_KEY:
         required: false
       PREFECT_API_URL:
+        required: false
+      AWS_CHANGELOG_ROLE_ARN:
+        required: false
+      AWS_REGION:
+        required: false
+      S3_CHANGELOG_BUCKET:
         required: false
     outputs:
       changelog_files:
@@ -279,6 +286,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
     outputs:
       changelog_files: ${{ steps.upload.outputs.changelog_files }}
     steps:
@@ -287,85 +298,38 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Install Python
-        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
-        with:
-          python-version-file: ".python-version"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.5.10"
-
-      - name: Install dependencies and project
-        run: |
-          uv pip install --system -e .
-          uv sync --all-extras --dev
-
       - name: Download changelog artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: changelog-*
         continue-on-error: true
 
-      - name: Upload changelogs to S3 via Prefect flow
+      - name: AWS OIDC Authentication
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ${{ github.actor }}
+
+      - name: Upload changelogs to S3
         id: upload
         shell: bash
         env:
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+          S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
         run: |
           S3_KEYS="[]"
           HAS_FAILURE=false
 
           while IFS= read -r file; do
             S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
-            echo "Processing: $S3_KEY"
+            echo "Uploading: $S3_KEY"
 
-            # Compute SHA256 hash of the file (base64-encoded, required by S3 checksum)
-            SHA256_BASE64=$(sha256sum "$file" | cut -d' ' -f1 | xxd -r -p | base64 -w0)
-
-            # Request a SHA256-locked presigned PUT URL from Prefect (only s3_key + sha256 passed, no file content)
-            PARAMS=$(jq -n \
-              --arg key "$S3_KEY" \
-              --arg sha256 "$SHA256_BASE64" \
-              '{"s3_key": $key, "sha256_base64": $sha256}')
-
-            LOG_FILE=$(mktemp /tmp/prefect_log_XXXXXX.txt)
-            DEPLOY_OUTPUT=$(prefect deployment run \
-              generate-changelog-presigned-url/generate-changelog-presigned-url \
-              --params "$PARAMS" --watch 2>&1 | tee "$LOG_FILE")
-
-            RUN_ID=$(grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" "$LOG_FILE" | head -n1)
-            sleep 5
-            prefect flow-run logs "$RUN_ID" >> "$LOG_FILE" 2>&1
-
-            # Extract presigned URL from Prefect flow logs
-            PRESIGNED_URL=$(grep -oP 'PRESIGNED_URL:\K.*' "$LOG_FILE" | tail -n1 | tr -d '[:space:]')
-            rm -f "$LOG_FILE"
-
-            if [ -z "$PRESIGNED_URL" ]; then
-              echo "ERROR: Could not get presigned URL for $S3_KEY"
-              HAS_FAILURE=true
-              continue
-            fi
-
-            # Mask the presigned URL from GitHub Actions logs
-            echo "::add-mask::$PRESIGNED_URL"
-
-            # Upload directly to S3 with SHA256 checksum header (S3 rejects if hash does not match)
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X PUT \
-              -H "Content-Type: application/xml" \
-              -H "x-amz-checksum-sha256: $SHA256_BASE64" \
-              --upload-file "$file" \
-              "$PRESIGNED_URL")
-
-            if [ "$HTTP_STATUS" = "200" ]; then
+            if aws s3 cp "$file" "s3://${S3_BUCKET}/${S3_KEY}" \
+              --content-type application/xml; then
               echo "Uploaded: $S3_KEY"
               S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
             else
-              echo "ERROR: Upload failed for $S3_KEY (HTTP $HTTP_STATUS)"
+              echo "ERROR: Upload failed for $S3_KEY"
               HAS_FAILURE=true
             fi
           done < <(find changelog-*/model_changelogs -name "*.xml" 2>/dev/null)
