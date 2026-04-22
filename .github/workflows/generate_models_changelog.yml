@@ -315,54 +315,68 @@ jobs:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
-          echo "[1] Starting upload step"
           S3_KEYS="[]"
           HAS_FAILURE=false
 
-          echo "[2] Listing downloaded artifact directories:"
-          ls -la || echo "  (nothing in cwd)"
-
-          echo "[3] Finding XML files under changelog-*/model_changelogs:"
-          find changelog-*/model_changelogs -name "*.xml" 2>/dev/null || echo "  (no XML files found)"
-
-          echo "[4] Starting upload loop"
           while IFS= read -r file; do
-            echo "[4a] Processing file: $file"
-
             S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
-            echo "[4b] S3_KEY: $S3_KEY"
+            echo "Processing: $S3_KEY"
 
-            echo "[4c] Building PARAMS with jq --rawfile"
+            # Compute SHA256 hash of the file (base64-encoded, required by S3 checksum)
+            SHA256_BASE64=$(sha256sum "$file" | cut -d' ' -f1 | xxd -r -p | base64 -w0)
+
+            # Request a SHA256-locked presigned PUT URL from Prefect (only s3_key + sha256 passed, no file content)
             PARAMS=$(jq -n \
               --arg key "$S3_KEY" \
-              --rawfile content "$file" \
-              '{"s3_key": $key, "changelog_content": $content}')
-            echo "[4d] PARAMS built (length: ${#PARAMS})"
+              --arg sha256 "$SHA256_BASE64" \
+              '{"s3_key": $key, "sha256_base64": $sha256}')
 
-            echo "[4e] Running prefect deployment"
-            DEPLOY_OUTPUT=$(prefect deployment run upload-changelog-s3/upload-changelog-s3 --params "$PARAMS" --watch 2>&1)
-            echo "$DEPLOY_OUTPUT"
+            LOG_FILE=$(mktemp /tmp/prefect_log_XXXXXX.txt)
+            DEPLOY_OUTPUT=$(prefect deployment run \
+              generate-changelog-presigned-url/generate-changelog-presigned-url \
+              --params "$PARAMS" --watch 2>&1 | tee "$LOG_FILE")
 
-            if echo "$DEPLOY_OUTPUT" | grep -q "Completed"; then
-              echo "[4f] Uploaded: $S3_KEY"
+            RUN_ID=$(grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" "$LOG_FILE" | head -n1)
+            sleep 5
+            prefect flow-run logs "$RUN_ID" >> "$LOG_FILE" 2>&1
+
+            # Extract presigned URL from Prefect flow logs
+            PRESIGNED_URL=$(grep -oP 'PRESIGNED_URL:\K.*' "$LOG_FILE" | tail -n1 | tr -d '[:space:]')
+            rm -f "$LOG_FILE"
+
+            if [ -z "$PRESIGNED_URL" ]; then
+              echo "ERROR: Could not get presigned URL for $S3_KEY"
+              HAS_FAILURE=true
+              continue
+            fi
+
+            # Mask the presigned URL from GitHub Actions logs
+            echo "::add-mask::$PRESIGNED_URL"
+
+            # Upload directly to S3 with SHA256 checksum header (S3 rejects if hash does not match)
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X PUT \
+              -H "Content-Type: application/xml" \
+              -H "x-amz-checksum-sha256: $SHA256_BASE64" \
+              --upload-file "$file" \
+              "$PRESIGNED_URL")
+
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "Uploaded: $S3_KEY"
               S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
             else
-              echo "[4f] ERROR: Failed to upload $S3_KEY"
+              echo "ERROR: Upload failed for $S3_KEY (HTTP $HTTP_STATUS)"
               HAS_FAILURE=true
             fi
           done < <(find changelog-*/model_changelogs -name "*.xml" 2>/dev/null)
 
-          echo "[5] Upload loop finished. HAS_FAILURE=$HAS_FAILURE"
-
           if [ "$HAS_FAILURE" = true ]; then
-            echo "[6] One or more uploads failed."
+            echo "One or more uploads failed."
             exit 1
           fi
 
-          echo "[7] Writing output"
           echo "changelog_files=$(echo $S3_KEYS | jq -c .)" >> $GITHUB_OUTPUT
           echo "Uploaded S3 keys: $(echo $S3_KEYS | jq .)"
-          echo "[8] Done"
 
       - name: Commit S3 upload log to git
         env:
