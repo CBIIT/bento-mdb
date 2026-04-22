@@ -310,40 +310,59 @@ jobs:
 
       - name: Upload changelogs to S3 via Prefect flow
         id: upload
+        shell: bash
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         run: |
+          echo "[1] Starting upload step"
           S3_KEYS="[]"
           HAS_FAILURE=false
 
-          while IFS= read -r file; do
-            S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
+          echo "[2] Listing downloaded artifact directories:"
+          ls -la || echo "  (nothing in cwd)"
 
+          echo "[3] Finding XML files under changelog-*/model_changelogs:"
+          find changelog-*/model_changelogs -name "*.xml" 2>/dev/null || echo "  (no XML files found)"
+
+          echo "[4] Starting upload loop"
+          while IFS= read -r file; do
+            echo "[4a] Processing file: $file"
+
+            S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
+            echo "[4b] S3_KEY: $S3_KEY"
+
+            echo "[4c] Building PARAMS with jq --rawfile"
             PARAMS=$(jq -n \
               --arg key "$S3_KEY" \
               --rawfile content "$file" \
               '{"s3_key": $key, "changelog_content": $content}')
+            echo "[4d] PARAMS built (length: ${#PARAMS})"
 
+            echo "[4e] Running prefect deployment"
             DEPLOY_OUTPUT=$(prefect deployment run upload-changelog-s3/upload-changelog-s3 --params "$PARAMS" --watch 2>&1)
             echo "$DEPLOY_OUTPUT"
 
             if echo "$DEPLOY_OUTPUT" | grep -q "Completed"; then
-              echo "Uploaded: $S3_KEY"
+              echo "[4f] Uploaded: $S3_KEY"
               S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
             else
-              echo "ERROR: Failed to upload $S3_KEY"
+              echo "[4f] ERROR: Failed to upload $S3_KEY"
               HAS_FAILURE=true
             fi
           done < <(find changelog-*/model_changelogs -name "*.xml" 2>/dev/null)
 
+          echo "[5] Upload loop finished. HAS_FAILURE=$HAS_FAILURE"
+
           if [ "$HAS_FAILURE" = true ]; then
-            echo "One or more uploads failed."
+            echo "[6] One or more uploads failed."
             exit 1
           fi
 
+          echo "[7] Writing output"
           echo "changelog_files=$(echo $S3_KEYS | jq -c .)" >> $GITHUB_OUTPUT
           echo "Uploaded S3 keys: $(echo $S3_KEYS | jq .)"
+          echo "[8] Done"
 
       - name: Commit S3 upload log to git
         env:
