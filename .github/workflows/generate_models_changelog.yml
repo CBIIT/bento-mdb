@@ -81,7 +81,7 @@ jobs:
               - 'config/mdb_models.yml'
   determine-models:
     needs: changes
-    if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
+    if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'workflow_run' }}
     runs-on: ubuntu-latest
     outputs:
       affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
