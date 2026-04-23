@@ -1,3 +1,87 @@
+C3DC:
+  repository: CBIIT/c3dc-model
+  mdf_directory: model-desc
+  mdf_files:
+  - c3dc-model.yml
+  - c3dc-model-props.yml
+  in_data_hub: false
+  versions:
+  - version: 1.4.0
+    tag: 1.4.0
+  - version: 2.0.0
+    tag: 2.0.0
+  - version: 2.0.1
+    tag: 2.0.1
+  - version: 2.1.0
+    tag: 2.1.0
+  - version: 3.0.0
+    tag: 3.0.0
+    ignore: true
+  - version: 3.1.0
+    tag: 3.1.0
+  - version: 3.2.0
+    tag: 3.2.0
+  - version: 3.2.1
+    tag: 3.2.1
+  - version: 3.2.2
+    tag: 3.2.2
+  - version: 3.2.3
+    tag: 3.2.3
+  - version: 4.0.0
+    tag: 4.0.0
+  - version: 4.0.1
+    tag: 4.0.1
+  - version: 4.0.2
+    tag: 4.0.2
+  - version: 4.0.3
+    tag: 4.0.3
+  - version: 4.0.4
+    tag: 4.0.4
+  - version: 4.0.5
+    tag: 4.0.5
+  latest_version: 4.0.5
+  latest_prerelease_commit: null
+  latest_prerelease_version: null
+CCDI:
+  repository: CBIIT/ccdi-model
+  mdf_directory: model-desc
+  mdf_files:
+  - ccdi-model.yml
+  - ccdi-model-props.yml
+  - terms.yml
+  in_data_hub: true
+  versions:
+  - version: 1.9.1
+    tag: 1.9.1
+  - version: 2.0.0
+    tag: 2.0.0
+  - version: 2.1.0
+    tag: 2.1.0
+  - version: 3.0.0
+    tag: 3.0.0
+    ignore: true
+  - version: 3.1.0
+    tag: 3.1.0
+  latest_version: 3.1.0
+  latest_prerelease_commit: 03eca65df2bf626db499b4c1aae7d2d0ee1d58d2
+  latest_prerelease_version: 3.1.0
+CCDI-DCC:
+  repository: CBIIT/ccdi-dcc-model
+  mdf_directory: model-desc
+  mdf_files:
+  - ccdi-dcc-model.yml
+  - ccdi-dcc-model-props.yml
+  - terms.yml
+  in_data_hub: false
+  versions:
+  - version: 0.0.1
+  - version: 0.0.2
+    tag: 0.0.2
+  - version: 1.0.0
+    tag: 1.0.0
+  latest_version: 1.0.0
+  latest_prerelease_commit: null
+  latest_prerelease_version: null
 CDS:
   repository: knockknockyoo/cds-model
   mdf_directory: model-desc
