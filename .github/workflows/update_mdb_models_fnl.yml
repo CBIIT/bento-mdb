@@ -3,6 +3,7 @@ name: Update FNL-MDB-DEV Models
 permissions:
   contents: read
   actions: write
+  id-token: write
 
 on:
   workflow_run:

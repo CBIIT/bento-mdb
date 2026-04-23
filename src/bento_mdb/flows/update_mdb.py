@@ -215,8 +215,8 @@ def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]
     
     logger.info("Successfully split changelog into %d files", len(smaller_changelog_files))
     return smaller_changelog_files
-# TODO
-@flow(name="liquibase-update-test", log_prints=True)
+
+@flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
     key: str,
     mdb_id: str,
