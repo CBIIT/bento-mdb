@@ -250,18 +250,22 @@ def liquibase_update_flow(
     with open(changelog_file, "r") as f:
         content = f.read()
 
+    # Extract the XML header (first line) and databaseChangeLog opening tag
+    # Find the opening databaseChangeLog tag with all its attributes
     header_match = re.search(
         r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
         content,
-        re.MULTILINE | re.DOTALL,
+        re.MULTILINE | re.DOTALL
     )
     if not header_match:
         msg = "Could not find databaseChangeLog header in changelog file"
         raise ValueError(msg)
 
+    # Find all changesets using regex that handles multi-line content
+    # This pattern matches from <changeSet to </changeSet> including all content in between
     changeset_pattern = re.compile(
         r'(<changeSet[^>]*>.*?</changeSet>)',
-        re.DOTALL,
+        re.DOTALL
     )
     changesets = changeset_pattern.findall(content)
 
@@ -272,36 +276,21 @@ def liquibase_update_flow(
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
 
-    if dry_run:
-        for i, changeset in enumerate(changesets, 1):
-            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
-            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
-            if cypher_statement:
-                cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-                logger.info("[dry_run] Changeset %d/%d: %s", i, total_changesets, cypher_statement)
-            else:
-                logger.warning("[dry_run] Changeset %d/%d: no <neo4j:cypher> found, skipping", i, total_changesets)
-        logger.info("Dry run complete. No changes applied.")
-        return
-
     mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     num = 0
     try:
         for changeset in changesets:
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
-            if cypher_statement:
-                cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            if not cypher_statement:
-                logger.warning("Changeset %d: no <neo4j:cypher> found, skipping", num + 1)
-                continue
+            # make these replacements in a more efficient way
+            cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
             # mdb.put_with_statement(cypher_statement)
-            num += 1
-            logger.info("Completed changelog update %d/%d", num, total_changesets)
+            num = num + 1
+            logger.info("Completed changelog update %d", num)
     except Exception:
-        logger.exception("Error in changelog update at changeset %d", num + 1)
+        logger.exception("Error in changelog update")
         raise
     finally:
         mdb.close()
 
-    logger.info("Applied %d/%d changesets.", num, total_changesets)
+    logger.info("Liquibase finished.")
