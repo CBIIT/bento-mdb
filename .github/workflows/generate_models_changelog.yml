@@ -361,11 +361,16 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          S3_KEYS='${{ steps.upload.outputs.changelog_files }}'
+
+          if [ -z "$S3_KEYS" ] || [ "$S3_KEYS" = "[]" ] || [ "$S3_KEYS" = "null" ]; then
+            echo "No files uploaded. Skipping commit."
+            exit 0
+          fi
+
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
 
-          S3_KEYS='${{ steps.upload.outputs.changelog_files }}'
           COMMIT_MSG="s3-upload-log run=${RUN_ID} keys=${S3_KEYS}"
-
           git commit --allow-empty -m "$COMMIT_MSG"
           git push origin ${{ github.ref_name }}
