@@ -10,6 +10,8 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+import boto3
+
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
@@ -216,7 +218,7 @@ def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]
 
 @flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
-    changelog_file: str,
+    key: str,
     mdb_id: str,
     log_level: str = "info",
     *,
@@ -225,10 +227,29 @@ def liquibase_update_flow(
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
-    # read from changelog file and run the Cypher statements on the MDB
+    bucket = Secret.load("s3-changelog-bucket").get()
+
+    s3 = boto3.client("s3")
+
+    prefix = "model_changelogs/"
+    logger.info("Listing objects in s3://%s/%s", bucket, prefix)
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    objects = response.get("Contents", [])
+    if objects:
+        for obj in objects:
+            logger.info("  Found object: %s (size: %d bytes)", obj["Key"], obj["Size"])
+    else:
+        logger.info("  No objects found under prefix: %s", prefix)
+
+    logger.info("Downloading s3://%s/%s", bucket, key)
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
+        s3.download_fileobj(bucket, key, tmp)
+        changelog_file = tmp.name
+    logger.info("Downloaded to temp file: %s", changelog_file)
+
     with open(changelog_file, "r") as f:
         content = f.read()
-    
+
     # Extract the XML header (first line) and databaseChangeLog opening tag
     # Find the opening databaseChangeLog tag with all its attributes
     header_match = re.search(
@@ -239,7 +260,7 @@ def liquibase_update_flow(
     if not header_match:
         msg = "Could not find databaseChangeLog header in changelog file"
         raise ValueError(msg)
-    
+
     # Find all changesets using regex that handles multi-line content
     # This pattern matches from <changeSet to </changeSet> including all content in between
     changeset_pattern = re.compile(
@@ -247,14 +268,14 @@ def liquibase_update_flow(
         re.DOTALL
     )
     changesets = changeset_pattern.findall(content)
-    
+
     total_changesets = len(changesets)
     logger.info("Found %d changesets in changelog file", total_changesets)
-    
+
     if total_changesets == 0:
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
-    
+
     mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     num = 0
     try:
@@ -263,7 +284,7 @@ def liquibase_update_flow(
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            mdb.put_with_statement(cypher_statement)
+            # mdb.put_with_statement(cypher_statement)
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:

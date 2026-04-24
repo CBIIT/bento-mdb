@@ -3,6 +3,7 @@ name: Update Cloud-One-MDB-DEV Models
 permissions:
   contents: read
   actions: write
+  id-token: write
 
 on:
   workflow_run:
@@ -64,23 +65,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find committed changelog files
+      - name: Read S3 keys from upload log
         id: find-changelogs
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          RUN_ID: ${{ github.event.workflow_run.id || github.run_id }}
         run: |
-          # Find model changelog XML files committed after the triggering commit
-          # HEAD_SHA is the commit that started the generate workflow;
-          # changelog files are in newer commits made by that workflow
-          RAW_CHANGELOGS=$(git log "${HEAD_SHA}..HEAD" --name-only --pretty=format: | \
-            grep 'data/output/model_changelogs/.*\.xml' || true)
-          
-          if [ -z "$RAW_CHANGELOGS" ]; then
-            CHANGELOGS='[]'
+          LOG_LINE=$(git log --format=%s | grep "s3-upload-log run=${RUN_ID}" || true)
+          if [ -n "$LOG_LINE" ]; then
+            CHANGELOGS=$(echo "$LOG_LINE" | grep -oP 'keys=\K\[.*\]')
           else
-            CHANGELOGS=$(printf '%s\n' "$RAW_CHANGELOGS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Warning: No s3-upload-log commit found for run ${RUN_ID}"
+            CHANGELOGS='[]'
           fi
-          
           echo "changelog_files=$CHANGELOGS" >> $GITHUB_OUTPUT
           echo "Found changelogs: $CHANGELOGS"
 
@@ -91,23 +87,26 @@ jobs:
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+      AWS_CHANGELOG_ROLE_ARN: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_CHANGELOG_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     with:
       mdb_id: cloud-one-mdb-dev
       changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
-  slack-notification:
-    needs: [collect-changelogs, update-c1-mdb-dev]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Slack Notification
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
-        with:
-          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success')) && 'failure' || 'success' }}
-          message: |
-            *[CloudOne] Model Update*
-            <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success') && '⚠️ Upstream workflow failed' || (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>
+#  slack-notification:
+#    needs: [collect-changelogs, update-c1-mdb-dev]
+#    runs-on: ubuntu-latest
+#    if: always()
+#    steps:
+#      - name: Slack Notification
+#        env:
+#          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+#        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
+#        with:
+#          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success')) && 'failure' || 'success' }}
+#          message: |
+#            *[CloudOne] Model Update*
+#            <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success') && '⚠️ Upstream workflow failed' || (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>

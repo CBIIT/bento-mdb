@@ -2,6 +2,7 @@ name: Update MDB and Data Hub Terms
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -29,10 +30,20 @@ on:
         required: true
       PREFECT_API_URL:
         required: true
+      AWS_CHANGELOG_ROLE_ARN:
+        required: false
+      AWS_REGION:
+        required: false
+      S3_CHANGELOG_BUCKET:
+        required: false
 
 jobs:
   update-mdb:
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -55,6 +66,13 @@ jobs:
           uv pip install --system -e .
           uv sync --all-extras --dev
 
+      - name: AWS OIDC Authentication
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ${{ github.actor }}
+
       - name: Run liquibase update on changelog files
         id: liquibase-update
         env:
@@ -69,18 +87,18 @@ jobs:
           for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
             echo "Running $file"
 
-            if [ ! -f "$file" ]; then
-              echo "Warning: Changelog file $file does not exist, skipping"
+            if ! aws s3 ls "s3://${S3_BUCKET}/${file}" > /dev/null 2>&1; then
+              echo "Warning: S3 key $file does not exist, skipping"
               continue
             fi
 
             PARAMS=$(jq -n \
-            --arg file "$file" \
+            --arg key "$file" \
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
             '{
-              "changelog_file": $file,
+              "key": $key,
               "mdb_id": $id,
               "log_level": $log_level,
               "dry_run": $dry_run
