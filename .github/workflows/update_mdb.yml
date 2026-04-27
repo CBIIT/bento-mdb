@@ -31,11 +31,11 @@ on:
       PREFECT_API_URL:
         required: true
       AWS_CHANGELOG_ROLE_ARN:
-        required: false
+        required: true
       AWS_REGION:
-        required: false
+        required: true
       S3_CHANGELOG_BUCKET:
-        required: false
+        required: true
 
 jobs:
   update-mdb:
@@ -95,11 +95,13 @@ jobs:
             PARAMS=$(jq -n \
             --arg key "$file" \
             --arg id "${{ inputs.mdb_id }}" \
+            --arg bucket "${S3_BUCKET}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
             '{
               "key": $key,
               "mdb_id": $id,
+              "bucket": $bucket,
               "log_level": $log_level,
               "dry_run": $dry_run
             }')

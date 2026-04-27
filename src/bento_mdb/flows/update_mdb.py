@@ -222,13 +222,12 @@ def liquibase_update_flow(
     key: str,
     mdb_id: str,
     log_level: str = "info",
+    bucket: str | None = None,
     *,
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
-
-    bucket = Secret.load("s3-changelog-bucket").get()
 
     s3 = boto3.client("s3")
 
