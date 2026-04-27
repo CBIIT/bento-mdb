@@ -11,6 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import boto3
+from botocore.exceptions import ClientError
 
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -231,15 +232,19 @@ def liquibase_update_flow(
 
     s3 = boto3.client("s3")
 
-    prefix = "model_changelogs/"
-    logger.info("Listing objects in s3://%s/%s", bucket, prefix)
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    objects = response.get("Contents", [])
-    if objects:
-        for obj in objects:
-            logger.info("  Found object: %s (size: %d bytes)", obj["Key"], obj["Size"])
-    else:
-        logger.info("  No objects found under prefix: %s", prefix)
+    try:
+        meta = s3.head_object(Bucket=bucket, Key=key)
+        logger.info("Found s3://%s/%s (size: %d bytes)", bucket, key, meta["ContentLength"])
+    except ClientError as e:
+        code = e.response["Error"]["Code"]
+        if code in ("404", "NoSuchKey"):
+            msg = f"S3 key not found: s3://{bucket}/{key}"
+            raise FileNotFoundError(msg) from e
+        if code in ("403", "AccessDenied"):
+            msg = f"Access denied to s3://{bucket}/{key}"
+            raise PermissionError(msg) from e
+        logger.error("Unexpected S3 error (code=%s) for s3://%s/%s: %s", code, bucket, key, e)
+        raise
 
     logger.info("Downloading s3://%s/%s", bucket, key)
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
