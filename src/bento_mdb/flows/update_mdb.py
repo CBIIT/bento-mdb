@@ -289,8 +289,9 @@ def liquibase_update_flow(
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            mdb.put_with_statement(cypher_statement)
+            # mdb.put_with_statement(cypher_statement)
             num = num + 1
+            logger.info("run test changelog update %d", num)
             logger.info("Completed changelog update %d", num)
     except Exception:
         logger.exception("Error in changelog update")
