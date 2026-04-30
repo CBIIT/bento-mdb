@@ -72,8 +72,20 @@ jobs:
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
-  slack-notification:
+  clear-sts-dev-cache:
     needs: [collect-changelogs, update-c1-mdb-dev]
+    if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear STS DEV cache
+        run: |
+          set -xeuo pipefail
+          RESPONSE=$(curl -sS -f http://sts-dev.cancer.gov/admin/cache/clear)
+          echo "STS DEV cache clear response: $RESPONSE"
+          echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
+
+  slack-notification:
+    needs: [collect-changelogs, update-c1-mdb-dev, clear-sts-dev-cache]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -82,7 +94,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success')) && 'failure' || 'success' }}
+          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure' || needs.clear-sts-dev-cache.result == 'failure' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success')) && 'failure' || 'success' }}
           message: |
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|*[CloudOne] Term Update*>
-            ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success') && '⚠️ Upstream workflow failed' || (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}
+            ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success') && '⚠️ Upstream workflow failed' || (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure' || needs.clear-sts-dev-cache.result == 'failure') && 'Failure' || 'Success' }}

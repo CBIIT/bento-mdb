@@ -207,8 +207,20 @@ jobs:
           )
           echo "Import flow run: $RUN_ID"
 
+  clear-sts-qa-cache:
+    needs: [import-to-c1-qa]
+    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear STS QA cache
+        run: |
+          set -xeuo pipefail
+          RESPONSE=$(curl -sS -f http://sts-qa.cancer.gov/admin/cache/clear)
+          echo "STS QA cache clear response: $RESPONSE"
+          echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
+
   verify-promotion:
-    needs: [import-to-c1-qa, detect-updated-models]
+    needs: [clear-sts-qa-cache, detect-updated-models]
     if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:
@@ -266,7 +278,7 @@ jobs:
           git push origin ${{ github.ref_name }}
 
   slack-notification:
-    needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, verify-promotion]
+    needs: [detect-updated-models, check-dev-mdf-sync, export-c1-dev, import-to-c1-qa, clear-sts-qa-cache, verify-promotion]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -275,7 +287,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08  # v1.6.0
         with:
-          status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && 'failure' || 'success' }}
+          status: ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.clear-sts-qa-cache.result == 'failure' || needs.verify-promotion.result == 'failure') && 'failure' || 'success' }}
           message: |
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Data Promotion: CloudOne Dev → QA>
-            ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.verify-promotion.result == 'failure') && 'Failure' || 'Success' }}
+            ${{ (needs.detect-updated-models.result == 'failure' || needs.check-dev-mdf-sync.result == 'failure' || needs.export-c1-dev.result == 'failure' || needs.import-to-c1-qa.result == 'failure' || needs.clear-sts-qa-cache.result == 'failure' || needs.verify-promotion.result == 'failure') && 'Failure' || 'Success' }}

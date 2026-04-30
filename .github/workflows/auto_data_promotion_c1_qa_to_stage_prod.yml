@@ -254,6 +254,19 @@ jobs:
             --params "$PARAMS" \
             --watch
 
+# TODO clear stage cache
+#  clear-sts-stage-cache:
+#    needs: [prune-c1-stage]
+#    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Clear STS Stage cache
+#        run: |
+#          set -xeuo pipefail
+#          RESPONSE=$(curl -sS -f https://sts-stage.cancer.gov/admin/cache/clear)
+#          echo "STS Stage cache clear response: $RESPONSE"
+#          echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
+
   export-c1-stage:
     needs: prune-c1-stage
     if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
@@ -413,6 +426,19 @@ jobs:
             | head -n1 || true
           )
           echo "Import flow run: $RUN_ID"
+
+# TODO clear prod cache
+#  clear-sts-prod-cache:
+#    needs: [import-to-c1-prod]
+#    if: ${{ !fromJson(github.event.inputs.dry_run || 'false') }}
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Clear STS Production cache
+#        run: |
+#          set -xeuo pipefail
+#          RESPONSE=$(curl -sS -f https://sts.cancer.gov/admin/cache/clear)
+#          echo "STS Production cache clear response: $RESPONSE"
+#          echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
 
   verify-prod-promotion:
     needs: [import-to-c1-prod, detect-updated-models]
