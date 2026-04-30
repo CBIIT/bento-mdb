@@ -205,7 +205,9 @@ CTDC:
     tag: 1.22.0
   - version: 1.22.1
     tag: 1.22.1
-  latest_version: 1.22.1
+  - version: 1.22.2
+    tag: 1.22.2
+  latest_version: 1.22.2
   latest_prerelease_commit: 3c96e1d772f76db2bae30498c3901e604563b45e
   latest_prerelease_version: 1.22.2
 GDC:
