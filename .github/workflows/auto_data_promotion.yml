@@ -215,12 +215,18 @@ jobs:
       - name: Clear STS QA cache
         run: |
           set -xeuo pipefail
-          RESPONSE=$(curl -sS -f http://sts-qa.cancer.gov/admin/cache/clear)
+          RESPONSE=$(curl -sS -f \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            https://sts-qa.cancer.gov/admin/cache/clear)
           echo "STS QA cache clear response: $RESPONSE"
           echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
 
   verify-promotion:
-    needs: [clear-sts-qa-cache, detect-updated-models]
+    needs: [import-to-c1-qa, detect-updated-models]
     if: ${{ !fromJson(github.event.inputs.dry_run || 'false') && needs.detect-updated-models.outputs.model_filters != '' && needs.detect-updated-models.outputs.model_filters != '[]' }}
     runs-on: ubuntu-latest
     steps:

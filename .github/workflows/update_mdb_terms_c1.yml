@@ -80,7 +80,13 @@ jobs:
       - name: Clear STS DEV cache
         run: |
           set -xeuo pipefail
-          RESPONSE=$(curl -sS -f http://sts-dev.cancer.gov/admin/cache/clear)
+          RESPONSE=$(curl -sS -f \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            https://sts-dev.cancer.gov/admin/cache/clear)
           echo "STS DEV cache clear response: $RESPONSE"
           echo "$RESPONSE" | jq -e '.status == "cache cleared"' >/dev/null
 
