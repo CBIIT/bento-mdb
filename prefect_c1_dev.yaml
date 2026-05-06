@@ -4,11 +4,11 @@ prefect-version: 3.3.4
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
-    branch: main
+    branch: twist-lock-automation
     repository: https://github.com/CBIIT/bento-mdb.git
 - prefect.deployments.steps.run_shell_script:
     id: install-dependencies
-    script: sh -c "cd bento-mdb-main && uv pip install --system ."
+    script: sh -c "cd bento-mdb-twist-lock-automation && uv pip install --system ."
 - prefect.deployments.steps.run_shell_script:
     id: install-aws-cli
     script: sh -c "apt-get update && apt-get install -y --no-install-recommends curl unzip && cd /tmp && curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' && unzip awscliv2.zip && ./aws/install --update && curl 'https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb' -o 'session-manager-plugin.deb' && dpkg -i session-manager-plugin.deb && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/awscliv2.zip /tmp/aws/ /tmp/session-manager-plugin.deb"
@@ -162,7 +162,7 @@ deployments:
   version:
   tags: []
   concurrency_limit:
-  description: "Twistlock image scan (VPN worker). Fails on critical/high findings; needs TWISTLOCK_* env."
+  description: "Twistlock image scan (VPN worker). Fails on critical/high; worker env twistlock-username, twistlock-password, optional twistlock-address."
   entrypoint: src/bento_mdb/flows/twistlock_scan.py:twistlock_scan_flow
   parameters: {}
   schedule: null

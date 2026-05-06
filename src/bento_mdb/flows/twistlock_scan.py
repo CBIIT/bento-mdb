@@ -80,16 +80,13 @@ def _resolve_twistcli_binary(
 ) -> tuple[Path, Path | None]:
     """Return (path to twistcli, temp dir to delete after run, or None)."""
     if twistcli_skip_download:
-        explicit = os.environ.get("TWISTCLI")
-        if explicit:
-            p = Path(explicit).expanduser().resolve()
-            if p.is_file() and os.access(p, os.X_OK):
-                return p, None
-            raise RuntimeError(f"TWISTCLI is not an executable file: {p}")
         found = shutil.which("twistcli")
         if found:
             return Path(found), None
-        raise RuntimeError("twistcli not found (set TWISTCLI or PATH, or clear twistcli_skip_download)")
+        raise RuntimeError(
+            "twistcli not found on PATH; install it on the worker or leave twistcli_skip_download false "
+            "to download from the console API."
+        )
 
     if twistcli_install_dir:
         install = Path(twistcli_install_dir).expanduser().resolve()
@@ -171,16 +168,25 @@ def twistlock_scan_flow(
     (4) log combined stdout/stderr, (5) fail the flow if the summary line reports critical/high > 0
     or ``Vulnerability threshold check results: FAIL``.
 
-    Set ``TWISTLOCK_USERNAME`` and ``TWISTLOCK_PASSWORD`` in the environment (e.g. on the Prefect worker).
-    Optional: ``TWISTLOCK_ADDRESS`` (default ``https://twistlock.nci.nih.gov``), ``TWISTCLI`` when
-    ``twistcli_skip_download`` is true.
+    Worker env (Prefect Secret blocks mapped to these names): ``twistlock-username``,
+    ``twistlock-password``, optional ``twistlock-address`` (defaults to NCI console URL).
+    Flow parameter ``twistlock_address`` overrides the env address when set.
+    With ``twistcli_skip_download``, the worker must already have ``twistcli`` on ``PATH`` (e.g. system install).
+    Default is to download ``twistcli`` from the console after login (no PATH needed).
     """
     logger = get_run_logger()
-    address = twistlock_address or os.environ.get("TWISTLOCK_ADDRESS") or DEFAULT_TWISTLOCK_ADDRESS
-    username = os.environ.get("TWISTLOCK_USERNAME")
-    password = os.environ.get("TWISTLOCK_PASSWORD")
+    _addr = os.environ.get("twistlock-address")
+    twistlock_addr_env = _addr.strip() if _addr else None
+    address = twistlock_address or twistlock_addr_env or DEFAULT_TWISTLOCK_ADDRESS
+
+    _user = os.environ.get("twistlock-username")
+    username = _user.strip() if _user else None
+    _pw = os.environ.get("twistlock-password")
+    password = _pw.strip() if _pw else None
     if not username or not password:
-        raise RuntimeError("TWISTLOCK_USERNAME and TWISTLOCK_PASSWORD must be set in the environment")
+        raise RuntimeError(
+            "Set twistlock-username and twistlock-password in the Prefect worker environment."
+        )
 
     token = _authenticate(address, username, password)
     logger.info("Twistlock authentication succeeded")
