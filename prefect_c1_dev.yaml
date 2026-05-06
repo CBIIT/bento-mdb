@@ -158,3 +158,15 @@ deployments:
     name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: twistlock-scan
+  version:
+  tags: []
+  concurrency_limit:
+  description: "Twistlock image scan (VPN worker). Fails on critical/high findings; needs TWISTLOCK_* env."
+  entrypoint: src/bento_mdb/flows/twistlock_scan.py:twistlock_scan_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}

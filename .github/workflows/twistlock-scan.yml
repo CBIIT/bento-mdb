@@ -1,0 +1,205 @@
+name: Twistlock Scan (Prefect)
+
+permissions: 
+  contents: write
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which account the ECR repository is in"
+        type: choice
+        default: fnl-leidos
+        options:
+          - fnl-leidos
+          - ECR-cbiit-cloudone
+      scan_target:
+        description: "Which image (same URIs as Build STS push)"
+        type: choice
+        default: fast-api
+        options:
+          - fast-api
+          - sts
+          - both
+      twistlock_address:
+        description: "Optional Twistlock console URL (default from Prefect worker env / script)"
+        required: false
+        default: ""
+        type: string
+      twistcli_skip_download:
+        description: "If true, use twistcli on PATH on the Prefect worker instead of downloading"
+        required: false
+        type: boolean
+        default: false
+
+run-name: "Twistlock ${{ inputs.scan_target }} (${{ inputs.environment }})"
+
+jobs:
+  twistlock-scan:
+    name: Pull from ECR and trigger Twistlock
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+        ECR_REPOSITORY: crdc-mdb-sts
+        ECR_STS_REPOSITORY: crdc-mdb-sts-fast-api
+        REGION: "us-east-1"
+        AWS_BUILD_ROLE_TO_ASSUME: ${{ secrets.AWS_BUILD_ROLE_TO_ASSUME }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+#       ref: ${{ env.CODE_BRANCH }}
+#       ref: ${{ github.ref_name }}
+          submodules: true
+
+      # --- Same logic as Build STS Image: Extract branch name and set tag image ---
+      - name: Extract branch name and set tag image
+        id: extract_branch
+        run: |
+          BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          echo "branch=$BRANCH_NAME" >> "$GITHUB_ENV"
+          echo "Current branch is: $BRANCH_NAME"
+          git fetch --tags --force --quiet
+          tag=$(git tag -l $BRANCH_NAME* | sort -V | tail -1)
+          if  [ ! -z "$tag" ];
+          then
+            # Increment the build number if a tag is found
+            build_num=$(echo "${tag##*.}")
+            build_num=$((build_num+1))
+            echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
+          else
+            # If no tag is found create a new tag name
+            build_num=1
+            echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
+          fi
+
+      # --- Same image URIs as Build STS push steps (STS_IMAGE_NAME / STS_FAST_API_IMAGE_NAME) ---
+      - name: Set STS image names
+        run: |
+          echo "STS_IMAGE_NAME=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "STS_FAST_API_IMAGE_NAME=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+
+      - name: Configure AWS Role to assume using OIDC authentication
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        env:
+          REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        run:  |
+          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY_URL
+
+      - name: Pull image(s) from ECR
+        id: pull-ecr
+        env:
+          SCAN_TARGET: ${{ inputs.scan_target }}
+        run: |
+          set -euo pipefail
+          case "$SCAN_TARGET" in
+            fast-api)
+              echo "Pulling $STS_FAST_API_IMAGE_NAME"
+              docker pull "$STS_FAST_API_IMAGE_NAME"
+              ;;
+            sts)
+              echo "Pulling $STS_IMAGE_NAME"
+              docker pull "$STS_IMAGE_NAME"
+              ;;
+            both)
+              echo "Pulling $STS_FAST_API_IMAGE_NAME"
+              docker pull "$STS_FAST_API_IMAGE_NAME"
+              echo "Pulling $STS_IMAGE_NAME"
+              docker pull "$STS_IMAGE_NAME"
+              ;;
+            *)
+              echo "Unknown scan_target: $SCAN_TARGET" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install Prefect CLI
+        run: uv pip install --system "prefect==3.3.4"
+
+      - name: Run Twistlock scan deployment (STS FAST API image)
+        id: prefect-twistlock-fast-api
+        if: ${{ inputs.scan_target == 'fast-api' || inputs.scan_target == 'both' }}
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+          TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
+          TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
+        run: |
+          set -euo pipefail
+          IMAGE_REF="$STS_FAST_API_IMAGE_NAME"
+          if [ -n "${TWISTLOCK_ADDRESS:-}" ]; then
+            PARAMS=$(jq -n \
+              --arg image_ref "$IMAGE_REF" \
+              --arg twistlock_address "$TWISTLOCK_ADDRESS" \
+              --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
+              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+          else
+            PARAMS=$(jq -n \
+              --arg image_ref "$IMAGE_REF" \
+              --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
+              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+          fi
+          echo "PARAMS=$PARAMS"
+          prefect deployment run twistlock-scan/twistlock-scan \
+            --params "$PARAMS" \
+            --watch \
+            --watch-interval 30
+
+      - name: Run Twistlock scan deployment (STS image)
+        id: prefect-twistlock-sts
+        if: ${{ inputs.scan_target == 'sts' || inputs.scan_target == 'both' }}
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+          TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
+          TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
+        run: |
+          set -euo pipefail
+          IMAGE_REF="$STS_IMAGE_NAME"
+          if [ -n "${TWISTLOCK_ADDRESS:-}" ]; then
+            PARAMS=$(jq -n \
+              --arg image_ref "$IMAGE_REF" \
+              --arg twistlock_address "$TWISTLOCK_ADDRESS" \
+              --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
+              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+          else
+            PARAMS=$(jq -n \
+              --arg image_ref "$IMAGE_REF" \
+              --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
+              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+          fi
+          echo "PARAMS=$PARAMS"
+          prefect deployment run twistlock-scan/twistlock-scan \
+            --params "$PARAMS" \
+            --watch \
+            --watch-interval 30
+
+      - name: Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08     # v1.6.0
+        with:
+          status: ${{ job.status }}
+          steps: ${{ toJson(steps) }}
+        if: always()
