@@ -175,32 +175,55 @@ def twistlock_scan_flow(
     Default is to download ``twistcli`` from the console after login (no PATH needed).
     """
     logger = get_run_logger()
+    logger.info(
+        "twistlock_scan_flow starting (image_ref=%r twistcli_skip_download=%s twistcli_install_dir=%r)",
+        image_ref,
+        twistcli_skip_download,
+        twistcli_install_dir,
+    )
     _addr = os.environ.get("twistlock-address")
     twistlock_addr_env = _addr.strip() if _addr else None
     address = twistlock_address or twistlock_addr_env or DEFAULT_TWISTLOCK_ADDRESS
+    if twistlock_address:
+        _addr_src = "flow parameter"
+    elif twistlock_addr_env:
+        _addr_src = "twistlock-address env"
+    else:
+        _addr_src = "default constant"
+    logger.info("resolved twistlock console address=%r (source=%s)", address, _addr_src)
 
     _user = os.environ.get("twistlock-username")
     username = _user.strip() if _user else None
     _pw = os.environ.get("twistlock-password")
     password = _pw.strip() if _pw else None
+    logger.info(
+        "worker credentials: twistlock-username set=%s twistlock-password set=%s",
+        bool(username),
+        bool(password),
+    )
     if not username or not password:
         raise RuntimeError(
             "Set twistlock-username and twistlock-password in the Prefect worker environment."
         )
 
+    logger.info("authenticating to Twistlock console…")
     token = _authenticate(address, username, password)
     logger.info("Twistlock authentication succeeded")
 
+    logger.info("resolving twistcli binary (download=%s)…", not twistcli_skip_download)
     twistcli, cleanup_dir = _resolve_twistcli_binary(
         twistcli_skip_download=twistcli_skip_download,
         twistcli_install_dir=twistcli_install_dir,
         address=address,
         token=token,
     )
+    logger.info("using twistcli at %s", twistcli)
     try:
-        logger.info("Running twistcli scan for %s", image_ref)
+        logger.info("running twistcli scan for %s", image_ref)
         output = _run_twistcli_scan(twistcli, address, username, token, image_ref)
+        logger.info("twistcli finished; output length=%s chars", len(output))
         print(output)
+        logger.info("evaluating scan output against policy…")
         _evaluate_scan_output(output)
         logger.info("Twistlock scan passed (no critical/high; threshold not FAIL).")
     finally:
