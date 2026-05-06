@@ -218,7 +218,7 @@ jobs:
         if: ${{ inputs.scan_target == 'fast-api' || inputs.scan_target == 'both' }}
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
           TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
           TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
         run: |
@@ -247,7 +247,7 @@ jobs:
         if: ${{ inputs.scan_target == 'sts' || inputs.scan_target == 'both' }}
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
           TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
           TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
         run: |
