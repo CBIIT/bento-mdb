@@ -39,6 +39,14 @@ on:
         required: false
         type: boolean
         default: false
+      skip_github_ecr_verify_and_pull:
+        description: >
+          If true: no AWS OIDC on GitHub, skip ECR manifest check and docker pull — only trigger Prefect with image_ref.
+          Use when the image is not in ECR yet from GitHub's view, or only the VPN Prefect worker can reach ECR.
+          The worker must still pull/run scan against a tag that exists when the flow runs.
+        required: false
+        type: boolean
+        default: false
 
 run-name: "Twistlock ${{ inputs.scan_target }} (${{ inputs.environment }})"
 
@@ -95,6 +103,7 @@ jobs:
           echo "STS_FAST_API_IMAGE_NAME=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_STS_REPOSITORY}}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
 
       - name: Configure AWS Role to assume using OIDC authentication
+        if: ${{ !inputs.skip_github_ecr_verify_and_pull }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ secrets.AWS_REGION }}
@@ -102,6 +111,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
+        if: ${{ !inputs.skip_github_ecr_verify_and_pull }}
         env:
           REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
         run:  |
@@ -109,6 +119,7 @@ jobs:
 
       - name: Verify image tag exists in ECR
         id: verify-ecr
+        if: ${{ !inputs.skip_github_ecr_verify_and_pull }}
         env:
           SCAN_TARGET: ${{ inputs.scan_target }}
           AWS_REGION_USE: ${{ secrets.AWS_REGION }}
@@ -116,7 +127,7 @@ jobs:
           set -euo pipefail
           TAG="${IMAGE_TAG:?}"
           REG="${AWS_REGION_USE}"
-          HINT='Complete workflow "Build STS Image" on this branch (same environment) first so the image is pushed, then re-run; or set workflow input image_tag to a tag you know exists in ECR.'
+          HINT='Complete workflow "Build STS Image" on this branch (same environment) first so the image is pushed, then re-run; or set workflow input image_tag to a tag already in ECR; or enable skip_github_ecr_verify_and_pull to only trigger Prefect (worker must reach ECR).'
 
           check_repo() {
             local repo="$1"
@@ -143,6 +154,7 @@ jobs:
 
       - name: Pull image(s) from ECR
         id: pull-ecr
+        if: ${{ !inputs.skip_github_ecr_verify_and_pull }}
         env:
           SCAN_TARGET: ${{ inputs.scan_target }}
         run: |
