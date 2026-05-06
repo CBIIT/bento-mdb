@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import ssl
@@ -14,8 +13,37 @@ import urllib.request
 from pathlib import Path
 
 from prefect import flow, get_run_logger
+from prefect.blocks.system import Secret
 
 DEFAULT_TWISTLOCK_ADDRESS = "https://twistlock.nci.nih.gov"
+
+
+def _require_secret_block(name: str) -> str:
+    """Load a non-empty Prefect Secret block (by block name)."""
+    try:
+        val = Secret.load(name).get()  # type: ignore reportAttributeAccessIssue
+    except Exception as e:
+        msg = (
+            f"Prefect Secret block {name!r} is missing or not readable in this workspace. "
+            f"Create the Secret block with that exact name. ({e})"
+        )
+        raise RuntimeError(msg) from e
+    if val is None or not str(val).strip():
+        raise RuntimeError(f"Prefect Secret block {name!r} is empty.")
+    return str(val).strip()
+
+
+def _optional_secret_block(name: str) -> str | None:
+    """Return Secret value or None if the block is missing or empty."""
+    try:
+        val = Secret.load(name).get()  # type: ignore reportAttributeAccessIssue
+    except Exception:
+        return None
+    if val is None:
+        return None
+    s = str(val).strip()
+    return s if s else None
+
 
 _UNSAFE_TLS = ssl.create_default_context()
 _UNSAFE_TLS.check_hostname = False
@@ -168,9 +196,9 @@ def twistlock_scan_flow(
     (4) log combined stdout/stderr, (5) fail the flow if the summary line reports critical/high > 0
     or ``Vulnerability threshold check results: FAIL``.
 
-    Worker env (Prefect Secret blocks mapped to these names): ``twistlock-username``,
-    ``twistlock-password``, optional ``twistlock-address`` (defaults to NCI console URL).
-    Flow parameter ``twistlock_address`` overrides the env address when set.
+    **Credentials must come from Prefect Secret blocks** named ``twistlock-username`` and
+    ``twistlock-password``. Optional Secret ``twistlock-address``; otherwise use flow parameter
+    ``twistlock_address``, then the default NCI console URL.
     With ``twistcli_skip_download``, the worker must already have ``twistcli`` on ``PATH`` (e.g. system install).
     Default is to download ``twistcli`` from the console after login (no PATH needed).
     """
@@ -181,30 +209,19 @@ def twistlock_scan_flow(
         twistcli_skip_download,
         twistcli_install_dir,
     )
-    _addr = os.environ.get("twistlock-address")
-    twistlock_addr_env = _addr.strip() if _addr else None
-    address = twistlock_address or twistlock_addr_env or DEFAULT_TWISTLOCK_ADDRESS
+    twistlock_addr_secret = _optional_secret_block("twistlock-address")
+    address = twistlock_address or twistlock_addr_secret or DEFAULT_TWISTLOCK_ADDRESS
     if twistlock_address:
         _addr_src = "flow parameter"
-    elif twistlock_addr_env:
-        _addr_src = "twistlock-address env"
+    elif twistlock_addr_secret:
+        _addr_src = "Prefect Secret twistlock-address"
     else:
         _addr_src = "default constant"
     logger.info("resolved twistlock console address=%r (source=%s)", address, _addr_src)
 
-    _user = os.environ.get("twistlock-username")
-    username = _user.strip() if _user else None
-    _pw = os.environ.get("twistlock-password")
-    password = _pw.strip() if _pw else None
-    logger.info(
-        "worker credentials: twistlock-username set=%s twistlock-password set=%s",
-        bool(username),
-        bool(password),
-    )
-    if not username or not password:
-        raise RuntimeError(
-            "Set twistlock-username and twistlock-password in the Prefect worker environment."
-        )
+    username = _require_secret_block("twistlock-username")
+    password = _require_secret_block("twistlock-password")
+    logger.info("loaded twistlock-username and twistlock-password from Prefect Secret blocks")
 
     logger.info("authenticating to Twistlock console…")
     token = _authenticate(address, username, password)
