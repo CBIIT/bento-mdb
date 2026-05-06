@@ -1,6 +1,6 @@
 name: Twistlock Scan (Prefect)
 
-permissions: 
+permissions:
   contents: write
   id-token: write
 
@@ -14,6 +14,13 @@ on:
         options:
           - fnl-leidos
           - ECR-cbiit-cloudone
+      image_tag:
+        description:
+          ECR tag that already exists (e.g. from a completed "Build STS Image" run). Strongly recommended on feature branches.
+          Leave empty to compute from git like Build STS (branch name + tag counter) — that tag must already be pushed to ECR or pull will fail.
+        required: false
+        default: ""
+        type: string
       scan_target:
         description: "Which image (same URIs as Build STS push)"
         type: choice
@@ -23,12 +30,12 @@ on:
           - sts
           - both
       twistlock_address:
-        description: "Optional Twistlock console URL (default from Prefect worker env / script)"
+        description: "Optional Twistlock console URL for Prefect params"
         required: false
         default: ""
         type: string
       twistcli_skip_download:
-        description: "If true, use twistcli on PATH on the Prefect worker instead of downloading"
+        description: "Passed to Prefect flow (worker uses PATH twistcli)"
         required: false
         type: boolean
         default: false
@@ -57,10 +64,16 @@ jobs:
 #       ref: ${{ github.ref_name }}
           submodules: true
 
-      # --- Same logic as Build STS Image: Extract branch name and set tag image ---
       - name: Extract branch name and set tag image
         id: extract_branch
+        env:
+          MANUAL_IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
+          if [ -n "$MANUAL_IMAGE_TAG" ]; then
+            echo "IMAGE_TAG=$MANUAL_IMAGE_TAG" >> $GITHUB_ENV
+            echo "Using workflow input image_tag=$MANUAL_IMAGE_TAG"
+            exit 0
+          fi
           BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
           echo "branch=$BRANCH_NAME" >> "$GITHUB_ENV"
           echo "Current branch is: $BRANCH_NAME"
@@ -68,17 +81,14 @@ jobs:
           tag=$(git tag -l $BRANCH_NAME* | sort -V | tail -1)
           if  [ ! -z "$tag" ];
           then
-            # Increment the build number if a tag is found
             build_num=$(echo "${tag##*.}")
             build_num=$((build_num+1))
             echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
           else
-            # If no tag is found create a new tag name
             build_num=1
             echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
           fi
 
-      # --- Same image URIs as Build STS push steps (STS_IMAGE_NAME / STS_FAST_API_IMAGE_NAME) ---
       - name: Set STS image names
         run: |
           echo "STS_IMAGE_NAME=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
@@ -97,6 +107,40 @@ jobs:
         run:  |
           aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY_URL
 
+      - name: Verify image tag exists in ECR
+        id: verify-ecr
+        env:
+          SCAN_TARGET: ${{ inputs.scan_target }}
+          AWS_REGION_USE: ${{ secrets.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          TAG="${IMAGE_TAG:?}"
+          REG="${AWS_REGION_USE}"
+          HINT='Complete workflow "Build STS Image" on this branch (same environment) first so the image is pushed, then re-run; or set workflow input image_tag to a tag you know exists in ECR.'
+
+          check_repo() {
+            local repo="$1"
+            if ! aws ecr describe-images \
+              --repository-name "$repo" \
+              --image-ids "imageTag=${TAG}" \
+              --region "$REG" \
+              --output text >/dev/null 2>&1; then
+              echo "::error title=ECR image missing::No manifest for ${repo}:${TAG}. ${HINT}"
+              exit 1
+            fi
+            echo "Verified ECR: ${repo}:${TAG}"
+          }
+
+          case "$SCAN_TARGET" in
+            fast-api) check_repo crdc-mdb-sts-fast-api ;;
+            sts) check_repo crdc-mdb-sts ;;
+            both)
+              check_repo crdc-mdb-sts-fast-api
+              check_repo crdc-mdb-sts
+              ;;
+            *) echo "Unknown scan_target"; exit 1 ;;
+          esac
+
       - name: Pull image(s) from ECR
         id: pull-ecr
         env:
@@ -113,15 +157,10 @@ jobs:
               docker pull "$STS_IMAGE_NAME"
               ;;
             both)
-              echo "Pulling $STS_FAST_API_IMAGE_NAME"
               docker pull "$STS_FAST_API_IMAGE_NAME"
-              echo "Pulling $STS_IMAGE_NAME"
               docker pull "$STS_IMAGE_NAME"
               ;;
-            *)
-              echo "Unknown scan_target: $SCAN_TARGET" >&2
-              exit 1
-              ;;
+            *) exit 1 ;;
           esac
 
       - name: Set up Python
