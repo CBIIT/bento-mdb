@@ -1,6 +1,6 @@
 name: Twistlock Scan (Prefect)
 
-permissions: 
+permissions:
   contents: write
   id-token: write
 
@@ -69,7 +69,6 @@ jobs:
 #       ref: ${{ github.ref_name }}
           submodules: true
 
-      # --- Same logic as Build STS Image: Extract branch name and set tag image ---
       - name: Extract branch name and set tag image
         id: extract_branch
         env:
@@ -87,17 +86,14 @@ jobs:
           tag=$(git tag -l $BRANCH_NAME* | sort -V | tail -1)
           if  [ ! -z "$tag" ];
           then
-            # Increment the build number if a tag is found
             build_num=$(echo "${tag##*.}")
             build_num=$((build_num+1))
             echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
           else
-            # If no tag is found create a new tag name
             build_num=1
             echo "IMAGE_TAG=$BRANCH_NAME.$build_num" >> $GITHUB_ENV
           fi
 
-      # --- Same image URIs as Build STS push steps (STS_IMAGE_NAME / STS_FAST_API_IMAGE_NAME) ---
       - name: Set STS image names
         run: |
           echo "STS_IMAGE_NAME=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY}}:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
@@ -181,36 +177,7 @@ jobs:
           echo "Pushing: $STS_FAST_API_IMAGE_NAME"
           docker push $STS_FAST_API_IMAGE_NAME
 
-      - name: Verify image tag exists in ECR
-        id: verify-ecr
-        env:
-          SCAN_TARGET: ${{ inputs.scan_target }}
-          AWS_REGION_USE: ${{ secrets.AWS_REGION }}
-        run: |
-          set -euo pipefail
-          TAG="${IMAGE_TAG:?}"
-          REG="${AWS_REGION_USE}"
-
-          check_repo() {
-            local repo="$1"
-            aws ecr describe-images \
-              --repository-name "$repo" \
-              --image-ids "imageTag=${TAG}" \
-              --region "$REG" \
-              --output text >/dev/null
-            echo "Verified ECR: ${repo}:${TAG}"
-          }
-
-          case "$SCAN_TARGET" in
-            fast-api) check_repo crdc-mdb-sts-fast-api ;;
-            sts) check_repo crdc-mdb-sts ;;
-            both)
-              check_repo crdc-mdb-sts-fast-api
-              check_repo crdc-mdb-sts
-              ;;
-            *) echo "Unknown scan_target"; exit 1 ;;
-          esac
-
+      # Registry round-trip check (no ecr:DescribeImages — build role often lacks that permission).
       - name: Pull image(s) from ECR
         id: pull-ecr
         env:
