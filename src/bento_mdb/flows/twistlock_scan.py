@@ -54,7 +54,7 @@ def _http_json_request(
     url: str,
     *,
     token: str | None = None,
-    body: dict | None = None,
+    body: dict | list | None = None,
     timeout: int = 120,
 ) -> dict | list:
     data = json.dumps(body).encode() if body is not None else None
@@ -121,10 +121,56 @@ def _start_on_demand_registry_scan(
     _http_json_request("POST", url, token=token, body=body, timeout=120)
 
 
-def _notify_registry_scan_defenders(*, address: str, api_version: str, token: str) -> None:
-    """POST /registry/scan/select — notify all registry scanner defenders (helps pick up queued work)."""
+def _notify_registry_scan_defenders(
+    *,
+    address: str,
+    api_version: str,
+    token: str,
+    registry: str,
+    repo: str,
+    tag: str,
+) -> None:
+    """POST registry/scan/select — NCI uses /api/v1/... with collections/project query + array body."""
+    collections = _optional_secret_block("twistlock-scan-select-collections")
+    project = _optional_secret_block("twistlock-scan-select-project")
+    payload_mode = (_optional_secret_block("twistlock-scan-select-tag-payload") or "registry-only").lower()
+
+    if collections and project:
+        q = urllib.parse.urlencode(
+            {"collections": collections, "project": project},
+            quote_via=urllib.parse.quote_plus,
+        )
+        url = f"{address.rstrip('/')}/api/v1/registry/scan/select?{q}"
+        if payload_mode in ("full", "repo-tag", "image"):
+            body: list | dict = [{"tag": {"registry": registry, "repo": repo, "tag": tag}}]
+        else:
+            body = [{"tag": {"registry": registry, "repo": "", "tag": ""}}]
+        _http_json_request("POST", url, token=token, body=body, timeout=120)
+        return
+
     url = f"{_registry_api_base(address, api_version)}/registry/scan/select"
     _http_json_request("POST", url, token=token, body={}, timeout=120)
+
+
+def try_fetch_registry_compact_result(
+    *,
+    address: str,
+    api_version: str,
+    token: str,
+    image_ref: str,
+) -> dict | None:
+    """Return compact registry row for ``image_ref``, or None if Twistlock has no row yet."""
+    query = urllib.parse.urlencode({"name": image_ref, "compact": "true"})
+    url = f"{_registry_api_base(address, api_version)}/registry?{query}"
+    resp = _http_json_request("GET", url, token=token, timeout=120)
+    if isinstance(resp, list):
+        if not resp:
+            return None
+        first = resp[0]
+        return first if isinstance(first, dict) else None
+    if isinstance(resp, dict):
+        return resp
+    return None
 
 
 def _poll_registry_scan_progress(
@@ -249,6 +295,11 @@ def twistlock_scan_flow(
 
     Secrets (Prefect blocks): ``twistlock-username``, ``twistlock-password``;
     optional ``twistlock-address``, ``twistlock-api-version``.
+
+    NCI scan/select (optional): ``twistlock-scan-select-collections`` and
+    ``twistlock-scan-select-project`` together enable
+    ``POST /api/v1/registry/scan/select?...`` with array body.
+    Optional ``twistlock-scan-select-tag-payload``: ``registry-only`` (default) or ``full``.
     """
     logger = get_run_logger()
     logger.info(
@@ -276,6 +327,22 @@ def twistlock_scan_flow(
     registry, repo, tag = _split_image_ref(image_ref)
     logger.info("parsed image_ref registry=%s repo=%s tag=%s", registry, repo, tag)
 
+    existing = try_fetch_registry_compact_result(
+        address=address, api_version=api_version, token=token, image_ref=image_ref
+    )
+    if existing:
+        logger.info(
+            "Twistlock registry already has a row for this image (compact lookup succeeded). "
+            "Snippet: %s",
+            json.dumps(existing)[:800],
+        )
+    else:
+        logger.info(
+            "No compact registry row yet for %r (Twistlock may not have indexed this tag). "
+            "Proceeding with on-demand scan.",
+            image_ref,
+        )
+
     logger.info("step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)…")
     _start_on_demand_registry_scan(
         address=address,
@@ -290,7 +357,14 @@ def twistlock_scan_flow(
     if notify_registry_defenders:
         logger.info("step 2b: POST registry/scan/select (notify registry scanner defenders)…")
         try:
-            _notify_registry_scan_defenders(address=address, api_version=api_version, token=token)
+            _notify_registry_scan_defenders(
+                address=address,
+                api_version=api_version,
+                token=token,
+                registry=registry,
+                repo=repo,
+                tag=tag,
+            )
             logger.info("registry scan/select completed")
         except RuntimeError as e:
             logger.warning("registry/scan/select failed (continuing with progress poll): %s", e)
@@ -317,3 +391,50 @@ def twistlock_scan_flow(
     logger.info("evaluating scan output against policy…")
     _evaluate_registry_scan_result(result)
     logger.info("Twistlock registry scan passed (no critical/high).")
+
+
+@flow(name="twistlock-registry-verify", log_prints=True)
+def verify_twistlock_registry_image_flow(
+    image_ref: str,
+    *,
+    twistlock_address: str | None = None,
+    fail_if_not_found: bool = False,
+) -> dict:
+    """Check whether Twistlock already has a compact registry row for ``image_ref`` (no scan).
+
+    Returns ``{"found": bool, "image_ref": str, "row": dict | None}``.
+
+    Prefect Secrets: ``twistlock-username``, ``twistlock-password``; optional
+    ``twistlock-address``, ``twistlock-api-version``.
+    """
+    logger = get_run_logger()
+    image_ref = image_ref.strip()
+    if not image_ref:
+        raise RuntimeError("image_ref is empty.")
+
+    twistlock_addr_secret = _optional_secret_block("twistlock-address")
+    address = twistlock_address or twistlock_addr_secret or DEFAULT_TWISTLOCK_ADDRESS
+    api_version = _optional_secret_block("twistlock-api-version") or DEFAULT_COMPUTE_API_VERSION
+    logger.info("verify: address=%r api_version=%r image_ref=%r", address, api_version, image_ref)
+
+    _split_image_ref(image_ref)
+
+    username = _require_secret_block("twistlock-username")
+    password = _require_secret_block("twistlock-password")
+    token = _authenticate(address, username, password)
+
+    row = try_fetch_registry_compact_result(
+        address=address, api_version=api_version, token=token, image_ref=image_ref
+    )
+    if row:
+        logger.info("FOUND: registry row exists for this image.")
+        out: dict = {"found": True, "image_ref": image_ref, "row": row}
+    else:
+        logger.info("NOT FOUND: no compact registry row for this name.")
+        out = {"found": False, "image_ref": image_ref, "row": None}
+        if fail_if_not_found:
+            raise RuntimeError(
+                f"No Twistlock registry row for {image_ref!r}. "
+                "Check name string vs Console UI, API version, or wait for scan to index."
+            )
+    return out
