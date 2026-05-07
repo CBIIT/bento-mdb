@@ -127,6 +127,7 @@ def _poll_registry_scan_progress(
     token: str,
     repo: str,
     tag: str,
+    logger,
     timeout_seconds: int = 900,
     interval_seconds: int = 15,
 ) -> None:
@@ -134,18 +135,35 @@ def _poll_registry_scan_progress(
     query = urllib.parse.urlencode({"onDemand": "true", "repo": repo, "tag": tag})
     url = f"{_registry_api_base(address, api_version)}/registry/progress?{query}"
     seen_non_empty = False
+    polls = 0
+    empty_polls = 0
+    max_initial_empty_polls = 8
     while True:
+        polls += 1
         if time.time() - started > timeout_seconds:
             raise RuntimeError(f"Timed out waiting for registry scan progress after {timeout_seconds}s.")
         resp = _http_json_request("GET", url, token=token, timeout=60)
         if isinstance(resp, list) and resp:
             seen_non_empty = True
+            empty_polls = 0
             ongoing = any(bool(item.get("isScanOngoing")) for item in resp if isinstance(item, dict))
+            if polls == 1 or polls % 4 == 0:
+                logger.info("registry progress poll #%s: %s", polls, json.dumps(resp)[:600])
             if not ongoing:
                 return
         elif seen_non_empty:
             # API may return [] right after completion for prior on-demand scans.
             return
+        else:
+            empty_polls += 1
+            if polls == 1 or polls % 4 == 0:
+                logger.info("registry progress poll #%s returned empty list", polls)
+            if empty_polls >= max_initial_empty_polls:
+                raise RuntimeError(
+                    "Registry progress endpoint kept returning empty results for this on-demand scan. "
+                    "This usually means the image is outside configured registry scan scope, repo/tag parsing "
+                    "does not match Console expectations, or API version is mismatched for this Console."
+                )
         time.sleep(interval_seconds)
 
 
@@ -259,6 +277,7 @@ def twistlock_scan_flow(
         token=token,
         repo=repo,
         tag=tag,
+        logger=logger,
     )
 
     logger.info("fetching compact registry scan result…")
