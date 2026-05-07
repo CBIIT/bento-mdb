@@ -1,22 +1,20 @@
-"""Twistlock (Prisma Cloud Compute) image scan — run on VPN-capable workers."""
+"""Twistlock (Prisma Cloud Compute) registry scan via Console API."""
 
 from __future__ import annotations
 
 import json
 import re
-import shutil
-import socket
 import ssl
-import subprocess
-import tempfile
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from pathlib import Path
 
 from prefect import flow, get_run_logger
 from prefect.blocks.system import Secret
 
 DEFAULT_TWISTLOCK_ADDRESS = "https://twistlock.nci.nih.gov"
+DEFAULT_COMPUTE_API_VERSION = "v34.02"
 
 
 def _require_secret_block(name: str) -> str:
@@ -51,155 +49,156 @@ _UNSAFE_TLS.check_hostname = False
 _UNSAFE_TLS.verify_mode = ssl.CERT_NONE
 
 
-def _http_json_post(url: str, body: dict, *, timeout: int = 120) -> dict:
-    data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, method="POST")
+def _http_json_request(
+    method: str,
+    url: str,
+    *,
+    token: str | None = None,
+    body: dict | None = None,
+    timeout: int = 120,
+) -> dict | list:
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
     req.add_header("Content-Type", "application/json")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, context=_UNSAFE_TLS, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
+            text = resp.read().decode()
     except urllib.error.HTTPError as e:
         err_body = e.read().decode(errors="replace")
         msg = f"HTTP {e.code} from {url}: {err_body}"
         raise RuntimeError(msg) from e
-
-
-def _http_download(url: str, dest: Path, headers: dict[str, str], *, timeout: int = 600) -> None:
-    req = urllib.request.Request(url, method="GET")
-    for k, v in headers.items():
-        req.add_header(k, v)
-    with urllib.request.urlopen(req, context=_UNSAFE_TLS, timeout=timeout) as resp:
-        dest.write_bytes(resp.read())
-    dest.chmod(0o755)
+    if not text.strip():
+        return {}
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Non-JSON response from {url}: {text[:500]!r}") from e
 
 
 def _authenticate(address: str, username: str, password: str) -> str:
     url = f"{address.rstrip('/')}/api/v1/authenticate"
-    auth_json = _http_json_post(url, {"username": username, "password": password})
+    auth_json = _http_json_request("POST", url, body={"username": username, "password": password})
+    if not isinstance(auth_json, dict):
+        raise RuntimeError(f"Unexpected auth response type: {type(auth_json).__name__}")
     token = auth_json.get("token")
     if not token:
         raise RuntimeError(f"Twistlock authentication failed: {auth_json!r}")
     return str(token)
 
 
-def _download_twistcli(address: str, token: str, dest: Path) -> None:
-    url = f"{address.rstrip('/')}/api/v1/util/twistcli"
-    _http_download(url, dest, {"Authorization": f"Bearer {token}"})
-    if not dest.is_file() or dest.stat().st_size == 0:
-        raise RuntimeError("twistcli download returned an empty file; check token and /api/v1/util/twistcli access.")
-    head = dest.read_bytes()[:512]
-    if head.startswith((b"{", b"[")) or b"<html" in head[:256].lower():
+def _split_image_ref(image_ref: str) -> tuple[str, str, str]:
+    """Parse full image ref into (registry, repo, tag)."""
+    image_ref = image_ref.strip()
+    if not image_ref:
+        raise RuntimeError("image_ref is empty.")
+    m = re.match(r"^(?P<registry>[^/]+)/(?P<repo>.+):(?P<tag>[^:@]+)$", image_ref)
+    if not m:
         raise RuntimeError(
-            "twistcli download returned non-binary body (auth or API error?): "
-            + head[:200].decode(errors="replace")
+            "image_ref must be in '<registry>/<repo>:<tag>' form for registry API scans. "
+            f"Got: {image_ref!r}"
         )
-    # Linux worker: official twistcli is an ELF binary
-    if not head.startswith(b"\x7fELF"):
-        raise RuntimeError(
-            "twistcli download does not look like a Linux ELF binary; use Linux Prefect workers."
-        )
+    return m.group("registry"), m.group("repo"), m.group("tag")
 
 
-def _resolve_twistcli_binary(
+def _registry_api_base(address: str, api_version: str) -> str:
+    return f"{address.rstrip('/')}/api/{api_version.strip('/')}"
+
+
+def _start_on_demand_registry_scan(
     *,
-    twistcli_skip_download: bool,
-    twistcli_install_dir: str | None,
     address: str,
+    api_version: str,
     token: str,
-) -> tuple[Path, Path | None]:
-    """Return (path to twistcli, temp dir to delete after run, or None)."""
-    if twistcli_skip_download:
-        found = shutil.which("twistcli")
-        if found:
-            return Path(found), None
-        raise RuntimeError(
-            "twistcli not found on PATH; install it on the worker or leave twistcli_skip_download false "
-            "to download from the console API."
-        )
-
-    if twistcli_install_dir:
-        install = Path(twistcli_install_dir).expanduser().resolve()
-        install.mkdir(parents=True, exist_ok=True)
-        dest = install / "twistcli"
-        _download_twistcli(address, token, dest)
-        return dest, None
-
-    tmp = Path(tempfile.mkdtemp(prefix="twistlock-cli-"))
-    dest = tmp / "twistcli"
-    _download_twistcli(address, token, dest)
-    return dest, tmp
+    registry: str,
+    repo: str,
+    tag: str,
+) -> None:
+    url = f"{_registry_api_base(address, api_version)}/registry/scan"
+    body = {"onDemandScan": True, "tag": {"registry": registry, "repo": repo, "tag": tag, "digest": ""}}
+    _http_json_request("POST", url, token=token, body=body, timeout=120)
 
 
-def _run_twistcli_scan(
-    twistcli: Path,
+def _poll_registry_scan_progress(
+    *,
     address: str,
-    username: str,
+    api_version: str,
+    token: str,
+    repo: str,
+    tag: str,
+    timeout_seconds: int = 900,
+    interval_seconds: int = 15,
+) -> None:
+    started = time.time()
+    query = urllib.parse.urlencode({"onDemand": "true", "repo": repo, "tag": tag})
+    url = f"{_registry_api_base(address, api_version)}/registry/progress?{query}"
+    seen_non_empty = False
+    while True:
+        if time.time() - started > timeout_seconds:
+            raise RuntimeError(f"Timed out waiting for registry scan progress after {timeout_seconds}s.")
+        resp = _http_json_request("GET", url, token=token, timeout=60)
+        if isinstance(resp, list) and resp:
+            seen_non_empty = True
+            ongoing = any(bool(item.get("isScanOngoing")) for item in resp if isinstance(item, dict))
+            if not ongoing:
+                return
+        elif seen_non_empty:
+            # API may return [] right after completion for prior on-demand scans.
+            return
+        time.sleep(interval_seconds)
+
+
+def _fetch_registry_compact_result(
+    *,
+    address: str,
+    api_version: str,
     token: str,
     image_ref: str,
-) -> str:
-    proc = subprocess.run(
-        [
-            str(twistcli),
-            "images",
-            "scan",
-            "--address",
-            address,
-            "--user",
-            username,
-            "--token",
-            token,
-            "--details",
-            image_ref,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=3600,
-    )
-    out = (proc.stdout or "") + (proc.stderr or "")
-    if proc.returncode != 0:
-        raise RuntimeError(f"twistcli exited {proc.returncode}\n{out}")
-    return out
+) -> dict:
+    query = urllib.parse.urlencode({"name": image_ref, "compact": "true"})
+    url = f"{_registry_api_base(address, api_version)}/registry?{query}"
+    resp = _http_json_request("GET", url, token=token, timeout=120)
+    if isinstance(resp, list):
+        if not resp:
+            raise RuntimeError(f"No registry scan result found for image {image_ref!r}.")
+        first = resp[0]
+        if not isinstance(first, dict):
+            raise RuntimeError(f"Unexpected registry result item type: {type(first).__name__}")
+        return first
+    if isinstance(resp, dict):
+        return resp
+    raise RuntimeError(f"Unexpected registry result type: {type(resp).__name__}")
 
 
-def _assert_local_docker_socket_ready() -> None:
-    """Fail fast with actionable guidance when docker.sock is unavailable."""
-    sock_path = Path("/var/run/docker.sock")
-    if not sock_path.exists():
+def _find_critical_high_counts(data: object) -> tuple[int, int] | None:
+    if isinstance(data, dict):
+        crit = data.get("critical")
+        high = data.get("high")
+        if isinstance(crit, int) and isinstance(high, int):
+            return crit, high
+        for val in data.values():
+            found = _find_critical_high_counts(val)
+            if found is not None:
+                return found
+    elif isinstance(data, list):
+        for item in data:
+            found = _find_critical_high_counts(item)
+            if found is not None:
+                return found
+    return None
+
+
+def _evaluate_registry_scan_result(result: dict) -> None:
+    counts = _find_critical_high_counts(result)
+    if counts is None:
         raise RuntimeError(
-            "Docker socket not found at /var/run/docker.sock. "
-            "twistcli image scan requires local Docker daemon access. "
-            "Run this flow on a VPN worker host that has Docker installed and exposes docker.sock "
-            "(for ECS: EC2 launch type with host socket mount; not Fargate-only runtime)."
+            "Could not find critical/high counts in registry scan response. "
+            f"Response (truncated): {json.dumps(result)[:1200]}"
         )
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.settimeout(2)
-            s.connect(str(sock_path))
-    except OSError as e:
-        raise RuntimeError(
-            "Cannot connect to /var/run/docker.sock. "
-            "Ensure the flow container user has permission to access the Docker daemon."
-        ) from e
-
-
-def _evaluate_scan_output(output: str) -> None:
-    summary = None
-    for line in output.splitlines():
-        if "Vulnerabilities found for image" in line:
-            summary = line
-    if not summary:
-        raise RuntimeError(
-            "Could not find vulnerability summary line (expected 'Vulnerabilities found for image …')."
-        )
-    crit_m = re.search(r"critical - (\d+)", summary)
-    high_m = re.search(r"high - (\d+)", summary)
-    if not crit_m or not high_m:
-        raise RuntimeError(f"Could not parse critical/high from line: {summary!r}")
-    crit, high = int(crit_m.group(1)), int(high_m.group(1))
-    if crit > 0 or high > 0:
-        raise RuntimeError(f"Scan policy: failing on critical={crit} high={high}")
-    if re.search(r"Vulnerability threshold check results:\s*FAIL", output):
-        raise RuntimeError("Vulnerability threshold check results: FAIL")
+    critical, high = counts
+    if critical > 0 or high > 0:
+        raise RuntimeError(f"Scan policy: failing on critical={critical} high={high}")
 
 
 @flow(name="twistlock-scan", log_prints=True)
@@ -210,19 +209,13 @@ def twistlock_scan_flow(
     twistcli_skip_download: bool = False,
     twistcli_install_dir: str | None = None,
 ) -> None:
-    """Scan a container image with Twistlock (Linux worker).
+    """Scan a registry image through Prisma Cloud Compute Console API.
 
-    End-to-end: (1) ``POST /api/v1/authenticate`` → token, (2) download Linux ``twistcli`` from
-    ``GET /api/v1/util/twistcli`` with ``Authorization: Bearer``, (3) run
-    ``twistcli images scan --address … --user … --token … --details <image_ref>``,
-    (4) log combined stdout/stderr, (5) fail the flow if the summary line reports critical/high > 0
-    or ``Vulnerability threshold check results: FAIL``.
+    End-to-end: (1) authenticate, (2) trigger on-demand registry scan,
+    (3) poll progress, (4) fetch compact result, (5) fail on critical/high > 0.
 
-    **Credentials must come from Prefect Secret blocks** named ``twistlock-username`` and
-    ``twistlock-password``. Optional Secret ``twistlock-address``; otherwise use flow parameter
-    ``twistlock_address``, then the default NCI console URL.
-    With ``twistcli_skip_download``, the worker must already have ``twistcli`` on ``PATH`` (e.g. system install).
-    Default is to download ``twistcli`` from the console after login (no PATH needed).
+    Credentials must come from Prefect Secret blocks ``twistlock-username`` and
+    ``twistlock-password``. Optional ``twistlock-address`` and ``twistlock-api-version``.
     """
     logger = get_run_logger()
     logger.info(
@@ -231,15 +224,13 @@ def twistlock_scan_flow(
         twistcli_skip_download,
         twistcli_install_dir,
     )
+    if twistcli_skip_download or twistcli_install_dir:
+        logger.warning("twistcli_* parameters are ignored in registry API mode.")
+
     twistlock_addr_secret = _optional_secret_block("twistlock-address")
     address = twistlock_address or twistlock_addr_secret or DEFAULT_TWISTLOCK_ADDRESS
-    if twistlock_address:
-        _addr_src = "flow parameter"
-    elif twistlock_addr_secret:
-        _addr_src = "Prefect Secret twistlock-address"
-    else:
-        _addr_src = "default constant"
-    logger.info("resolved twistlock console address=%r (source=%s)", address, _addr_src)
+    api_version = _optional_secret_block("twistlock-api-version") or DEFAULT_COMPUTE_API_VERSION
+    logger.info("using Twistlock address=%r api_version=%r", address, api_version)
 
     username = _require_secret_block("twistlock-username")
     password = _require_secret_block("twistlock-password")
@@ -249,24 +240,34 @@ def twistlock_scan_flow(
     token = _authenticate(address, username, password)
     logger.info("Twistlock authentication succeeded")
 
-    logger.info("resolving twistcli binary (download=%s)…", not twistcli_skip_download)
-    twistcli, cleanup_dir = _resolve_twistcli_binary(
-        twistcli_skip_download=twistcli_skip_download,
-        twistcli_install_dir=twistcli_install_dir,
+    registry, repo, tag = _split_image_ref(image_ref)
+    logger.info("parsed image_ref registry=%s repo=%s tag=%s", registry, repo, tag)
+
+    logger.info("starting on-demand registry scan…")
+    _start_on_demand_registry_scan(
         address=address,
+        api_version=api_version,
         token=token,
+        registry=registry,
+        repo=repo,
+        tag=tag,
     )
-    logger.info("using twistcli at %s", twistcli)
-    try:
-        logger.info("checking Docker daemon socket before scan…")
-        _assert_local_docker_socket_ready()
-        logger.info("running twistcli scan for %s", image_ref)
-        output = _run_twistcli_scan(twistcli, address, username, token, image_ref)
-        logger.info("twistcli finished; output length=%s chars", len(output))
-        print(output)
-        logger.info("evaluating scan output against policy…")
-        _evaluate_scan_output(output)
-        logger.info("Twistlock scan passed (no critical/high; threshold not FAIL).")
-    finally:
-        if cleanup_dir is not None and cleanup_dir.is_dir():
-            shutil.rmtree(cleanup_dir, ignore_errors=True)
+    logger.info("scan request submitted; polling progress…")
+    _poll_registry_scan_progress(
+        address=address,
+        api_version=api_version,
+        token=token,
+        repo=repo,
+        tag=tag,
+    )
+
+    logger.info("fetching compact registry scan result…")
+    result = _fetch_registry_compact_result(
+        address=address,
+        api_version=api_version,
+        token=token,
+        image_ref=image_ref,
+    )
+    logger.info("evaluating scan output against policy…")
+    _evaluate_registry_scan_result(result)
+    logger.info("Twistlock registry scan passed (no critical/high).")
