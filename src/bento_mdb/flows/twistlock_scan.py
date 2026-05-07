@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import socket
 import ssl
 import subprocess
 import tempfile
@@ -160,6 +161,27 @@ def _run_twistcli_scan(
     return out
 
 
+def _assert_local_docker_socket_ready() -> None:
+    """Fail fast with actionable guidance when docker.sock is unavailable."""
+    sock_path = Path("/var/run/docker.sock")
+    if not sock_path.exists():
+        raise RuntimeError(
+            "Docker socket not found at /var/run/docker.sock. "
+            "twistcli image scan requires local Docker daemon access. "
+            "Run this flow on a VPN worker host that has Docker installed and exposes docker.sock "
+            "(for ECS: EC2 launch type with host socket mount; not Fargate-only runtime)."
+        )
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect(str(sock_path))
+    except OSError as e:
+        raise RuntimeError(
+            "Cannot connect to /var/run/docker.sock. "
+            "Ensure the flow container user has permission to access the Docker daemon."
+        ) from e
+
+
 def _evaluate_scan_output(output: str) -> None:
     summary = None
     for line in output.splitlines():
@@ -236,6 +258,8 @@ def twistlock_scan_flow(
     )
     logger.info("using twistcli at %s", twistcli)
     try:
+        logger.info("checking Docker daemon socket before scan…")
+        _assert_local_docker_socket_ready()
         logger.info("running twistcli scan for %s", image_ref)
         output = _run_twistcli_scan(twistcli, address, username, token, image_ref)
         logger.info("twistcli finished; output length=%s chars", len(output))
