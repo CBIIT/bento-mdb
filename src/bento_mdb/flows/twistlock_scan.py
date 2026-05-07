@@ -16,6 +16,12 @@ from prefect.blocks.system import Secret
 DEFAULT_TWISTLOCK_ADDRESS = "https://twistlock.nci.nih.gov"
 DEFAULT_COMPUTE_API_VERSION = "v34.02"
 
+# NCI Console: POST /api/v1/registry/scan/select?collections=...&project=... + registry-only tag array.
+DEFAULT_SCAN_SELECT_COLLECTIONS = "CRDC CCDI All Collection"
+DEFAULT_SCAN_SELECT_PROJECT = "Central Console"
+# scan/select can block until the registry defender finishes; allow long waits (urllib timeout seconds).
+SCAN_SELECT_HTTP_TIMEOUT_SECONDS = 30 * 60
+
 
 def _require_secret_block(name: str) -> str:
     """Load a non-empty Prefect Secret block (by block name)."""
@@ -118,7 +124,7 @@ def _start_on_demand_registry_scan(
     """POST /registry/scan — enqueue on-demand registry image scan (Twistlock-side queue)."""
     url = f"{_registry_api_base(address, api_version)}/registry/scan"
     body = {"onDemandScan": True, "tag": {"registry": registry, "repo": repo, "tag": tag, "digest": ""}}
-    _http_json_request("POST", url, token=token, body=body, timeout=120)
+    _http_json_request("POST", url, token=token, body=body, timeout=240)
 
 
 def _notify_registry_scan_defenders(
@@ -127,29 +133,26 @@ def _notify_registry_scan_defenders(
     api_version: str,
     token: str,
     registry: str,
-    repo: str,
-    tag: str,
 ) -> None:
-    """POST registry/scan/select — NCI uses /api/v1/... with collections/project query + array body."""
-    collections = _optional_secret_block("twistlock-scan-select-collections")
-    project = _optional_secret_block("twistlock-scan-select-project")
-    payload_mode = (_optional_secret_block("twistlock-scan-select-tag-payload") or "registry-only").lower()
+    """POST ``/api/v1/registry/scan/select`` with collections/project query + tag array (NCI Console).
 
-    if collections and project:
-        q = urllib.parse.urlencode(
-            {"collections": collections, "project": project},
-            quote_via=urllib.parse.quote_plus,
-        )
-        url = f"{address.rstrip('/')}/api/v1/registry/scan/select?{q}"
-        if payload_mode in ("full", "repo-tag", "image"):
-            body: list | dict = [{"tag": {"registry": registry, "repo": repo, "tag": tag}}]
-        else:
-            body = [{"tag": {"registry": registry, "repo": "", "tag": ""}}]
-        _http_json_request("POST", url, token=token, body=body, timeout=120)
-        return
+    Body is always ``[{"tag": {"registry": <host>, "repo": "", "tag": ""}}]``.
+    Optional Secrets ``twistlock-scan-select-collections`` / ``twistlock-scan-select-project``
+    override collection/project query defaults.
+    """
+    _ = api_version  # NCI scan/select is fixed ``/api/v1/``; ``api_version`` is used for other API calls.
+    collections = _optional_secret_block("twistlock-scan-select-collections") or DEFAULT_SCAN_SELECT_COLLECTIONS
+    project = _optional_secret_block("twistlock-scan-select-project") or DEFAULT_SCAN_SELECT_PROJECT
 
-    url = f"{_registry_api_base(address, api_version)}/registry/scan/select"
-    _http_json_request("POST", url, token=token, body={}, timeout=120)
+    q = urllib.parse.urlencode(
+        {"collections": collections, "project": project},
+        quote_via=urllib.parse.quote_plus,
+    )
+    url = f"{address.rstrip('/')}/api/v1/registry/scan/select?{q}"
+    body = [{"tag": {"registry": registry, "repo": "", "tag": ""}}]
+    _http_json_request(
+        "POST", url, token=token, body=body, timeout=SCAN_SELECT_HTTP_TIMEOUT_SECONDS
+    )
 
 
 def try_fetch_registry_compact_result(
@@ -296,10 +299,8 @@ def twistlock_scan_flow(
     Secrets (Prefect blocks): ``twistlock-username``, ``twistlock-password``;
     optional ``twistlock-address``, ``twistlock-api-version``.
 
-    NCI scan/select (optional): ``twistlock-scan-select-collections`` and
-    ``twistlock-scan-select-project`` together enable
-    ``POST /api/v1/registry/scan/select?...`` with array body.
-    Optional ``twistlock-scan-select-tag-payload``: ``registry-only`` (default) or ``full``.
+    ``POST /api/v1/registry/scan/select``: NCI collections/project defaults + tag payload with ``repo``/``tag`` ``""``;
+    Secrets ``twistlock-scan-select-collections`` / ``twistlock-scan-select-project`` override query defaults.
     """
     logger = get_run_logger()
     logger.info(
@@ -362,8 +363,6 @@ def twistlock_scan_flow(
                 api_version=api_version,
                 token=token,
                 registry=registry,
-                repo=repo,
-                tag=tag,
             )
             logger.info("registry scan/select completed")
         except RuntimeError as e:
