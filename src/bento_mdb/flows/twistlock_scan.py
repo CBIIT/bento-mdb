@@ -115,9 +115,16 @@ def _start_on_demand_registry_scan(
     repo: str,
     tag: str,
 ) -> None:
+    """POST /registry/scan — enqueue on-demand registry image scan (Twistlock-side queue)."""
     url = f"{_registry_api_base(address, api_version)}/registry/scan"
     body = {"onDemandScan": True, "tag": {"registry": registry, "repo": repo, "tag": tag, "digest": ""}}
     _http_json_request("POST", url, token=token, body=body, timeout=120)
+
+
+def _notify_registry_scan_defenders(*, address: str, api_version: str, token: str) -> None:
+    """POST /registry/scan/select — notify all registry scanner defenders (helps pick up queued work)."""
+    url = f"{_registry_api_base(address, api_version)}/registry/scan/select"
+    _http_json_request("POST", url, token=token, body={}, timeout=120)
 
 
 def _poll_registry_scan_progress(
@@ -226,14 +233,22 @@ def twistlock_scan_flow(
     twistlock_address: str | None = None,
     twistcli_skip_download: bool = False,
     twistcli_install_dir: str | None = None,
+    notify_registry_defenders: bool = True,
+    poll_timeout_seconds: int = 1800,
+    poll_interval_seconds: int = 15,
 ) -> None:
-    """Scan a registry image through Prisma Cloud Compute Console API.
+    """ECR image scan via Twistlock Console Registry API (no Docker on Prefect worker).
 
-    End-to-end: (1) authenticate, (2) trigger on-demand registry scan,
-    (3) poll progress, (4) fetch compact result, (5) fail on critical/high > 0.
+    Pipeline:
 
-    Credentials must come from Prefect Secret blocks ``twistlock-username`` and
-    ``twistlock-password``. Optional ``twistlock-address`` and ``twistlock-api-version``.
+    #. ``POST /api/<ver>/authenticate`` → bearer token
+    #. ``POST /api/<ver>/registry/scan`` — submit **on-demand** scan for ``registry/repo:tag`` (Twistlock queue)
+    #. Optional ``POST /api/<ver>/registry/scan/select`` — ping registry scanner defenders
+    #. ``GET /api/<ver>/registry/progress`` — poll until scan finishes
+    #. ``GET /api/<ver>/registry?name=<image_ref>&compact=true`` — fetch result and enforce critical/high policy
+
+    Secrets (Prefect blocks): ``twistlock-username``, ``twistlock-password``;
+    optional ``twistlock-address``, ``twistlock-api-version``.
     """
     logger = get_run_logger()
     logger.info(
@@ -261,7 +276,7 @@ def twistlock_scan_flow(
     registry, repo, tag = _split_image_ref(image_ref)
     logger.info("parsed image_ref registry=%s repo=%s tag=%s", registry, repo, tag)
 
-    logger.info("starting on-demand registry scan…")
+    logger.info("step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)…")
     _start_on_demand_registry_scan(
         address=address,
         api_version=api_version,
@@ -270,7 +285,17 @@ def twistlock_scan_flow(
         repo=repo,
         tag=tag,
     )
-    logger.info("scan request submitted; polling progress…")
+    logger.info("on-demand scan request accepted")
+
+    if notify_registry_defenders:
+        logger.info("step 2b: POST registry/scan/select (notify registry scanner defenders)…")
+        try:
+            _notify_registry_scan_defenders(address=address, api_version=api_version, token=token)
+            logger.info("registry scan/select completed")
+        except RuntimeError as e:
+            logger.warning("registry/scan/select failed (continuing with progress poll): %s", e)
+
+    logger.info("step 3: GET registry/progress (poll Twistlock scan queue until done)…")
     _poll_registry_scan_progress(
         address=address,
         api_version=api_version,
@@ -278,9 +303,11 @@ def twistlock_scan_flow(
         repo=repo,
         tag=tag,
         logger=logger,
+        timeout_seconds=poll_timeout_seconds,
+        interval_seconds=poll_interval_seconds,
     )
 
-    logger.info("fetching compact registry scan result…")
+    logger.info("step 4: GET registry (compact result via API)…")
     result = _fetch_registry_compact_result(
         address=address,
         api_version=api_version,

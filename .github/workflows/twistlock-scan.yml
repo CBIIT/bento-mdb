@@ -40,10 +40,20 @@ on:
         default: ""
         type: string
       twistcli_skip_download:
-        description: "Passed to Prefect flow"
+        description: "Legacy param (registry API mode ignores this)"
         required: false
         type: boolean
         default: false
+      twistlock_poll_timeout_seconds:
+        description: "Prefect flow poll_timeout_seconds (Twistlock registry queue)"
+        required: false
+        default: "1800"
+        type: string
+      twistlock_notify_defenders:
+        description: "POST registry/scan/select after enqueue (ping scanner defenders)"
+        required: false
+        type: boolean
+        default: true
 
 run-name: "Twistlock ${{ inputs.scan_target }} (${{ inputs.environment }}, Trivy ${{ inputs.trivy_scan }})"
 
@@ -221,6 +231,8 @@ jobs:
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
           TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
           TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
+          POLL_TIMEOUT: ${{ inputs.twistlock_poll_timeout_seconds }}
+          NOTIFY_DEFENDERS: ${{ inputs.twistlock_notify_defenders }}
         run: |
           set -euo pipefail
           IMAGE_REF="$STS_FAST_API_IMAGE_NAME"
@@ -229,12 +241,16 @@ jobs:
               --arg image_ref "$IMAGE_REF" \
               --arg twistlock_address "$TWISTLOCK_ADDRESS" \
               --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+              --argjson poll_timeout_seconds "$POLL_TIMEOUT" \
+              --argjson notify_registry_defenders "$NOTIFY_DEFENDERS" \
+              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download, poll_timeout_seconds: ($poll_timeout_seconds | tonumber), notify_registry_defenders: $notify_registry_defenders}')
           else
             PARAMS=$(jq -n \
               --arg image_ref "$IMAGE_REF" \
               --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+              --argjson poll_timeout_seconds "$POLL_TIMEOUT" \
+              --argjson notify_registry_defenders "$NOTIFY_DEFENDERS" \
+              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download, poll_timeout_seconds: ($poll_timeout_seconds | tonumber), notify_registry_defenders: $notify_registry_defenders}')
           fi
           echo "PARAMS=$PARAMS"
           prefect deployment run twistlock-scan/twistlock-scan \
@@ -250,6 +266,8 @@ jobs:
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
           TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
           TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
+          POLL_TIMEOUT: ${{ inputs.twistlock_poll_timeout_seconds }}
+          NOTIFY_DEFENDERS: ${{ inputs.twistlock_notify_defenders }}
         run: |
           set -euo pipefail
           IMAGE_REF="$STS_IMAGE_NAME"
@@ -258,12 +276,16 @@ jobs:
               --arg image_ref "$IMAGE_REF" \
               --arg twistlock_address "$TWISTLOCK_ADDRESS" \
               --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+              --argjson poll_timeout_seconds "$POLL_TIMEOUT" \
+              --argjson notify_registry_defenders "$NOTIFY_DEFENDERS" \
+              '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download, poll_timeout_seconds: ($poll_timeout_seconds | tonumber), notify_registry_defenders: $notify_registry_defenders}')
           else
             PARAMS=$(jq -n \
               --arg image_ref "$IMAGE_REF" \
               --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+              --argjson poll_timeout_seconds "$POLL_TIMEOUT" \
+              --argjson notify_registry_defenders "$NOTIFY_DEFENDERS" \
+              '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download, poll_timeout_seconds: ($poll_timeout_seconds | tonumber), notify_registry_defenders: $notify_registry_defenders}')
           fi
           echo "PARAMS=$PARAMS"
           prefect deployment run twistlock-scan/twistlock-scan \
