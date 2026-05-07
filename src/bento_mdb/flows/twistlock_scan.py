@@ -176,50 +176,85 @@ def try_fetch_registry_compact_result(
     return None
 
 
-def _poll_registry_scan_progress(
+def _wait_for_registry_scan_ready(
     *,
     address: str,
     api_version: str,
     token: str,
+    image_ref: str,
     repo: str,
     tag: str,
     logger,
-    timeout_seconds: int = 900,
+    timeout_seconds: int = 1800,
     interval_seconds: int = 15,
+    allow_compact_completion: bool,
 ) -> None:
+    """Wait until progress reports done and/or a compact registry row exists.
+
+    Some Consoles (e.g. NCI defender-driven scans) never populate ``registry/progress`` for ECR images;
+    in that case we rely on compact ``GET /registry?name=...`` when ``allow_compact_completion`` is True
+    (typically when there was **no** compact row before we enqueued the scan).
+    """
     started = time.time()
     query = urllib.parse.urlencode({"onDemand": "true", "repo": repo, "tag": tag})
-    url = f"{_registry_api_base(address, api_version)}/registry/progress?{query}"
-    seen_non_empty = False
+    progress_url = f"{_registry_api_base(address, api_version)}/registry/progress?{query}"
+    seen_nonempty_progress = False
     polls = 0
-    empty_polls = 0
-    max_initial_empty_polls = 8
+    empty_streak = 0
+    warned_empty_progress = False
+
     while True:
-        polls += 1
         if time.time() - started > timeout_seconds:
-            raise RuntimeError(f"Timed out waiting for registry scan progress after {timeout_seconds}s.")
-        resp = _http_json_request("GET", url, token=token, timeout=60)
+            raise RuntimeError(
+                f"Timed out waiting for registry scan after {timeout_seconds}s "
+                f"(no compact row and no usable progress). image_ref={image_ref!r}"
+            )
+
+        if allow_compact_completion:
+            row = try_fetch_registry_compact_result(
+                address=address, api_version=api_version, token=token, image_ref=image_ref
+            )
+            if row:
+                logger.info(
+                    "registry compact row present (scan/index ready); snippet: %s",
+                    json.dumps(row)[:500],
+                )
+                return
+
+        polls += 1
+        resp = _http_json_request("GET", progress_url, token=token, timeout=60)
         if isinstance(resp, list) and resp:
-            seen_non_empty = True
-            empty_polls = 0
+            seen_nonempty_progress = True
+            empty_streak = 0
             ongoing = any(bool(item.get("isScanOngoing")) for item in resp if isinstance(item, dict))
             if polls == 1 or polls % 4 == 0:
                 logger.info("registry progress poll #%s: %s", polls, json.dumps(resp)[:600])
             if not ongoing:
+                logger.info("registry progress reports no ongoing scan")
                 return
-        elif seen_non_empty:
+        elif seen_nonempty_progress:
             # API may return [] right after completion for prior on-demand scans.
+            logger.info("registry progress returned empty after prior non-empty (assuming complete)")
             return
         else:
-            empty_polls += 1
+            empty_streak += 1
             if polls == 1 or polls % 4 == 0:
-                logger.info("registry progress poll #%s returned empty list", polls)
-            if empty_polls >= max_initial_empty_polls:
-                raise RuntimeError(
-                    "Registry progress endpoint kept returning empty results for this on-demand scan. "
-                    "This usually means the image is outside configured registry scan scope, repo/tag parsing "
-                    "does not match Console expectations, or API version is mismatched for this Console."
+                logger.info(
+                    "registry progress poll #%s returned empty list (compact fallback %s)",
+                    polls,
+                    "on" if allow_compact_completion else "off — row existed before enqueue",
                 )
+            if empty_streak >= 8 and not warned_empty_progress:
+                warned_empty_progress = True
+                logger.warning(
+                    "registry/progress still empty after %s polls — many Consoles omit this for "
+                    "defender/registry scans; continuing until timeout (%s).",
+                    empty_streak,
+                    "polling compact registry for a new row"
+                    if allow_compact_completion
+                    else "waiting on progress only",
+                )
+
         time.sleep(interval_seconds)
 
 
@@ -292,8 +327,8 @@ def twistlock_scan_flow(
 
     #. ``POST /api/<ver>/authenticate`` → bearer token
     #. ``POST /api/<ver>/registry/scan`` — submit **on-demand** scan for ``registry/repo:tag`` (Twistlock queue)
-    #. Optional ``POST /api/<ver>/registry/scan/select`` — ping registry scanner defenders
-    #. ``GET /api/<ver>/registry/progress`` — poll until scan finishes
+    #. Optional ``POST /api/v1/registry/scan/select`` — ping registry scanner defenders
+    #. Poll ``registry/progress`` and (when no compact row existed before enqueue) compact ``GET /registry?name=…``
     #. ``GET /api/<ver>/registry?name=<image_ref>&compact=true`` — fetch result and enforce critical/high policy
 
     Secrets (Prefect blocks): ``twistlock-username``, ``twistlock-password``;
@@ -368,16 +403,22 @@ def twistlock_scan_flow(
         except RuntimeError as e:
             logger.warning("registry/scan/select failed (continuing with progress poll): %s", e)
 
-    logger.info("step 3: GET registry/progress (poll Twistlock scan queue until done)…")
-    _poll_registry_scan_progress(
+    logger.info(
+        "step 3: wait for scan (registry/progress + compact fallback when no prior row)… "
+        "had_compact_before_enqueue=%s",
+        existing is not None,
+    )
+    _wait_for_registry_scan_ready(
         address=address,
         api_version=api_version,
         token=token,
+        image_ref=image_ref,
         repo=repo,
         tag=tag,
         logger=logger,
         timeout_seconds=poll_timeout_seconds,
         interval_seconds=poll_interval_seconds,
+        allow_compact_completion=(existing is None),
     )
 
     logger.info("step 4: GET registry (compact result via API)…")
