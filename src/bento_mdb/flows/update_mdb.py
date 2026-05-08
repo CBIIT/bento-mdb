@@ -289,72 +289,72 @@ def liquibase_update_flow(
     total_end = time.time()
     logger.info(f"TOTAL RUN TIME: {end-start:.2f} seconds")
 
-@flow(name="liquibase-data-ingestion-pipeline")
-def liquibase_ingestion_flow(
-    changelog_file: str,
-    mdb_id: str,
-    max_changesets: int = 5,
-    dry_run: bool = False,
-):
-    """
-    Wrapper flow to:
-    1. Split large changelog into smaller chunks
-    2. Run existing liquibase_update_flow on each chunk sequentially
+# @flow(name="liquibase-data-ingestion-pipeline")
+# def liquibase_ingestion_flow(
+#     changelog_file: str,
+#     mdb_id: str,
+#     max_changesets: int = 5,
+#     dry_run: bool = False,
+# ):
+#     """
+#     Wrapper flow to:
+#     1. Split large changelog into smaller chunks
+#     2. Run existing liquibase_update_flow on each chunk sequentially
 
-    Designed to minimize changes to existing logic while improving performance and logging.
-    """
+#     Designed to minimize changes to existing logic while improving performance and logging.
+#     """
 
-    logger = get_run_logger()
-    logger.info("Starting Uberon relationships pipeline")
+#     logger = get_run_logger()
+#     logger.info("Starting Uberon relationships pipeline")
 
-    # Split changelog
-    try:
-        logger.info(f"Splitting changelog file: {changelog_file}")
-        split_files = split_changelog_file(
-            changelog_file,
-            max_changesets
-        )
+#     # Split changelog
+#     try:
+#         logger.info(f"Splitting changelog file: {changelog_file}")
+#         split_files = split_changelog_file(
+#             changelog_file,
+#             max_changesets
+#         )
 
-        if not split_files:
-            raise ValueError("No split files were generated.")
+#         if not split_files:
+#             raise ValueError("No split files were generated.")
 
-        logger.info(f"Successfully split into {len(split_files)} files")
-        logger.info(f"Generated files: {[str(f) for f in split_files]}")
+#         logger.info(f"Successfully split into {len(split_files)} files")
+#         logger.info(f"Generated files: {[str(f) for f in split_files]}")
 
-    except Exception as e:
-        logger.exception("Failed during changelog splitting")
-        raise RuntimeError(f"Changelog splitting failed: {e}")
+#     except Exception as e:
+#         logger.exception("Failed during changelog splitting")
+#         raise RuntimeError(f"Changelog splitting failed: {e}")
 
-    # Process each chunk
-    total_success = 0
-    total_failed = 0
+#     # Process each chunk
+#     total_success = 0
+#     total_failed = 0
 
-    for idx, file in enumerate(split_files):
-        logger.info(f"Processing chunk {idx+1}/{len(split_files)}: {file}")
+#     for idx, file in enumerate(split_files):
+#         logger.info(f"Processing chunk {idx+1}/{len(split_files)}: {file}")
 
-        try:
-            liquibase_update_flow(
-                changelog_file=str(file),
-                mdb_id=mdb_id,
-                dry_run=dry_run
-            )
+#         try:
+#             liquibase_update_flow(
+#                 changelog_file=str(file),
+#                 mdb_id=mdb_id,
+#                 dry_run=dry_run
+#             )
 
-            logger.info(f"Chunk {idx+1} completed successfully")
-            total_success += 1
+#             logger.info(f"Chunk {idx+1} completed successfully")
+#             total_success += 1
 
-        except Exception as e:
-            logger.exception(f"Chunk {idx+1} FAILED: {file}")
-            total_failed += 1
+#         except Exception as e:
+#             logger.exception(f"Chunk {idx+1} FAILED: {file}")
+#             total_failed += 1
 
-            # Continue processing remaining chunks
-            continue
+#             # Continue processing remaining chunks
+#             continue
 
-    # log final summary
-    logger.info("Pipeline execution complete")
-    logger.info(f"Successful chunks: {total_success}")
-    logger.info(f"Failed chunks: {total_failed}")
+#     # log final summary
+#     logger.info("Pipeline execution complete")
+#     logger.info(f"Successful chunks: {total_success}")
+#     logger.info(f"Failed chunks: {total_failed}")
 
-    if total_failed > 0:
-        raise RuntimeError(
-            f"{total_failed} chunks failed during execution. Check logs for details."
-        )
+#     if total_failed > 0:
+#         raise RuntimeError(
+#             f"{total_failed} chunks failed during execution. Check logs for details."
+#         )

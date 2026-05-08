@@ -7,7 +7,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog 
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-  <changeSet id="1" author="Tazeen">
+<changeSet id="0" author="Tazeen Shaukat">
 
   <neo4j:cypher><![CDATA[
     CREATE INDEX term_origin_idx IF NOT EXISTS
@@ -17,9 +17,9 @@
 
   </changeSet>
 
-  <changeSet id="2" author="Tazeen Shaukat">
+  <changeSet id="1" author="Tazeen Shaukat">
     <neo4j:cypher><![CDATA[
-    CALL {
+CALL {
 UNWIND [
   { _commit: "CDEPV-20260225", handle: "ventral_tegmental_nucleus", nanoid: "j6nTPn", origin_name: "UBERON", origin_id: "0002438", origin_version: "1", origin_definition: "A nucleus of brain that is part of a ventral tegmental area.", value: "ventral tegmental nucleus", external_references: "BIRNLEX:1421|SCTID:369244006|UMLS:C0175394|ZFA:0000275|DMBA:17007|HBA:9069|MA:0001031|EMAPA:35914|BAMS:VTN|neuronames:518|DHBA:12266|TAO:0000275|FMA:72435|MBA:757|BAMS:VTg" },
   { _commit: "CDEPV-20260225", handle: "seydels_palatal_process", nanoid: "sXujQN", origin_name: "UBERON", origin_id: "3000563", origin_version: "1", origin_definition: "", value: "seydels palatal process", external_references: "" },
@@ -1035,9 +1035,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="2" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -2055,9 +2057,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="3" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -3075,9 +3079,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="4" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -4095,9 +4101,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="5" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -5115,9 +5123,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="6" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -6136,9 +6146,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="7" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -7156,9 +7168,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="8" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -8176,9 +8190,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="9" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -9196,9 +9212,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="10" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -10216,9 +10234,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="11" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -11236,9 +11256,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="12" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -12256,9 +12278,11 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
+    ]]></neo4j:cypher>
+  </changeSet>
 
-// -------- BATCH --------
-
+  <changeSet id="13" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[
 CALL {
 
 UNWIND [
@@ -13130,7 +13154,6 @@ SET t._commit = row._commit,
     t.external_references = row.external_references
 
 }
-
     ]]></neo4j:cypher>
   </changeSet>
 

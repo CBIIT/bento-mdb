@@ -42,9 +42,8 @@
     FOR (vs:value_set)
     ON (vs.handle);
     ]]></neo4j:cypher>
-  </changeSet>
 
-  <changeSet id="2" author="Tazeen Shaukat"> 
+  </changeSet><changeSet id="2" author="Tazeen Shaukat"> 
     <neo4j:cypher><![CDATA[
     CALL {
 
@@ -92,17 +91,11 @@
     WITH vs
 
     // ---------- CDE MAPPINGS ----------
-    UNWIND [
-  { cde_handle: "disease_primary_site_of_disease_uberon_identifier", origin_id: "14883047"),
-  { cde_handle: "disease_tissue_or_organ_of_origin_anatomic_site_uberon_identifier", origin_id: "14883058"},
-  { cde_handle: "disease_site_of_resection_or_biopsy_uberon_identifier", origin_id: "14883054"},
-  { cde_handle: "specimen_original_anatomic_site_uberon_identifier", origin_id: "12083894"},
-  { cde_handle: "specimen_original_anatomic_site_uberon_name", origin_id: "12299653"}
-] AS row
+    
 
     MATCH (cde:term {
-        handle: row.cde_handle,
-        origin_id: row.origin_id,
+        handle: "disease_tissue_or_organ_of_origin_anatomic_site_uberon_identifier",
+        origin_id: "14883058",
         origin_name: "caDSR",
         origin_version: "1.00"
     })
@@ -114,5 +107,64 @@
     
     ]]></neo4j:cypher>
   </changeSet>
+  
+  <changeSet id="3" author="Tazeen Shaukat"> 
+  <neo4j:cypher><![CDATA[
+    MATCH (vs:value_set {nanoid: "6ucHaW"})
 
+    MATCH (cde:term {
+      handle: "disease_site_of_resection_or_biopsy_uberon_identifier",
+      origin_id: "14883054",
+      origin_name: "caDSR",
+      origin_version: "1.00"
+    })
+
+    MERGE (cde)-[:specifies_value_set]->(vs)
+  ]]></neo4j:cypher>
+</changeSet>
+
+<changeSet id="4" author="Tazeen Shaukat"> 
+  <neo4j:cypher><![CDATA[
+    MATCH (vs:value_set {nanoid: "6ucHaW"})
+
+    MATCH (cde:term {
+      handle: "specimen_original_anatomic_site_uberon_identifier",
+      origin_id: "12083894",
+      origin_name: "caDSR",
+      origin_version: "1.00"
+    })
+
+    MERGE (cde)-[:specifies_value_set]->(vs)
+  ]]></neo4j:cypher>
+</changeSet>
+
+<changeSet id="5" author="Tazeen Shaukat"> 
+  <neo4j:cypher><![CDATA[
+    MATCH (vs:value_set {nanoid: "6ucHaW"})
+
+    MATCH (cde:term {
+      handle: "specimen_original_anatomic_site_uberon_name",
+      origin_id: "12299653",
+      origin_name: "caDSR",
+      origin_version: "1.00"
+    })
+
+    MERGE (cde)-[:specifies_value_set]->(vs)
+  ]]></neo4j:cypher>
+</changeSet>
+
+<changeSet id="6" author="Tazeen Shaukat"> 
+  <neo4j:cypher><![CDATA[
+    MATCH (vs:value_set {nanoid: "6ucHaW"})
+
+    MATCH (cde:term {
+      handle: "disease_primary_site_of_disease_uberon_identifier",
+      origin_id: "14883047",
+      origin_name: "caDSR",
+      origin_version: "1.00"
+    })
+
+    MERGE (cde)-[:specifies_value_set]->(vs)
+  ]]></neo4j:cypher>
+</changeSet>
 </databaseChangeLog>
