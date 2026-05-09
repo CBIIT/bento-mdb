@@ -6,4 +6,4 @@ caDSR:
   date_format: '%Y-%m-%d'
 promotion:
   last_promoted_sha: c1ef55201fceea43992f17cf9a9db13519094fab
-  last_promoted_sha_stage_prod: 811a6d2cc0349df17897b3413acc595c924ebb14
+  last_promoted_sha_stage_prod: c1ef55201fceea43992f17cf9a9db13519094fab
