@@ -3,6 +3,7 @@ name: Generate Model Changelogs
 permissions:
   contents: read
   actions: write
+  id-token: write
 
 
 on:
@@ -58,10 +59,16 @@ on:
         required: false
       PREFECT_API_URL:
         required: false
+      AWS_CHANGELOG_ROLE_ARN:
+        required: false
+      AWS_REGION:
+        required: false
+      S3_CHANGELOG_BUCKET:
+        required: false
     outputs:
       changelog_files:
-        description: "Generated changelog files"
-        value: ${{ jobs.collect-changelogs.outputs.changelog_files }}
+        description: "S3 keys of uploaded changelog files"
+        value: ${{ jobs.upload-changelogs-s3.outputs.changelog_files }}
 
 jobs:
   changes:
@@ -81,7 +88,7 @@ jobs:
               - 'config/mdb_models.yml'
   determine-models:
     needs: changes
-    if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ needs.changes.outputs.mdb_models_changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'workflow_run' }}
     runs-on: ubuntu-latest
     outputs:
       affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
@@ -288,12 +295,17 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
-  commit-all-changelogs:
+  upload-changelogs-s3:
     needs: [determine-models, generate-changelogs]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: ${{ !fromJson(inputs.no_commit || 'false') }}
+      id-token: write
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    outputs:
+      changelog_files: ${{ steps.upload.outputs.changelog_files }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -306,79 +318,59 @@ jobs:
           pattern: changelog-*
         continue-on-error: true
 
-      - name: Move files to proper structure
-        run: |
-          for artifact_dir in changelog-*; do
-            if [ -d "$artifact_dir" ]; then
-              echo "Processing $artifact_dir"
-              
-              if [ -d "$artifact_dir/model_changelogs" ]; then
-                cp -rn "$artifact_dir/model_changelogs" data/output/
-              fi
-              
-              if [ -d "$artifact_dir/model_cde_pvs" ]; then
-                cp -rn "$artifact_dir/model_cde_pvs" data/output/
-              fi
-              
-              rm -rf "$artifact_dir"
-            fi
-          done
-          
-          echo "Final structure:"
-          find data/output -type f \( -name "*.xml" -o -name "*.yml" \) | head -20
+      - name: AWS OIDC Authentication
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ${{ github.actor }}
 
-      - name: Commit Generated Files
+      - name: Upload changelogs to S3
+        id: upload
+        shell: bash
+        env:
+          S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
         run: |
+          S3_KEYS="[]"
+          HAS_FAILURE=false
+
+          while IFS= read -r file; do
+            S3_KEY=$(echo "$file" | sed 's|^changelog-[^/]*/||')
+            echo "Uploading: $S3_KEY"
+
+            if aws s3 cp "$file" "s3://${S3_BUCKET}/${S3_KEY}" \
+              --content-type application/xml; then
+              echo "Uploaded: $S3_KEY"
+              S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
+            else
+              echo "ERROR: Upload failed for $S3_KEY"
+              HAS_FAILURE=true
+            fi
+          done < <(find changelog-*/model_changelogs -name "*.xml" 2>/dev/null)
+
+          if [ "$HAS_FAILURE" = true ]; then
+            echo "One or more uploads failed."
+            exit 1
+          fi
+
+          echo "changelog_files=$(echo $S3_KEYS | jq -c .)" >> $GITHUB_OUTPUT
+          echo "Uploaded S3 keys: $(echo $S3_KEYS | jq .)"
+
+      - name: Commit S3 upload log to git
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          S3_KEYS='${{ steps.upload.outputs.changelog_files }}'
+
+          if [ -z "$S3_KEYS" ] || [ "$S3_KEYS" = "[]" ] || [ "$S3_KEYS" = "null" ]; then
+            echo "No files uploaded. Skipping commit."
+            exit 0
+          fi
+
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          
-          git add data/output/model_changelogs/
-          git add data/output/model_cde_pvs/
-          
-          if [ -n "$(git status --porcelain)" ]; then
-            MODEL_COUNT=$(echo "$AFFECTED_MODELS" | jq -r '.include | length')
-            MODELS_LIST=$(echo "$AFFECTED_MODELS" | jq -r '.include[] | "- \(.model) v\(.version)"' | sort)
-            COMMIT_MSG=$(printf "Add changelogs for %s model versions\n\nGenerated changelogs for:\n%s\n\nGenerated by workflow run: %s/%s/actions/runs/%s" \
-              "$MODEL_COUNT" \
-              "$MODELS_LIST" \
-              "${{ github.server_url }}" \
-              "${{ github.repository }}" \
-              "${{ github.run_id }}")
-            
-            git commit -m "$COMMIT_MSG"
-            git push origin ${{ github.ref_name }}
-          else
-            echo "No changes to commit"
-          fi
-        env:
-          AFFECTED_MODELS: ${{ needs.determine-models.outputs.affected_models }}
-          GITHUB_TOKEN: ${{ github.token }}
 
-  collect-changelogs:
-    needs: [determine-models, generate-changelogs]
-    runs-on: ubuntu-latest
-    outputs:
-      changelog_files: ${{ steps.collect-changelogs.outputs.changelog_files }}
-
-    steps:
-      - name: Collect All Changelog Files
-        id: collect-changelogs
-        env:
-          AFFECTED_MODELS: ${{ needs.determine-models.outputs.affected_models }}
-        run: |
-          CHANGELOGS="[]"
-          if [ "$AFFECTED_MODELS" != "" ] && [ "$AFFECTED_MODELS" != "null" ] && [ "$AFFECTED_MODELS" != "{\"include\": []}" ]; then
-            MODEL_COUNT=$(echo "$AFFECTED_MODELS" | jq '.include | length')
-            
-            if [ "$MODEL_COUNT" -gt 0 ]; then
-              while IFS= read -r model_version; do
-                IFS=':' read -r model version <<< "$model_version"
-                CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_changelog_${version}.xml"
-                CDE_CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_${version}_cde_changelog.xml"
-                
-                CHANGELOGS=$(echo "$CHANGELOGS" | jq --arg cf "$CHANGELOG_FILE" --arg cdf "$CDE_CHANGELOG_FILE" '. + [$cf, $cdf]')
-              done < <(echo "$AFFECTED_MODELS" | jq -r '.include[] | "\(.model):\(.version)"')
-            fi
-          fi          
-          echo "changelog_files=$(echo $CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT
-          echo "Changelog files: $(echo $CHANGELOGS | jq .)"
+          COMMIT_MSG="s3-upload-log run=${RUN_ID} keys=${S3_KEYS}"
+          git commit --allow-empty -m "$COMMIT_MSG"
+          git push origin ${{ github.ref_name }}

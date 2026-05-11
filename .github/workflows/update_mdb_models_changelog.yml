@@ -3,6 +3,7 @@ name: Trigger Model Updates Changelogs
 permissions:
   contents: write
   actions: write
+  id-token: write
 
 on:
   workflow_run:
@@ -53,6 +54,9 @@ jobs:
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+      AWS_CHANGELOG_ROLE_ARN: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_CHANGELOG_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     with:
       models_spec_path: ${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}
       model: ${{ github.event.inputs.model || '' }}

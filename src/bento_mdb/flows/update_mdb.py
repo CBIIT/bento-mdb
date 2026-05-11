@@ -10,6 +10,9 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+import boto3
+from botocore.exceptions import ClientError
+
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
@@ -216,19 +219,41 @@ def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]
 
 @flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
-    changelog_file: str,
+    key: str,
     mdb_id: str,
     log_level: str = "info",
+    bucket: str | None = None,
     *,
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
-    # read from changelog file and run the Cypher statements on the MDB
+    s3 = boto3.client("s3")
+
+    try:
+        meta = s3.head_object(Bucket=bucket, Key=key)
+        logger.info("Found s3://%s/%s (size: %d bytes)", bucket, key, meta["ContentLength"])
+    except ClientError as e:
+        code = e.response["Error"]["Code"]
+        if code in ("404", "NoSuchKey"):
+            msg = f"S3 key not found: s3://{bucket}/{key}"
+            raise FileNotFoundError(msg) from e
+        if code in ("403", "AccessDenied"):
+            msg = f"Access denied to s3://{bucket}/{key}"
+            raise PermissionError(msg) from e
+        logger.error("Unexpected S3 error (code=%s) for s3://%s/%s: %s", code, bucket, key, e)
+        raise
+
+    logger.info("Downloading s3://%s/%s", bucket, key)
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
+        s3.download_fileobj(bucket, key, tmp)
+        changelog_file = tmp.name
+    logger.info("Downloaded to temp file: %s", changelog_file)
+
     with open(changelog_file, "r") as f:
         content = f.read()
-    
+
     # Extract the XML header (first line) and databaseChangeLog opening tag
     # Find the opening databaseChangeLog tag with all its attributes
     header_match = re.search(
@@ -239,7 +264,7 @@ def liquibase_update_flow(
     if not header_match:
         msg = "Could not find databaseChangeLog header in changelog file"
         raise ValueError(msg)
-    
+
     # Find all changesets using regex that handles multi-line content
     # This pattern matches from <changeSet to </changeSet> including all content in between
     changeset_pattern = re.compile(
@@ -247,14 +272,14 @@ def liquibase_update_flow(
         re.DOTALL
     )
     changesets = changeset_pattern.findall(content)
-    
+
     total_changesets = len(changesets)
     logger.info("Found %d changesets in changelog file", total_changesets)
-    
+
     if total_changesets == 0:
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
-    
+
     mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     num = 0
     try:
