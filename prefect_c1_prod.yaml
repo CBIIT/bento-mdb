@@ -50,35 +50,11 @@ deployments:
     name: mdb-8gb-prefect-prod-2.20.3-python3.9
     work_queue_name: liquibase-lower-queue
     job_variables: {}
-- name: update-mdb-and-dh-prod
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update the Neo4j database and datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_mdb_and_dh.py:update_mdb_and_dh_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-prod-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
-- name: update-datahub-prod
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update datahub terms repo.
-  entrypoint: src/bento_mdb/flows/update_dh.py:update_datahub_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-prod-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
 - name: update-terms-prod
   version:
   tags: []
   concurrency_limit:
-  description: Check for term source updates and update MDB and DH
+  description: Check for term source updates and generate/commit term changelogs
   entrypoint: src/bento_mdb/flows/update_terms.py:update_terms
   parameters: {}
   schedule: null

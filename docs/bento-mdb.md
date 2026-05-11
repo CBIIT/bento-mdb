@@ -25,7 +25,7 @@ The production MDB currently represents these projects:
 
 ### Mappings
 
-- [Data Standards Service](https://github.com/nelsonwmoore/dss-model)
+- [Data Standards Service](https://github.com/CBIIT/crdc-model)
 
 ## Structure
 
