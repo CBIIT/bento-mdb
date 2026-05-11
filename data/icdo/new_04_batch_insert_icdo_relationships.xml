@@ -12,11 +12,15 @@
     CREATE INDEX term_icdo_relationship_lookup_idx IF NOT EXISTS
     FOR (t:term)
     ON (t._commit, t.origin_id, t.origin_name)
+    ]]></neo4j:cypher>
  
+  <neo4j:cypher><![CDATA[
     CREATE INDEX concept_nanoid_idx IF NOT EXISTS
     FOR (c:concept)
     ON (c.nanoid)
+    ]]></neo4j:cypher>
 
+    <neo4j:cypher><![CDATA[
     CREATE INDEX tag_nanoid_idx IF NOT EXISTS
     FOR (tag:tag)
     ON (tag.nanoid)
