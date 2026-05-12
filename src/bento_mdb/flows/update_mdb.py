@@ -297,8 +297,7 @@ def liquibase_update_flow(
             if not dry_run:
                 mdb.put_with_statement(cypher_statement)
                 end = time.time()
-            else:
-                print(cypher_statement[:1000])  # preview only
+            
             logger.info(f"Changelog {num} took {end-start:.2f} seconds")
             num = num + 1
             logger.info("Completed changelog update %d", num)
