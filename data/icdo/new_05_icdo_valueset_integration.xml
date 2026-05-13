@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<databaseChangeLog 
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog 
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+<changeSet id="0" author="Tazeen Shaukat">
+  <neo4j:cypher><![CDATA[
+    CREATE INDEX valueset_nanoid_idx IF NOT EXISTS
+    FOR (vs:value_set)
+    ON (vs.nanoid)
+  ]]></neo4j:cypher>
+
+    <neo4j:cypher><![CDATA[
+    CREATE INDEX term_icdo_valueset_lookup_idx IF NOT EXISTS
+    FOR (t:term)
+    ON (t.origin_name, t._commit)
+  ]]></neo4j:cypher>
+
+    <neo4j:cypher><![CDATA[
+    CREATE INDEX term_crdc_reference_lookup_idx IF NOT EXISTS
+    FOR (ref:term)
+    ON (ref.origin_name, ref.origin_id)
+  ]]></neo4j:cypher>
+
+    <neo4j:cypher><![CDATA[
+    CREATE INDEX tag_key_value_idx IF NOT EXISTS
+    FOR (tag:tag)
+    ON (tag.key, tag.value)
+  ]]></neo4j:cypher>
+</changeSet>
+
+  <changeSet id="1" author="Tazeen Shaukat">
+    <neo4j:cypher><![CDATA[ 
+    CALL {
+    // Cypher Migration File
+// Generated: 2026-05-11 17:06:39.729096
+
+
+
+
+// ---------- CREATE ICDO VALUESET ----------
+MERGE (vs:value_set {nanoid: "ZrRAJP"})
+ON CREATE SET
+    vs._commit = "test-ICDO-20260428",
+    vs.handle = "icdo_terms_valueset"
+
+WITH vs
+
+// ---------- CONNECT ICDO TERMS ----------
+MATCH (t:term {
+    origin_name: "ICDO",
+    _commit: "CDEPV-20260428"
+})
+MERGE (vs)-[:has_term]->(t)
+
+WITH vs
+
+// ---------- CREATE CRDC REFERENCE TERM ----------
+MERGE (ref:term {
+    origin_name: "CRDC",
+    origin_id: "CRDC0003"
+})
+ON CREATE SET
+    ref._commit = "test-ICDO-20260428",
+    ref.nanoid = "F57v27",
+    ref.origin_version = "3.2",
+    ref.value = "icdo valueset reference",
+    ref.handle = "icdo_valueset_reference"
+
+WITH vs, ref
+
+// ---------- TAGS ----------
+MERGE (tag1:tag {key: "provenance", value: "CTOS experts"})
+ON CREATE SET tag1._commit = "test-ICDO-20260428"
+
+MERGE (tag2:tag {key: "added", value: "04-28-2026"})
+ON CREATE SET tag2._commit = "test-ICDO-20260428"
+
+WITH vs, ref, tag1, tag2
+
+// ---------- CONNECTIONS ----------
+MERGE (ref)-[:specifies_value_set]->(vs)
+MERGE (ref)-[:has_tag]->(tag1)
+MERGE (ref)-[:has_tag]->(tag2)
+    }  
+    ]]></neo4j:cypher>
+  </changeSet></databaseChangeLog>
