@@ -5,5 +5,5 @@ caDSR:
   last_updated: '2019-04-20'
   date_format: '%Y-%m-%d'
 promotion:
-  last_promoted_sha: c1ef55201fceea43992f17cf9a9db13519094fab
+  last_promoted_sha: ff499ba47e55256d2c55817b71228395624ecfbe
   last_promoted_sha_stage_prod: c1ef55201fceea43992f17cf9a9db13519094fab
