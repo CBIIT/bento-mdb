@@ -276,7 +276,7 @@ def liquibase_update_flow(
 
     total_changesets = len(changesets)
     logger.info("Found %d changesets in changelog file", total_changesets)
-    start = time.time()
+    total_start = time.time()
 
     
     if total_changesets == 0:
@@ -287,6 +287,7 @@ def liquibase_update_flow(
     num = 0
     try:
         for changeset in changesets:
+            changeset_start = time.time()
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             # remove cdata wrapper
@@ -295,9 +296,9 @@ def liquibase_update_flow(
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
             if not dry_run:
                 mdb.put_with_statement(cypher_statement)
-                end = time.time()
+                changeset_end = time.time()
             
-            logger.info(f"Changelog {num} took {end-start:.2f} seconds")
+            logger.info(f"Changelog {num} took {changeset_end - changeset_start:.2f} seconds")
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:
@@ -308,5 +309,5 @@ def liquibase_update_flow(
 
     logger.info("Liquibase finished.")
     total_end = time.time()
-    logger.info(f"TOTAL RUN TIME: {end-start:.2f} seconds")
+    logger.info(f"TOTAL RUN TIME: {total_end-total_start:.2f} seconds")
 
