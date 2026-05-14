@@ -56,7 +56,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     outputs:
-      changelog_files: ${{ steps.upload-s3.outputs.s3_keys }}
+      changelog_files: ${{ steps.update-terms.outputs.s3_keys }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -77,7 +77,7 @@ jobs:
         run: |
           uv pip install --system -e .
           uv sync --all-extras --dev
-      
+
       - name: Update terms
         id: update-terms
         env:
@@ -92,10 +92,14 @@ jobs:
           --arg mdb_id "$MDB_ID" \
           --arg author "${{ inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ inputs.commit_sha || github.sha }}" \
+          --arg bucket "$S3_BUCKET" \
+          --argjson no_commit "${{ inputs.no_commit }}" \
           '{
             "mdb_id": $mdb_id,
             "author": $author,
-            "commit": $commit
+            "commit": $commit,
+            "s3_bucket": $bucket,
+            "no_commit": $no_commit
           }')
           echo "PARAMS=$PARAMS"
 
@@ -131,76 +135,20 @@ jobs:
             | sed 's/RESULT_JSON:\s*//' \
             || echo '[]')
           echo "Raw JSON array from logs: $RAW_JSON"
+          RESULT_JSON=$(echo "$RAW_JSON" | jq -c . 2>/dev/null || echo '[]')
 
-          FIRST_PATH=$(echo "$RAW_JSON" | jq -r '.[0] // empty')
-          if [ -n "$FIRST_PATH" ]; then
-            CLEAN_PATH=$(echo "$FIRST_PATH" \
-              | sed -E 's|.*/data/|data/|')
-            RESULT_JSON=$(jq -nc --arg p "$CLEAN_PATH" '[ $p ]')
-            echo "Normalized RESULT_JSON: $RESULT_JSON"
-          fi
-
-          if [ -z "${RESULT_JSON//\[\]/}" ]; then
-            echo "Fallback: no direct JSON, grepping for filename…"
-            FILE_PATH=$(grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' "$LOG_FILE" \
-              | tail -n1 \
-              || true)
-            if [ -n "$FILE_PATH" ]; then
-              STRIPPED=${FILE_PATH#*/data/}               # e.g. output/term_changelogs/xxx.xml
-              RESULT_JSON=$(jq -nc --arg p "data/$STRIPPED" '[ $p ]')
-              echo "Fallback RESULT_JSON: $RESULT_JSON"
-            fi
-          fi
-
-          echo "local_changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
-          echo "Changelog files for $MDB_ID: $RESULT_JSON"
+          echo "s3_keys=$RESULT_JSON" >> $GITHUB_OUTPUT
+          echo "S3 changelog keys for $MDB_ID: $RESULT_JSON"
 
       - name: Pull latest changes
-        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.s3_keys != '[]' && steps.update-terms.outputs.s3_keys != '' }}
         run: git pull origin ${{ github.ref_name }}
-
-      - name: AWS OIDC Authentication
-        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: ${{ github.actor }}
-
-      - name: Upload changelogs to S3
-        id: upload-s3
-        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
-        env:
-          LOCAL_FILES: ${{ steps.update-terms.outputs.local_changelog_files }}
-        run: |
-          S3_KEYS="[]"
-          HAS_FAILURE=false
-
-          for file in $(echo "$LOCAL_FILES" | jq -r '.[]'); do
-            S3_KEY=$(echo "$file" | sed 's|.*term_changelogs/|term_changelogs/|')
-            echo "Uploading $file -> s3://${S3_BUCKET}/${S3_KEY}"
-            if aws s3 cp "$file" "s3://${S3_BUCKET}/${S3_KEY}" --content-type application/xml; then
-              echo "Uploaded: $S3_KEY"
-              S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
-            else
-              echo "ERROR: Failed to upload $S3_KEY"
-              HAS_FAILURE=true
-            fi
-          done
-
-          if [ "$HAS_FAILURE" = true ]; then
-            echo "One or more uploads failed."
-            exit 1
-          fi
-
-          echo "s3_keys=$(echo $S3_KEYS | jq -c .)" >> $GITHUB_OUTPUT
-          echo "S3 keys: $(echo $S3_KEYS | jq .)"
 
       - name: Commit S3 upload log to git
         env:
           RUN_ID: ${{ github.run_id }}
         run: |
-          S3_KEYS='${{ steps.upload-s3.outputs.s3_keys }}'
+          S3_KEYS='${{ steps.update-terms.outputs.s3_keys }}'
 
           if [ -z "$S3_KEYS" ] || [ "$S3_KEYS" = "[]" ] || [ "$S3_KEYS" = "null" ]; then
             echo "No files uploaded. Skipping commit."

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import boto3
 from prefect import flow, get_run_logger, task
 
 from bento_mdb.cde_cypher import convert_model_cdes_to_changelog
@@ -21,13 +22,13 @@ if TYPE_CHECKING:
     from bento_mdb.datatypes import MDBCDESpec, ModelCDESpec
 
 
-def make_changelog_output_more_visible(changelog_file: Path) -> None:
+def make_changelog_output_more_visible(changelog_files: list[str]) -> None:
     """
     Make the changelog output more visible in logs.
 
     Print multiple times with clear markers.
     """
-    result_json = json.dumps([str(changelog_file)])
+    result_json = json.dumps(changelog_files)
     print("\n" + "*" * 80)  # noqa: T201
     print("RESULT_JSON_BEGIN")  # noqa: T201
     print(f"RESULT_JSON:{result_json}")  # noqa: T201
@@ -76,11 +77,30 @@ def update_mdb_cdes_from_term_sources(
     return update_cde_spec
 
 
+@task
+def upload_changelog_to_s3(changelog_file: Path, bucket: str) -> str:
+    """Upload a generated term changelog to S3 and return its key."""
+    logger = get_run_logger()
+    s3_key = f"term_changelogs/{changelog_file.name}"
+    logger.info("Uploading %s to s3://%s/%s", changelog_file, bucket, s3_key)
+    boto3.client("s3").upload_file(
+        str(changelog_file),
+        bucket,
+        s3_key,
+        ExtraArgs={"ContentType": "application/xml"},
+    )
+    logger.info("Uploaded term changelog to s3://%s/%s", bucket, s3_key)
+    return s3_key
+
+
 @flow(name="update-terms", log_prints=True)
 def update_terms(
     mdb_id: str,
     author: str,
     commit: str | None = None,
+    s3_bucket: str | None = None,
+    *,
+    no_commit: bool = False,
 ) -> None:
     """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
     logger = get_run_logger()
@@ -96,8 +116,16 @@ def update_terms(
     changelog_file.parent.mkdir(parents=True, exist_ok=True)
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
 
+    changelog_files: list[str] = []
     if changelog.count_changesets() == 0:
         logger.info("No changesets to report")
+    elif no_commit:
+        logger.info("Skipping S3 upload because no_commit is true")
+    elif s3_bucket:
+        changelog_files.append(upload_changelog_to_s3(changelog_file, s3_bucket))
+    else:
+        msg = "s3_bucket is required unless no_commit is true"
+        raise ValueError(msg)
 
     # Print changlog file as JSON for GitHub Actions
-    make_changelog_output_more_visible(changelog_file)
+    make_changelog_output_more_visible(changelog_files)
