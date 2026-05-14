@@ -9,6 +9,7 @@ import stat
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+import time
 
 import boto3
 from botocore.exceptions import ClientError
@@ -100,7 +101,7 @@ def run_liquibase_update(  # noqa: C901, PLR0912
     err_capture = io.StringIO()
     try:
         with redirect_stdout(out_capture), redirect_stderr(err_capture):
-            if dry_run:
+            if dry_run: # dry run is still putting stuff in the database - it executes mdb.put_with_statement(cypher_statement)
                 logger.info("Running updateSQL (dry run)...")
                 plb.updateSQL()
             else:
@@ -275,7 +276,9 @@ def liquibase_update_flow(
 
     total_changesets = len(changesets)
     logger.info("Found %d changesets in changelog file", total_changesets)
+    start = time.time()
 
+    
     if total_changesets == 0:
         msg = "No changesets found in changelog file"
         raise ValueError(msg)
@@ -286,9 +289,15 @@ def liquibase_update_flow(
         for changeset in changesets:
             cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
+            # remove cdata wrapper
+            cypher_statement = cypher_statement.replace("<![CDATA[", "").replace("]]>", "").strip()
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            mdb.put_with_statement(cypher_statement)
+            if not dry_run:
+                mdb.put_with_statement(cypher_statement)
+                end = time.time()
+            
+            logger.info(f"Changelog {num} took {end-start:.2f} seconds")
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:
@@ -298,3 +307,6 @@ def liquibase_update_flow(
         mdb.close()
 
     logger.info("Liquibase finished.")
+    total_end = time.time()
+    logger.info(f"TOTAL RUN TIME: {end-start:.2f} seconds")
+
