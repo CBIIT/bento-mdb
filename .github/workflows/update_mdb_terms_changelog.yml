@@ -29,7 +29,7 @@ on:
         type: boolean
         default: false
       no_commit:
-        description: "Don't commit changes to GitHub."
+        description: "Don't upload generated changelogs to S3 or commit the upload log."
         required: false
         type: boolean
         default: false

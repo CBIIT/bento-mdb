@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       no_commit:
-        description: "Don't commit changes to GitHub."
+        description: "Don't upload generated changelogs to S3 or commit the upload log."
         required: false
         type: boolean
         default: false
@@ -92,12 +92,10 @@ jobs:
           --arg mdb_id "$MDB_ID" \
           --arg author "${{ inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ inputs.commit_sha || github.sha }}" \
-          --argjson no_commit "${{ inputs.no_commit || false }}" \
           '{
             "mdb_id": $mdb_id,
             "author": $author,
-            "commit": $commit,
-            "no_commit": $no_commit
+            "commit": $commit
           }')
           echo "PARAMS=$PARAMS"
 
@@ -158,11 +156,11 @@ jobs:
           echo "Changelog files for $MDB_ID: $RESULT_JSON"
 
       - name: Pull latest changes
-        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
         run: git pull origin ${{ github.ref_name }}
 
       - name: AWS OIDC Authentication
-        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
@@ -171,7 +169,7 @@ jobs:
 
       - name: Upload changelogs to S3
         id: upload-s3
-        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        if: ${{ ! inputs.no_commit && steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
         env:
           LOCAL_FILES: ${{ steps.update-terms.outputs.local_changelog_files }}
         run: |
