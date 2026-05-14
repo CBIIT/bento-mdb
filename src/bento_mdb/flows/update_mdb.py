@@ -291,7 +291,6 @@ def liquibase_update_flow(
             cypher_statement = cypher_match.group(1).strip() if cypher_match else None
             # remove cdata wrapper
             cypher_statement = cypher_statement.replace("<![CDATA[", "").replace("]]>", "").strip()
-            cypher_statement = cypher_statement.replace("'", "\\'")
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
             if not dry_run:
