@@ -106,66 +106,9 @@ jobs:
               "dry_run": $dry_run
             }')
 
-            echo "Running deployment for $file..."
-            DEPLOY_OUTPUT=$(prefect deployment run liquibase-update/liquibase-update --params "$PARAMS" 2>&1)
-            echo "$DEPLOY_OUTPUT"
-
-            RUN_UUID=$(echo "$DEPLOY_OUTPUT" | grep -oE 'UUID: [0-9a-fA-F-]+' | awk '{print $2}')
-
-            if [ -z "$RUN_UUID" ]; then
-              echo "ERROR: Could not extract flow run UUID for $file"
-              HAS_FAILURE=true
-              continue
-            fi
-
-            echo "Polling flow run $RUN_UUID until completion (poll interval: 30s, timeout: 4h)..."
-            FLOW_SUCCESS=false
-            CURL_FAILURES=0
-            MAX_CURL_FAILURES=5
-            TIMEOUT_SECS=14400
-            ELAPSED=0
-            while [ "$ELAPSED" -lt "$TIMEOUT_SECS" ]; do
-              RESPONSE=$(curl -s \
-                "${PREFECT_API_URL}/flow_runs/${RUN_UUID}" \
-                -H "Authorization: Bearer ${PREFECT_API_KEY}" \
-                -H "Content-Type: application/json")
-              STATE=$(echo "$RESPONSE" | jq -r '.state.type // empty')
-
-              if [ -z "$STATE" ]; then
-                CURL_FAILURES=$((CURL_FAILURES + 1))
-                echo "WARNING: Could not retrieve flow run state (attempt $CURL_FAILURES/$MAX_CURL_FAILURES)"
-                if [ "$CURL_FAILURES" -ge "$MAX_CURL_FAILURES" ]; then
-                  echo "ERROR: Exceeded max curl failures for $file"
-                  break
-                fi
-              else
-                CURL_FAILURES=0
-                echo "Flow run state: $STATE"
-                case "$STATE" in
-                  COMPLETED)
-                    FLOW_SUCCESS=true
-                    break
-                    ;;
-                  FAILED|CRASHED|CANCELLED|CANCELLING)
-                    break
-                    ;;
-                esac
-              fi
-
-              sleep 30
-              ELAPSED=$((ELAPSED + 30))
-            done
-
-            if [ "$ELAPSED" -ge "$TIMEOUT_SECS" ]; then
-              echo "ERROR: Flow run for $file timed out after 4 hours"
-            fi
-
-            if [ "$FLOW_SUCCESS" = true ]; then
-              echo "Flow run for $file completed successfully."
-            else
-              echo "ERROR: Flow run for $file failed with state: $STATE"
-              HAS_FAILURE=true
-            fi
+            echo "Skipping Prefect deployment for $file during workflow test."
+            echo "Would run liquibase-update/liquibase-update with params:"
+            echo "$PARAMS"
           done
 
           if [ "$HAS_FAILURE" = true ]; then
