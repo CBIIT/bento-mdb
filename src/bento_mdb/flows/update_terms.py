@@ -127,5 +127,5 @@ def update_terms(
         msg = "s3_bucket is required unless no_commit is true"
         raise ValueError(msg)
 
-    # Print changlog file as JSON for GitHub Actions
+    # Print changelog file as JSON for GitHub Actions
     make_changelog_output_more_visible(changelog_files)
