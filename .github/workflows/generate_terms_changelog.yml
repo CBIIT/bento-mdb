@@ -2,6 +2,7 @@ name: Generate Term Changelogs
 permissions:
   contents: write
   actions: write
+  id-token: write
 
 on:
   workflow_call:
@@ -36,16 +37,26 @@ on:
         required: false
       PREFECT_API_URL:
         required: false
+      AWS_CHANGELOG_ROLE_ARN:
+        required: false
+      AWS_REGION:
+        required: false
+      S3_CHANGELOG_BUCKET:
+        required: false
     outputs:
       changelog_files:
-        description: "Generated changelog files"
+        description: "S3 keys of uploaded changelog files"
         value: ${{ jobs.update-mdb-terms.outputs.changelog_files }}
 
 jobs:
   update-mdb-terms:
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     outputs:
-      changelog_files: ${{ steps.update-terms.outputs.changelog_files }}
+      changelog_files: ${{ steps.upload-s3.outputs.s3_keys }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -143,8 +154,64 @@ jobs:
             fi
           fi
 
-          # Set output for GitHub Actions
-          echo "changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
-          echo "mdb_name=$MDB_ID" >> $GITHUB_OUTPUT
-          
+          echo "local_changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
           echo "Changelog files for $MDB_ID: $RESULT_JSON"
+
+      - name: Pull latest changes
+        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: AWS OIDC Authentication
+        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ${{ github.actor }}
+
+      - name: Upload changelogs to S3
+        id: upload-s3
+        if: ${{ steps.update-terms.outputs.local_changelog_files != '[]' && steps.update-terms.outputs.local_changelog_files != '' }}
+        env:
+          LOCAL_FILES: ${{ steps.update-terms.outputs.local_changelog_files }}
+        run: |
+          S3_KEYS="[]"
+          HAS_FAILURE=false
+
+          for file in $(echo "$LOCAL_FILES" | jq -r '.[]'); do
+            S3_KEY=$(echo "$file" | sed 's|.*term_changelogs/|term_changelogs/|')
+            echo "Uploading $file -> s3://${S3_BUCKET}/${S3_KEY}"
+            if aws s3 cp "$file" "s3://${S3_BUCKET}/${S3_KEY}" --content-type application/xml; then
+              echo "Uploaded: $S3_KEY"
+              S3_KEYS=$(echo "$S3_KEYS" | jq --arg k "$S3_KEY" '. + [$k]')
+            else
+              echo "ERROR: Failed to upload $S3_KEY"
+              HAS_FAILURE=true
+            fi
+          done
+
+          if [ "$HAS_FAILURE" = true ]; then
+            echo "One or more uploads failed."
+            exit 1
+          fi
+
+          echo "s3_keys=$(echo $S3_KEYS | jq -c .)" >> $GITHUB_OUTPUT
+          echo "S3 keys: $(echo $S3_KEYS | jq .)"
+
+      - name: Commit S3 upload log to git
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          S3_KEYS='${{ steps.upload-s3.outputs.s3_keys }}'
+
+          if [ -z "$S3_KEYS" ] || [ "$S3_KEYS" = "[]" ] || [ "$S3_KEYS" = "null" ]; then
+            echo "No files uploaded. Skipping commit."
+            exit 0
+          fi
+
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+ 
+          COMMIT_MSG="s3-upload-log run=${RUN_ID} keys=${S3_KEYS}"
+          git commit --allow-empty -m "$COMMIT_MSG"
+          git push origin ${{ github.ref_name }}
