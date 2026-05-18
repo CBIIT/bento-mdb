@@ -381,7 +381,7 @@ class TwistlockRegistryClient(ABC):
         """Trigger optional scan/select; this is a registry-level nudge, not the image scan."""
 
     @abstractmethod
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list:
+    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
         """Fetch compact or detailed registry result payload."""
 
     @abstractmethod
@@ -440,7 +440,7 @@ class HttpTwistlockRegistryClient(TwistlockRegistryClient):
             timeout=SCAN_SELECT_HTTP_TIMEOUT_SECONDS,
         )
 
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list:
+    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
         query = urllib.parse.urlencode(
             {"name": image_ref.value, "compact": "true" if compact else "false"}
         )
@@ -568,6 +568,10 @@ class TwistlockRegistryScanService:
         required: bool,
     ) -> dict | None:
         resp = self.client.registry_result(token, image_ref, compact=True)
+        if resp is None:
+            if required:
+                raise RuntimeError(f"No registry scan result found for image {image_ref.value!r}.")
+            return None
         if isinstance(resp, list):
             if not resp:
                 if required:

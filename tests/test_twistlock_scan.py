@@ -18,6 +18,10 @@ from bento_mdb.flows.twistlock_scan import (
     TwistlockSettings,
 )
 
+TEST_ECR_REGISTRY = "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+TEST_FAST_API_IMAGE = f"{TEST_ECR_REGISTRY}/crdc-mdb-sts-fast-api:main.1"
+TEST_REPO_IMAGE = f"{TEST_ECR_REGISTRY}/repo:tag"
+
 
 @dataclass
 class DictSettingsLoader(PrefectTwistlockSettingsLoader):
@@ -105,7 +109,7 @@ def test_http_client_trigger_scan_select_uses_resolved_collection_and_project(mo
         )
     )
 
-    client.trigger_scan_select("token-1", "986019062625.dkr.ecr.us-east-1.amazonaws.com")
+    client.trigger_scan_select("token-1", TEST_ECR_REGISTRY)
 
     assert len(calls) == 1
     assert calls[0]["method"] == "POST"
@@ -118,7 +122,7 @@ def test_http_client_trigger_scan_select_uses_resolved_collection_and_project(mo
     assert calls[0]["body"] == [
         {
             "tag": {
-                "registry": "986019062625.dkr.ecr.us-east-1.amazonaws.com",
+                "registry": TEST_ECR_REGISTRY,
                 "repo": "",
                 "tag": "",
             }
@@ -131,10 +135,12 @@ class FakeClient(TwistlockRegistryClient):
         self,
         *,
         existing: dict | None = None,
+        first_compact_response: dict | list | None = [],
         detailed_payload: dict | None = None,
         compact_result: dict | None = None,
     ):
         self.existing = existing
+        self.first_compact_response = first_compact_response
         self.detailed_payload = detailed_payload or {"vulnerabilities": []}
         self.compact_result = compact_result or {"vulnerabilityDistribution": {"critical": 0, "high": 0}}
         self.progress = [{"isScanOngoing": False}]
@@ -151,7 +157,7 @@ class FakeClient(TwistlockRegistryClient):
     def trigger_scan_select(self, token: str, registry: str) -> None:
         self.calls.append(("trigger_scan_select", token, registry))
 
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list:
+    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
         self.calls.append(("registry_result", token, image_ref.value, compact))
         if compact:
             self._compact_calls += 1
@@ -160,7 +166,7 @@ class FakeClient(TwistlockRegistryClient):
                 self.existing = None
                 return row
             if self._compact_calls == 1:
-                return []
+                return self.first_compact_response
             return self.compact_result
         return self.detailed_payload
 
@@ -182,7 +188,7 @@ def test_registry_scan_service_orchestrates_gateway_without_existing_row() -> No
     service = TwistlockRegistryScanService(client, FakeLogger())
 
     service.scan(
-        ImageRef.parse("986019062625.dkr.ecr.us-east-1.amazonaws.com/crdc-mdb-sts-fast-api:main.1"),
+        ImageRef.parse(TEST_FAST_API_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=True,
         poll_timeout_seconds=30,
@@ -194,33 +200,33 @@ def test_registry_scan_service_orchestrates_gateway_without_existing_row() -> No
         (
             "registry_result",
             "token-1",
-            "986019062625.dkr.ecr.us-east-1.amazonaws.com/crdc-mdb-sts-fast-api:main.1",
+            TEST_FAST_API_IMAGE,
             True,
         ),
         (
             "start_scan",
             "token-1",
-            "986019062625.dkr.ecr.us-east-1.amazonaws.com",
+            TEST_ECR_REGISTRY,
             "crdc-mdb-sts-fast-api",
             "main.1",
         ),
-        ("trigger_scan_select", "token-1", "986019062625.dkr.ecr.us-east-1.amazonaws.com"),
+        ("trigger_scan_select", "token-1", TEST_ECR_REGISTRY),
         (
             "registry_result",
             "token-1",
-            "986019062625.dkr.ecr.us-east-1.amazonaws.com/crdc-mdb-sts-fast-api:main.1",
+            TEST_FAST_API_IMAGE,
             True,
         ),
         (
             "registry_result",
             "token-1",
-            "986019062625.dkr.ecr.us-east-1.amazonaws.com/crdc-mdb-sts-fast-api:main.1",
+            TEST_FAST_API_IMAGE,
             True,
         ),
         (
             "registry_result",
             "token-1",
-            "986019062625.dkr.ecr.us-east-1.amazonaws.com/crdc-mdb-sts-fast-api:main.1",
+            TEST_FAST_API_IMAGE,
             False,
         ),
     ]
@@ -231,12 +237,27 @@ def test_registry_scan_service_disables_compact_fallback_when_row_already_exists
     service = TwistlockRegistryScanService(client, FakeLogger())
 
     service.scan(
-        ImageRef.parse("986019062625.dkr.ecr.us-east-1.amazonaws.com/repo:tag"),
+        ImageRef.parse(TEST_REPO_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=False,
         poll_timeout_seconds=60,
         poll_interval_seconds=10,
     )
 
-    assert ("trigger_scan_select", "token-1", "986019062625.dkr.ecr.us-east-1.amazonaws.com") not in client.calls
-    assert ("registry_progress", "token-1", "986019062625.dkr.ecr.us-east-1.amazonaws.com/repo:tag") in client.calls
+    assert ("trigger_scan_select", "token-1", TEST_ECR_REGISTRY) not in client.calls
+    assert ("registry_progress", "token-1", TEST_REPO_IMAGE) in client.calls
+
+
+def test_registry_scan_service_treats_null_compact_lookup_as_missing_row() -> None:
+    client = FakeClient(existing=None, first_compact_response=None)
+    service = TwistlockRegistryScanService(client, FakeLogger())
+
+    service.scan(
+        ImageRef.parse(TEST_REPO_IMAGE),
+        microservice_report_name=None,
+        trigger_registry_scan_select=False,
+        poll_timeout_seconds=60,
+        poll_interval_seconds=10,
+    )
+
+    assert ("start_scan", "token-1", TEST_ECR_REGISTRY, "repo", "tag") in client.calls
