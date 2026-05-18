@@ -17,6 +17,11 @@ on:
         description: "Run Trivy Test Scan"
         required: true 
         default: true
+      twistlock_scan:
+        type: boolean
+        description: "Run Twistlock Scan"
+        required: true
+        default: true
       scan_target:
         description: "Which image to scan via Prefect after push"
         type: choice
@@ -30,12 +35,7 @@ on:
         required: false
         default: ""
         type: string
-      twistcli_skip_download:
-        description: "Legacy param (registry API mode ignores this)"
-        required: false
-        type: boolean
-        default: false
-run-name: "Build to ${{ inputs.environment }} (Trivy: ${{ inputs.trivy_scan }}, Twistlock: ${{ inputs.scan_target }})"
+run-name: "Build to ${{ inputs.environment }} (Trivy: ${{ inputs.trivy_scan }}, Twistlock: ${{ inputs.twistlock_scan }}, Target: ${{ inputs.scan_target }})"
 jobs:
   build:
     name: Build Image
@@ -183,6 +183,7 @@ jobs:
     # Registry round-trip check (no ecr:DescribeImages; build role often lacks that permission).
     - name: Pull image(s) from ECR
       id: pull-ecr
+      if: github.event.inputs.twistlock_scan == 'true'
       env:
         SCAN_TARGET: ${{ inputs.scan_target }}
       run: |
@@ -204,28 +205,30 @@ jobs:
         esac
 
     - name: Set up Python
+      if: github.event.inputs.twistlock_scan == 'true'
       uses: actions/setup-python@v5
       with:
         python-version-file: ".python-version"
 
     - name: Install uv
+      if: github.event.inputs.twistlock_scan == 'true'
       uses: astral-sh/setup-uv@v5
       with:
         version: "0.5.10"
 
     - name: Install Prefect CLI
+      if: github.event.inputs.twistlock_scan == 'true'
       run: uv pip install --system "prefect==3.3.4"
 
     # Params must match the deployed Prefect schema. Run `prefect deploy ... --name twistlock-scan`
     # after pulling flow changes so new optional params (e.g. poll_timeout_seconds) register.
     - name: Run Twistlock scan deployment (STS FAST API image)
       id: prefect-twistlock-fast-api
-      if: ${{ inputs.scan_target == 'fast-api' || inputs.scan_target == 'both' }}
+      if: ${{ github.event.inputs.twistlock_scan == 'true' && (inputs.scan_target == 'fast-api' || inputs.scan_target == 'both') }}
       env:
         PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
         PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
-        TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
       run: |
         set -euo pipefail
         IMAGE_REF="$STS_FAST_API_IMAGE_NAME"
@@ -233,13 +236,11 @@ jobs:
           PARAMS=$(jq -n \
             --arg image_ref "$IMAGE_REF" \
             --arg twistlock_address "$TWISTLOCK_ADDRESS" \
-            --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-            '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+            '{image_ref: $image_ref, twistlock_address: $twistlock_address}')
         else
           PARAMS=$(jq -n \
             --arg image_ref "$IMAGE_REF" \
-            --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-            '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+            '{image_ref: $image_ref}')
         fi
         echo "PARAMS=$PARAMS"
         prefect deployment run twistlock-scan/twistlock-scan \
@@ -249,12 +250,11 @@ jobs:
 
     - name: Run Twistlock scan deployment (STS image)
       id: prefect-twistlock-sts
-      if: ${{ inputs.scan_target == 'sts' || inputs.scan_target == 'both' }}
+      if: ${{ github.event.inputs.twistlock_scan == 'true' && (inputs.scan_target == 'sts' || inputs.scan_target == 'both') }}
       env:
         PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
         PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
         TWISTLOCK_ADDRESS: ${{ inputs.twistlock_address }}
-        TWISTCLI_SKIP_DOWNLOAD: ${{ inputs.twistcli_skip_download }}
       run: |
         set -euo pipefail
         IMAGE_REF="$STS_IMAGE_NAME"
@@ -262,13 +262,11 @@ jobs:
           PARAMS=$(jq -n \
             --arg image_ref "$IMAGE_REF" \
             --arg twistlock_address "$TWISTLOCK_ADDRESS" \
-            --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-            '{image_ref: $image_ref, twistlock_address: $twistlock_address, twistcli_skip_download: $twistcli_skip_download}')
+            '{image_ref: $image_ref, twistlock_address: $twistlock_address}')
         else
           PARAMS=$(jq -n \
             --arg image_ref "$IMAGE_REF" \
-            --argjson twistcli_skip_download "$TWISTCLI_SKIP_DOWNLOAD" \
-            '{image_ref: $image_ref, twistcli_skip_download: $twistcli_skip_download}')
+            '{image_ref: $image_ref}')
         fi
         echo "PARAMS=$PARAMS"
         prefect deployment run twistlock-scan/twistlock-scan \

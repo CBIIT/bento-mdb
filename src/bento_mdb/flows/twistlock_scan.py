@@ -653,8 +653,6 @@ def twistlock_scan_flow(
     image_ref: str,
     *,
     twistlock_address: str | None = None,
-    twistcli_skip_download: bool = False,
-    twistcli_install_dir: str | None = None,
     microservice_report_name: str | None = None,
     # Optional registry-level nudge; the primary image scan is always start_scan().
     trigger_registry_scan_select: bool = False,
@@ -681,14 +679,7 @@ def twistlock_scan_flow(
     Secrets ``twistlock-scan-select-collections`` / ``twistlock-scan-select-project`` override query defaults.
     """
     logger = get_run_logger()
-    logger.info(
-        "twistlock_scan_flow starting (image_ref=%r twistcli_skip_download=%s twistcli_install_dir=%r)",
-        image_ref,
-        twistcli_skip_download,
-        twistcli_install_dir,
-    )
-    if twistcli_skip_download or twistcli_install_dir:
-        logger.warning("twistcli_* parameters are ignored in registry API mode.")
+    logger.info("twistlock_scan_flow starting (image_ref=%r)", image_ref)
 
     settings = TwistlockSettings.from_prefect(
         PrefectTwistlockSettingsLoader(), address_override=twistlock_address
