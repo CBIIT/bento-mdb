@@ -10,11 +10,8 @@ from bento_mdb.flows.twistlock_scan import (
     DEFAULT_SCAN_SELECT_COLLECTIONS,
     DEFAULT_SCAN_SELECT_PROJECT,
     DEFAULT_TWISTLOCK_ADDRESS,
-    HttpTwistlockRegistryClient,
     ImageRef,
     PrefectTwistlockSettingsLoader,
-    TwistlockRegistryClient,
-    TwistlockRegistryScanService,
     TwistlockSettings,
 )
 
@@ -82,7 +79,9 @@ def test_twistlock_settings_uses_overrides_and_optional_secret_values() -> None:
     assert settings.scan_select_project == "Project B"
 
 
-def test_http_client_trigger_scan_select_uses_resolved_collection_and_project(monkeypatch) -> None:
+def test_trigger_scan_select_uses_resolved_collection_and_project(
+    monkeypatch,
+) -> None:
     calls = []
 
     def fake_http_json_request(method, url, *, token=None, body=None, timeout=120):
@@ -98,24 +97,21 @@ def test_http_client_trigger_scan_select_uses_resolved_collection_and_project(mo
         return {}
 
     monkeypatch.setattr(flow_module, "_http_json_request", fake_http_json_request)
-    client = HttpTwistlockRegistryClient(
-        TwistlockSettings(
-            address="https://twistlock.example.test/",
-            api_version="v34.02",
-            username="user",
-            password="pass",
-            scan_select_collections="Collection A",
-            scan_select_project="Project B",
-        )
+    settings = TwistlockSettings(
+        address="https://twistlock.example.test/",
+        api_version="v34.02",
+        username="user",
+        password="pass",
+        scan_select_collections="Collection A",
+        scan_select_project="Project B",
     )
 
-    client.trigger_scan_select("token-1", TEST_ECR_REGISTRY)
+    flow_module._trigger_scan_select(settings, "token-1", TEST_ECR_REGISTRY)
 
     assert len(calls) == 1
     assert calls[0]["method"] == "POST"
     assert (
-        calls[0]["url"]
-        == "https://twistlock.example.test/api/v1/registry/scan/select"
+        calls[0]["url"] == "https://twistlock.example.test/api/v1/registry/scan/select"
         "?collections=Collection+A&project=Project+B"
     )
     assert calls[0]["token"] == "token-1"
@@ -130,18 +126,25 @@ def test_http_client_trigger_scan_select_uses_resolved_collection_and_project(mo
     ]
 
 
-class FakeClient(TwistlockRegistryClient):
+_NO_EXISTING_ROW = object()
+
+
+class FakeHttp:
     def __init__(
         self,
         *,
-        existing: dict | None = None,
+        existing: object = _NO_EXISTING_ROW,
         first_compact_response: dict | list | None = [],
         detailed_payload: dict | None = None,
         compact_result: dict | None = None,
     ):
         self.existing = existing
         self.first_compact_response = first_compact_response
-        self.detailed_payload = detailed_payload if detailed_payload is not None else {"vulnerabilities": []}
+        self.detailed_payload = (
+            detailed_payload
+            if detailed_payload is not None
+            else {"vulnerabilities": []}
+        )
         self.compact_result = (
             compact_result
             if compact_result is not None
@@ -151,32 +154,38 @@ class FakeClient(TwistlockRegistryClient):
         self.calls = []
         self._compact_calls = 0
 
-    def authenticate(self) -> str:
-        self.calls.append(("authenticate",))
-        return "token-1"
-
-    def start_scan(self, token: str, image_ref: ImageRef) -> None:
-        self.calls.append(("start_scan", token, image_ref.registry, image_ref.repo, image_ref.tag))
-
-    def trigger_scan_select(self, token: str, registry: str) -> None:
-        self.calls.append(("trigger_scan_select", token, registry))
-
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
-        self.calls.append(("registry_result", token, image_ref.value, compact))
-        if compact:
+    def __call__(self, method, url, *, token=None, body=None, timeout=120):
+        self.calls.append(
+            {
+                "method": method,
+                "url": url,
+                "token": token,
+                "body": body,
+                "timeout": timeout,
+            }
+        )
+        if url.endswith("/api/v1/authenticate"):
+            return {"token": "token-1"}
+        if url.endswith("/registry/scan"):
+            return {}
+        if "/registry/scan/select?" in url:
+            return {}
+        if "/registry/progress?" in url:
+            return self.progress
+        if "/registry?" in url:
+            compact = "compact=true" in url
             self._compact_calls += 1
-            if self.existing is not None:
+            if compact and self.existing is not _NO_EXISTING_ROW:
                 row = self.existing
-                self.existing = None
+                self.existing = _NO_EXISTING_ROW
                 return row
-            if self._compact_calls == 1:
+            if compact and self._compact_calls == 1:
                 return self.first_compact_response
-            return self.compact_result
-        return self.detailed_payload
+            return self.compact_result if compact else self.detailed_payload
+        raise AssertionError(f"Unexpected request: {method} {url}")
 
-    def registry_progress(self, token: str, image_ref: ImageRef) -> dict | list:
-        self.calls.append(("registry_progress", token, image_ref.value))
-        return self.progress
+    def matching_calls(self, text: str) -> list[dict]:
+        return [call for call in self.calls if text in call["url"]]
 
 
 class FakeLogger:
@@ -187,11 +196,24 @@ class FakeLogger:
         pass
 
 
-def test_registry_scan_service_orchestrates_gateway_without_existing_row() -> None:
-    client = FakeClient(existing=None)
-    service = TwistlockRegistryScanService(client, FakeLogger())
+def _test_settings() -> TwistlockSettings:
+    return TwistlockSettings(
+        address="https://twistlock.example.test",
+        api_version="v34.02",
+        username="user",
+        password="pass",
+    )
 
-    service.scan(
+
+def test_registry_scan_orchestrates_gateway_without_existing_row(
+    monkeypatch,
+) -> None:
+    http = FakeHttp()
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
+
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
         ImageRef.parse(TEST_FAST_API_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=True,
@@ -199,48 +221,34 @@ def test_registry_scan_service_orchestrates_gateway_without_existing_row() -> No
         poll_interval_seconds=5,
     )
 
-    assert client.calls == [
-        ("authenticate",),
-        (
-            "registry_result",
-            "token-1",
-            TEST_FAST_API_IMAGE,
-            True,
-        ),
-        (
-            "start_scan",
-            "token-1",
-            TEST_ECR_REGISTRY,
-            "crdc-mdb-sts-fast-api",
-            "main.1",
-        ),
-        ("trigger_scan_select", "token-1", TEST_ECR_REGISTRY),
-        (
-            "registry_result",
-            "token-1",
-            TEST_FAST_API_IMAGE,
-            True,
-        ),
-        (
-            "registry_result",
-            "token-1",
-            TEST_FAST_API_IMAGE,
-            True,
-        ),
-        (
-            "registry_result",
-            "token-1",
-            TEST_FAST_API_IMAGE,
-            False,
-        ),
+    assert [call["method"] for call in http.calls] == [
+        "POST",
+        "GET",
+        "POST",
+        "POST",
+        "GET",
+        "GET",
+        "GET",
     ]
+    assert len(http.matching_calls("/registry/scan/select?")) == 1
+    scan_body = http.matching_calls("/registry/scan")[0]["body"]
+    assert scan_body["tag"] == {
+        "registry": TEST_ECR_REGISTRY,
+        "repo": "crdc-mdb-sts-fast-api",
+        "tag": "main.1",
+        "digest": "",
+    }
 
 
-def test_registry_scan_service_disables_compact_fallback_when_row_already_exists() -> None:
-    client = FakeClient(existing={"name": "already-indexed"})
-    service = TwistlockRegistryScanService(client, FakeLogger())
+def test_registry_scan_disables_compact_fallback_when_row_already_exists(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(existing={"name": "already-indexed"})
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
 
-    service.scan(
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
         ImageRef.parse(TEST_REPO_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=False,
@@ -248,15 +256,19 @@ def test_registry_scan_service_disables_compact_fallback_when_row_already_exists
         poll_interval_seconds=10,
     )
 
-    assert ("trigger_scan_select", "token-1", TEST_ECR_REGISTRY) not in client.calls
-    assert ("registry_progress", "token-1", TEST_REPO_IMAGE) in client.calls
+    assert not http.matching_calls("/registry/scan/select?")
+    assert len(http.matching_calls("/registry/progress?")) == 1
 
 
-def test_registry_scan_service_treats_empty_compact_dict_as_existing_row() -> None:
-    client = FakeClient(existing={})
-    service = TwistlockRegistryScanService(client, FakeLogger())
+def test_registry_scan_treats_empty_compact_dict_as_existing_row(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(existing={})
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
 
-    service.scan(
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
         ImageRef.parse(TEST_REPO_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=False,
@@ -264,23 +276,34 @@ def test_registry_scan_service_treats_empty_compact_dict_as_existing_row() -> No
         poll_interval_seconds=10,
     )
 
-    assert client.calls.count(("registry_result", "token-1", TEST_REPO_IMAGE, True)) == 2
+    assert len(http.matching_calls("compact=true")) == 2
 
 
-def test_registry_scan_service_verify_treats_empty_compact_dict_as_found() -> None:
-    client = FakeClient(existing={})
-    service = TwistlockRegistryScanService(client, FakeLogger())
+def test_registry_scan_verify_treats_empty_compact_dict_as_found(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(existing={})
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
 
-    out = service.verify(ImageRef.parse(TEST_REPO_IMAGE), fail_if_not_found=True)
+    out = flow_module._verify_registry_image(
+        _test_settings(),
+        FakeLogger(),
+        ImageRef.parse(TEST_REPO_IMAGE),
+        fail_if_not_found=True,
+    )
 
     assert out == {"found": True, "image_ref": TEST_REPO_IMAGE, "row": {}}
 
 
-def test_registry_scan_service_treats_null_compact_lookup_as_missing_row() -> None:
-    client = FakeClient(existing=None, first_compact_response=None)
-    service = TwistlockRegistryScanService(client, FakeLogger())
+def test_registry_scan_treats_null_compact_lookup_as_missing_row(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(first_compact_response=None)
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
 
-    service.scan(
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
         ImageRef.parse(TEST_REPO_IMAGE),
         microservice_report_name=None,
         trigger_registry_scan_select=False,
@@ -288,4 +311,4 @@ def test_registry_scan_service_treats_null_compact_lookup_as_missing_row() -> No
         poll_interval_seconds=10,
     )
 
-    assert ("start_scan", "token-1", TEST_ECR_REGISTRY, "repo", "tag") in client.calls
+    assert http.matching_calls("/registry/scan")

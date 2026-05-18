@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
 import re
@@ -104,7 +103,8 @@ class TwistlockSettings:
                 or loader.get_secret("twistlock-address")
                 or DEFAULT_TWISTLOCK_ADDRESS
             ),
-            api_version=loader.get_secret("twistlock-api-version") or DEFAULT_COMPUTE_API_VERSION,
+            api_version=loader.get_secret("twistlock-api-version")
+            or DEFAULT_COMPUTE_API_VERSION,
             username=_required_secret(loader, "twistlock-username"),
             password=_required_secret(loader, "twistlock-password"),
             scan_select_collections=(
@@ -112,7 +112,8 @@ class TwistlockSettings:
                 or DEFAULT_SCAN_SELECT_COLLECTIONS
             ),
             scan_select_project=(
-                loader.get_secret("twistlock-scan-select-project") or DEFAULT_SCAN_SELECT_PROJECT
+                loader.get_secret("twistlock-scan-select-project")
+                or DEFAULT_SCAN_SELECT_PROJECT
             ),
         )
 
@@ -134,11 +135,6 @@ def _required_secret(loader: PrefectTwistlockSettingsLoader, name: str) -> str:
     return val
 
 
-_UNSAFE_TLS = ssl.create_default_context()
-_UNSAFE_TLS.check_hostname = False
-_UNSAFE_TLS.verify_mode = ssl.CERT_NONE
-
-
 def _http_json_request(
     method: str,
     url: str,
@@ -153,7 +149,9 @@ def _http_json_request(
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, context=_UNSAFE_TLS, timeout=timeout) as resp:
+        with urllib.request.urlopen(
+            req, context=ssl.create_default_context(), timeout=timeout
+        ) as resp:
             text = resp.read().decode()
     except urllib.error.HTTPError as e:
         err_body = e.read().decode(errors="replace")
@@ -222,9 +220,19 @@ def _parse_vuln_record(d: dict) -> dict[str, str] | None:
                 break
     if not cve:
         return None
-    sev_raw = d.get("severity") or d.get("risk") or d.get("cvssSeverity") or d.get("impact")
+    sev_raw = (
+        d.get("severity") or d.get("risk") or d.get("cvssSeverity") or d.get("impact")
+    )
     date_raw = None
-    for dk in ("discovered", "detected", "firstSeen", "modified", "time", "creationTime", "discoveredTime"):
+    for dk in (
+        "discovered",
+        "detected",
+        "firstSeen",
+        "modified",
+        "time",
+        "creationTime",
+        "discoveredTime",
+    ):
         if dk in d and d[dk] is not None:
             date_raw = d[dk]
             break
@@ -237,7 +245,9 @@ def _parse_vuln_record(d: dict) -> dict[str, str] | None:
         "cve": cve,
         "cde_id": _cde_like_id_from_dict(d),
         "severity": _severity_display(sev_raw),
-        "severity_key": str(sev_raw).strip().lower() if sev_raw is not None else "unknown",
+        "severity_key": (
+            str(sev_raw).strip().lower() if sev_raw is not None else "unknown"
+        ),
         "date": _format_vuln_timestamp(date_raw) if date_raw is not None else "—",
         "package": pkg_s,
     }
@@ -365,291 +375,311 @@ def _evaluate_registry_scan_result(result: dict) -> None:
         raise RuntimeError(f"Scan policy: failing on critical={critical} high={high}")
 
 
-class TwistlockRegistryClient(ABC):
-    """Boundary for Twistlock Registry API operations used by scan use cases."""
-
-    @abstractmethod
-    def authenticate(self) -> str:
-        """Return an authenticated bearer token."""
-
-    @abstractmethod
-    def start_scan(self, token: str, image_ref: ImageRef) -> None:
-        """Enqueue an on-demand registry scan."""
-
-    @abstractmethod
-    def trigger_scan_select(self, token: str, registry: str) -> None:
-        """Trigger optional scan/select; this is a registry-level nudge, not the image scan."""
-
-    @abstractmethod
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
-        """Fetch compact or detailed registry result payload."""
-
-    @abstractmethod
-    def registry_progress(self, token: str, image_ref: ImageRef) -> dict | list:
-        """Fetch registry scan progress."""
+def _twistlock_authenticate(settings: TwistlockSettings) -> str:
+    url = f"{settings.address.rstrip('/')}/api/v1/authenticate"
+    auth_json = _http_json_request(
+        "POST",
+        url,
+        body={"username": settings.username, "password": settings.password},
+    )
+    if not isinstance(auth_json, dict):
+        raise RuntimeError(f"Unexpected auth response type: {type(auth_json).__name__}")
+    token = auth_json.get("token")
+    if not token:
+        raise RuntimeError(f"Twistlock authentication failed: {auth_json!r}")
+    return str(token)
 
 
-class HttpTwistlockRegistryClient(TwistlockRegistryClient):
-    """urllib-backed Twistlock Registry API adapter."""
-
-    def __init__(self, settings: TwistlockSettings):
-        self.settings = settings
-
-    def authenticate(self) -> str:
-        url = f"{self.settings.address.rstrip('/')}/api/v1/authenticate"
-        auth_json = _http_json_request(
-            "POST",
-            url,
-            body={"username": self.settings.username, "password": self.settings.password},
-        )
-        if not isinstance(auth_json, dict):
-            raise RuntimeError(f"Unexpected auth response type: {type(auth_json).__name__}")
-        token = auth_json.get("token")
-        if not token:
-            raise RuntimeError(f"Twistlock authentication failed: {auth_json!r}")
-        return str(token)
-
-    def start_scan(self, token: str, image_ref: ImageRef) -> None:
-        url = f"{_registry_api_base(self.settings.address, self.settings.api_version)}/registry/scan"
-        body = {
-            "onDemandScan": True,
-            "tag": {
-                "registry": image_ref.registry,
-                "repo": image_ref.repo,
-                "tag": image_ref.tag,
-                "digest": "",
-            },
-        }
-        _http_json_request("POST", url, token=token, body=body, timeout=240)
-
-    def trigger_scan_select(self, token: str, registry: str) -> None:
-        q = urllib.parse.urlencode(
-            {
-                "collections": self.settings.scan_select_collections,
-                "project": self.settings.scan_select_project,
-            },
-            quote_via=urllib.parse.quote_plus,
-        )
-        url = f"{self.settings.address.rstrip('/')}/api/v1/registry/scan/select?{q}"
-        body = [{"tag": {"registry": registry, "repo": "", "tag": ""}}]
-        _http_json_request(
-            "POST",
-            url,
-            token=token,
-            body=body,
-            timeout=SCAN_SELECT_HTTP_TIMEOUT_SECONDS,
-        )
-
-    def registry_result(self, token: str, image_ref: ImageRef, *, compact: bool) -> dict | list | None:
-        query = urllib.parse.urlencode(
-            {"name": image_ref.value, "compact": "true" if compact else "false"}
-        )
-        url = f"{_registry_api_base(self.settings.address, self.settings.api_version)}/registry?{query}"
-        timeout = 120 if compact else _REGISTRY_DETAIL_HTTP_TIMEOUT_SECONDS
-        return _http_json_request("GET", url, token=token, timeout=timeout)
-
-    def registry_progress(self, token: str, image_ref: ImageRef) -> dict | list:
-        query = urllib.parse.urlencode(
-            {"onDemand": "true", "repo": image_ref.repo, "tag": image_ref.tag}
-        )
-        url = (
-            f"{_registry_api_base(self.settings.address, self.settings.api_version)}"
-            f"/registry/progress?{query}"
-        )
-        return _http_json_request("GET", url, token=token, timeout=60)
+def _start_registry_scan(
+    settings: TwistlockSettings, token: str, image_ref: ImageRef
+) -> None:
+    url = f"{_registry_api_base(settings.address, settings.api_version)}/registry/scan"
+    body = {
+        "onDemandScan": True,
+        "tag": {
+            "registry": image_ref.registry,
+            "repo": image_ref.repo,
+            "tag": image_ref.tag,
+            "digest": "",
+        },
+    }
+    _http_json_request("POST", url, token=token, body=body, timeout=240)
 
 
-class TwistlockRegistryScanService:
-    """Application service for the registry scan use case."""
+def _trigger_scan_select(
+    settings: TwistlockSettings, token: str, registry: str
+) -> None:
+    q = urllib.parse.urlencode(
+        {
+            "collections": settings.scan_select_collections,
+            "project": settings.scan_select_project,
+        },
+        quote_via=urllib.parse.quote_plus,
+    )
+    url = f"{settings.address.rstrip('/')}/api/v1/registry/scan/select?{q}"
+    body = [{"tag": {"registry": registry, "repo": "", "tag": ""}}]
+    _http_json_request(
+        "POST",
+        url,
+        token=token,
+        body=body,
+        timeout=SCAN_SELECT_HTTP_TIMEOUT_SECONDS,
+    )
 
-    def __init__(self, client: TwistlockRegistryClient, logger):
-        self.client = client
-        self.logger = logger
 
-    def scan(
-        self,
-        image_ref: ImageRef,
-        *,
-        microservice_report_name: str | None,
-        trigger_registry_scan_select: bool,
-        poll_timeout_seconds: int,
-        poll_interval_seconds: int,
-    ) -> None:
-        token = self.client.authenticate()
-        self.logger.info("Twistlock authentication succeeded")
-        self.logger.info(
-            "parsed image_ref registry=%s repo=%s tag=%s",
-            image_ref.registry,
-            image_ref.repo,
-            image_ref.tag,
-        )
+def _registry_result(
+    settings: TwistlockSettings,
+    token: str,
+    image_ref: ImageRef,
+    *,
+    compact: bool,
+) -> dict | list | None:
+    query = urllib.parse.urlencode(
+        {"name": image_ref.value, "compact": "true" if compact else "false"}
+    )
+    url = (
+        f"{_registry_api_base(settings.address, settings.api_version)}/registry?{query}"
+    )
+    timeout = 120 if compact else _REGISTRY_DETAIL_HTTP_TIMEOUT_SECONDS
+    return _http_json_request("GET", url, token=token, timeout=timeout)
 
-        existing = self._compact_result(token, image_ref, required=False)
-        if existing is not None:
-            self.logger.info(
-                "Twistlock registry already has a row for this image (compact lookup succeeded). "
-                "Snippet: %s",
-                json.dumps(existing)[:800],
-            )
-        else:
-            self.logger.info(
-                "No compact registry row yet for %r (Twistlock may not have indexed this tag). "
-                "Proceeding with on-demand scan.",
-                image_ref.value,
-            )
 
-        self.logger.info("step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)...")
-        self.client.start_scan(token, image_ref)
-        self.logger.info("on-demand scan request accepted")
+def _registry_progress(
+    settings: TwistlockSettings, token: str, image_ref: ImageRef
+) -> dict | list:
+    query = urllib.parse.urlencode(
+        {"onDemand": "true", "repo": image_ref.repo, "tag": image_ref.tag}
+    )
+    url = f"{_registry_api_base(settings.address, settings.api_version)}/registry/progress?{query}"
+    return _http_json_request("GET", url, token=token, timeout=60)
 
-        # Optional extra nudge for consoles where registry scanners do not pick up ECR changes promptly.
-        if trigger_registry_scan_select:
-            self.logger.info("step 2b: POST registry/scan/select (optional registry scan-select helper)...")
-            try:
-                self.client.trigger_scan_select(token, image_ref.registry)
-                self.logger.info("registry scan/select completed")
-            except RuntimeError as e:
-                self.logger.warning("registry/scan/select failed (continuing with progress poll): %s", e)
 
-        self.logger.info(
-            "step 3: wait for scan (registry/progress + compact fallback when no prior row)... "
-            "had_compact_before_enqueue=%s",
-            existing is not None,
-        )
-        self._wait_until_ready(
-            token,
-            image_ref,
-            timeout_seconds=poll_timeout_seconds,
-            interval_seconds=poll_interval_seconds,
-            use_compact_row_completion=(existing is None),
-        )
-
-        self.logger.info("step 4: GET registry (compact result via API)...")
-        result = self._compact_result(token, image_ref, required=True)
-        ms_label = _microservice_report_label(image_ref.value, microservice_report_name)
-        self.logger.info("step 4b: vulnerability report (prefer non-compact registry payload for CVE rows)...")
-        try:
-            detailed = self.client.registry_result(token, image_ref, compact=False)
-        except RuntimeError as e:
-            self.logger.warning(
-                "non-compact registry GET failed (%s); logging CVE table from compact payload only.", e
-            )
-            detailed = result
-        _log_twistlock_vulnerability_report(
-            self.logger,
-            detailed,
-            microservice_name=ms_label,
-            image_ref=image_ref.value,
-        )
-        self.logger.info("evaluating scan output against policy...")
-        _evaluate_registry_scan_result(result)
-        self.logger.info("Twistlock registry scan passed (no critical/high).")
-
-    def verify(self, image_ref: ImageRef, *, fail_if_not_found: bool) -> dict:
-        token = self.client.authenticate()
-        row = self._compact_result(token, image_ref, required=False)
-        if row is not None:
-            self.logger.info("FOUND: registry row exists for this image.")
-            return {"found": True, "image_ref": image_ref.value, "row": row}
-        self.logger.info("NOT FOUND: no compact registry row for this name.")
-        out = {"found": False, "image_ref": image_ref.value, "row": None}
-        if fail_if_not_found:
+def _compact_result(
+    settings: TwistlockSettings,
+    token: str,
+    image_ref: ImageRef,
+    *,
+    required: bool,
+) -> dict | None:
+    resp = _registry_result(settings, token, image_ref, compact=True)
+    if resp is None:
+        if required:
             raise RuntimeError(
-                f"No Twistlock registry row for {image_ref.value!r}. "
-                "Check name string vs Console UI, API version, or wait for scan to index."
+                f"No registry scan result found for image {image_ref.value!r}."
             )
-        return out
-
-    def _compact_result(
-        self,
-        token: str,
-        image_ref: ImageRef,
-        *,
-        required: bool,
-    ) -> dict | None:
-        resp = self.client.registry_result(token, image_ref, compact=True)
-        if resp is None:
+        return None
+    if isinstance(resp, list):
+        if not resp:
             if required:
-                raise RuntimeError(f"No registry scan result found for image {image_ref.value!r}.")
-            return None
-        if isinstance(resp, list):
-            if not resp:
-                if required:
-                    raise RuntimeError(f"No registry scan result found for image {image_ref.value!r}.")
-                return None
-            first = resp[0]
-            if not isinstance(first, dict):
-                raise RuntimeError(f"Unexpected registry result item type: {type(first).__name__}")
-            return first
-        if isinstance(resp, dict):
-            return resp
-        raise RuntimeError(f"Unexpected registry result type: {type(resp).__name__}")
-
-    def _wait_until_ready(
-        self,
-        token: str,
-        image_ref: ImageRef,
-        *,
-        timeout_seconds: int,
-        interval_seconds: int,
-        use_compact_row_completion: bool,
-    ) -> None:
-        started = time.time()
-        seen_nonempty_progress = False
-        polls = 0
-        empty_streak = 0
-        warned_empty_progress = False
-
-        while True:
-            if time.time() - started > timeout_seconds:
                 raise RuntimeError(
-                    f"Timed out waiting for registry scan after {timeout_seconds}s "
-                    f"(no compact row and no usable progress). image_ref={image_ref.value!r}"
+                    f"No registry scan result found for image {image_ref.value!r}."
                 )
+            return None
+        first = resp[0]
+        if not isinstance(first, dict):
+            raise RuntimeError(
+                f"Unexpected registry result item type: {type(first).__name__}"
+            )
+        return first
+    if isinstance(resp, dict):
+        return resp
+    raise RuntimeError(f"Unexpected registry result type: {type(resp).__name__}")
 
-            # Some registry scans never expose progress; a new compact row means the image is indexed.
-            if use_compact_row_completion:
-                row = self._compact_result(token, image_ref, required=False)
-                if row is not None:
-                    self.logger.info(
-                        "registry compact row present (scan/index ready); snippet: %s",
-                        json.dumps(row)[:500],
-                    )
-                    return
 
-            polls += 1
-            resp = self.client.registry_progress(token, image_ref)
-            if isinstance(resp, list) and resp:
-                seen_nonempty_progress = True
-                empty_streak = 0
-                ongoing = any(bool(item.get("isScanOngoing")) for item in resp if isinstance(item, dict))
-                if polls == 1 or polls % 4 == 0:
-                    self.logger.info("registry progress poll #%s: %s", polls, json.dumps(resp)[:600])
-                if not ongoing:
-                    self.logger.info("registry progress reports no ongoing scan")
-                    return
-            elif seen_nonempty_progress:
-                self.logger.info("registry progress returned empty after prior non-empty (assuming complete)")
+def _wait_until_ready(
+    settings: TwistlockSettings,
+    logger,
+    token: str,
+    image_ref: ImageRef,
+    *,
+    timeout_seconds: int,
+    interval_seconds: int,
+    use_compact_row_completion: bool,
+) -> None:
+    started = time.time()
+    seen_nonempty_progress = False
+    polls = 0
+    empty_streak = 0
+    warned_empty_progress = False
+
+    while True:
+        if time.time() - started > timeout_seconds:
+            raise RuntimeError(
+                f"Timed out waiting for registry scan after {timeout_seconds}s "
+                f"(no compact row and no usable progress). image_ref={image_ref.value!r}"
+            )
+
+        # Some registry scans never expose progress; a new compact row means the image is indexed.
+        if use_compact_row_completion:
+            row = _compact_result(settings, token, image_ref, required=False)
+            if row is not None:
+                logger.info(
+                    "registry compact row present (scan/index ready); snippet: %s",
+                    json.dumps(row)[:500],
+                )
                 return
-            else:
-                empty_streak += 1
-                if polls == 1 or polls % 4 == 0:
-                    self.logger.info(
-                        "registry progress poll #%s returned empty list (compact fallback %s)",
-                        polls,
-                        "on" if use_compact_row_completion else "off - row existed before enqueue",
-                    )
-                if empty_streak >= 8 and not warned_empty_progress:
-                    warned_empty_progress = True
-                    self.logger.warning(
-                        "registry/progress still empty after %s polls; continuing until timeout (%s).",
-                        empty_streak,
+
+        polls += 1
+        resp = _registry_progress(settings, token, image_ref)
+        if isinstance(resp, list) and resp:
+            seen_nonempty_progress = True
+            empty_streak = 0
+            ongoing = any(
+                bool(item.get("isScanOngoing"))
+                for item in resp
+                if isinstance(item, dict)
+            )
+            if polls == 1 or polls % 4 == 0:
+                logger.info(
+                    "registry progress poll #%s: %s", polls, json.dumps(resp)[:600]
+                )
+            if not ongoing:
+                logger.info("registry progress reports no ongoing scan")
+                return
+        elif seen_nonempty_progress:
+            logger.info(
+                "registry progress returned empty after prior non-empty (assuming complete)"
+            )
+            return
+        else:
+            empty_streak += 1
+            if polls == 1 or polls % 4 == 0:
+                logger.info(
+                    "registry progress poll #%s returned empty list (compact fallback %s)",
+                    polls,
+                    (
+                        "on"
+                        if use_compact_row_completion
+                        else "off - row existed before enqueue"
+                    ),
+                )
+            if empty_streak >= 8 and not warned_empty_progress:
+                warned_empty_progress = True
+                logger.warning(
+                    "registry/progress still empty after %s polls; continuing until timeout (%s).",
+                    empty_streak,
+                    (
                         "polling compact registry for a new row"
                         if use_compact_row_completion
-                        else "waiting on progress only",
-                    )
+                        else "waiting on progress only"
+                    ),
+                )
 
-            time.sleep(interval_seconds)
+        time.sleep(interval_seconds)
+
+
+def _run_registry_scan(
+    settings: TwistlockSettings,
+    logger,
+    image_ref: ImageRef,
+    *,
+    microservice_report_name: str | None,
+    trigger_registry_scan_select: bool,
+    poll_timeout_seconds: int,
+    poll_interval_seconds: int,
+) -> None:
+    token = _twistlock_authenticate(settings)
+    logger.info("Twistlock authentication succeeded")
+    logger.info(
+        "parsed image_ref registry=%s repo=%s tag=%s",
+        image_ref.registry,
+        image_ref.repo,
+        image_ref.tag,
+    )
+
+    existing = _compact_result(settings, token, image_ref, required=False)
+    if existing is not None:
+        logger.info(
+            "Twistlock registry already has a row for this image (compact lookup succeeded). "
+            "Snippet: %s",
+            json.dumps(existing)[:800],
+        )
+    else:
+        logger.info(
+            "No compact registry row yet for %r (Twistlock may not have indexed this tag). "
+            "Proceeding with on-demand scan.",
+            image_ref.value,
+        )
+
+    logger.info(
+        "step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)..."
+    )
+    _start_registry_scan(settings, token, image_ref)
+    logger.info("on-demand scan request accepted")
+
+    # Optional extra nudge for consoles where registry scanners do not pick up ECR changes promptly.
+    if trigger_registry_scan_select:
+        logger.info(
+            "step 2b: POST registry/scan/select (optional registry scan-select helper)..."
+        )
+        try:
+            _trigger_scan_select(settings, token, image_ref.registry)
+            logger.info("registry scan/select completed")
+        except RuntimeError as e:
+            logger.warning(
+                "registry/scan/select failed (continuing with progress poll): %s", e
+            )
+
+    logger.info(
+        "step 3: wait for scan (registry/progress + compact fallback when no prior row)... "
+        "had_compact_before_enqueue=%s",
+        existing is not None,
+    )
+    _wait_until_ready(
+        settings,
+        logger,
+        token,
+        image_ref,
+        timeout_seconds=poll_timeout_seconds,
+        interval_seconds=poll_interval_seconds,
+        use_compact_row_completion=(existing is None),
+    )
+
+    logger.info("step 4: GET registry (compact result via API)...")
+    result = _compact_result(settings, token, image_ref, required=True)
+    ms_label = _microservice_report_label(image_ref.value, microservice_report_name)
+    logger.info(
+        "step 4b: vulnerability report (prefer non-compact registry payload for CVE rows)..."
+    )
+    try:
+        detailed = _registry_result(settings, token, image_ref, compact=False)
+    except RuntimeError as e:
+        logger.warning(
+            "non-compact registry GET failed (%s); logging CVE table from compact payload only.",
+            e,
+        )
+        detailed = result
+    _log_twistlock_vulnerability_report(
+        logger,
+        detailed,
+        microservice_name=ms_label,
+        image_ref=image_ref.value,
+    )
+    logger.info("evaluating scan output against policy...")
+    _evaluate_registry_scan_result(result)
+    logger.info("Twistlock registry scan passed (no critical/high).")
+
+
+def _verify_registry_image(
+    settings: TwistlockSettings,
+    logger,
+    image_ref: ImageRef,
+    *,
+    fail_if_not_found: bool,
+) -> dict:
+    token = _twistlock_authenticate(settings)
+    row = _compact_result(settings, token, image_ref, required=False)
+    if row is not None:
+        logger.info("FOUND: registry row exists for this image.")
+        return {"found": True, "image_ref": image_ref.value, "row": row}
+    logger.info("NOT FOUND: no compact registry row for this name.")
+    out = {"found": False, "image_ref": image_ref.value, "row": None}
+    if fail_if_not_found:
+        raise RuntimeError(
+            f"No Twistlock registry row for {image_ref.value!r}. "
+            "Check name string vs Console UI, API version, or wait for scan to index."
+        )
+    return out
 
 
 @flow(name="twistlock-scan", log_prints=True)
@@ -693,11 +723,14 @@ def twistlock_scan_flow(
         settings.address,
         settings.api_version,
     )
-    logger.info("loaded twistlock-username and twistlock-password from Prefect Secret blocks")
+    logger.info(
+        "loaded twistlock-username and twistlock-password from Prefect Secret blocks"
+    )
 
     logger.info("authenticating to Twistlock console...")
-    service = TwistlockRegistryScanService(HttpTwistlockRegistryClient(settings), logger)
-    service.scan(
+    _run_registry_scan(
+        settings,
+        logger,
         ImageRef.parse(image_ref),
         microservice_report_name=microservice_report_name,
         trigger_registry_scan_select=trigger_registry_scan_select,
@@ -732,5 +765,9 @@ def verify_twistlock_registry_image_flow(
         parsed_image_ref.value,
     )
 
-    service = TwistlockRegistryScanService(HttpTwistlockRegistryClient(settings), logger)
-    return service.verify(parsed_image_ref, fail_if_not_found=fail_if_not_found)
+    return _verify_registry_image(
+        settings,
+        logger,
+        parsed_image_ref,
+        fail_if_not_found=fail_if_not_found,
+    )
