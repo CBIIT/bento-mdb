@@ -156,7 +156,7 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       env:
-        REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        REGISTRY_URL: ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
       run:  |
         aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY_URL
 
