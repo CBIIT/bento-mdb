@@ -485,7 +485,7 @@ class TwistlockRegistryScanService:
         )
 
         existing = self._compact_result(token, image_ref, required=False)
-        if existing:
+        if existing is not None:
             self.logger.info(
                 "Twistlock registry already has a row for this image (compact lookup succeeded). "
                 "Snippet: %s",
@@ -548,7 +548,7 @@ class TwistlockRegistryScanService:
     def verify(self, image_ref: ImageRef, *, fail_if_not_found: bool) -> dict:
         token = self.client.authenticate()
         row = self._compact_result(token, image_ref, required=False)
-        if row:
+        if row is not None:
             self.logger.info("FOUND: registry row exists for this image.")
             return {"found": True, "image_ref": image_ref.value, "row": row}
         self.logger.info("NOT FOUND: no compact registry row for this name.")
@@ -610,7 +610,7 @@ class TwistlockRegistryScanService:
             # Some registry scans never expose progress; a new compact row means the image is indexed.
             if use_compact_row_completion:
                 row = self._compact_result(token, image_ref, required=False)
-                if row:
+                if row is not None:
                     self.logger.info(
                         "registry compact row present (scan/index ready); snippet: %s",
                         json.dumps(row)[:500],

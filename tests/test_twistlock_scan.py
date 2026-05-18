@@ -141,8 +141,12 @@ class FakeClient(TwistlockRegistryClient):
     ):
         self.existing = existing
         self.first_compact_response = first_compact_response
-        self.detailed_payload = detailed_payload or {"vulnerabilities": []}
-        self.compact_result = compact_result or {"vulnerabilityDistribution": {"critical": 0, "high": 0}}
+        self.detailed_payload = detailed_payload if detailed_payload is not None else {"vulnerabilities": []}
+        self.compact_result = (
+            compact_result
+            if compact_result is not None
+            else {"vulnerabilityDistribution": {"critical": 0, "high": 0}}
+        )
         self.progress = [{"isScanOngoing": False}]
         self.calls = []
         self._compact_calls = 0
@@ -246,6 +250,30 @@ def test_registry_scan_service_disables_compact_fallback_when_row_already_exists
 
     assert ("trigger_scan_select", "token-1", TEST_ECR_REGISTRY) not in client.calls
     assert ("registry_progress", "token-1", TEST_REPO_IMAGE) in client.calls
+
+
+def test_registry_scan_service_treats_empty_compact_dict_as_existing_row() -> None:
+    client = FakeClient(existing={})
+    service = TwistlockRegistryScanService(client, FakeLogger())
+
+    service.scan(
+        ImageRef.parse(TEST_REPO_IMAGE),
+        microservice_report_name=None,
+        trigger_registry_scan_select=False,
+        poll_timeout_seconds=60,
+        poll_interval_seconds=10,
+    )
+
+    assert client.calls.count(("registry_result", "token-1", TEST_REPO_IMAGE, True)) == 2
+
+
+def test_registry_scan_service_verify_treats_empty_compact_dict_as_found() -> None:
+    client = FakeClient(existing={})
+    service = TwistlockRegistryScanService(client, FakeLogger())
+
+    out = service.verify(ImageRef.parse(TEST_REPO_IMAGE), fail_if_not_found=True)
+
+    assert out == {"found": True, "image_ref": TEST_REPO_IMAGE, "row": {}}
 
 
 def test_registry_scan_service_treats_null_compact_lookup_as_missing_row() -> None:
