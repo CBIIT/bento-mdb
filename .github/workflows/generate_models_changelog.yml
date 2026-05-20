@@ -110,8 +110,7 @@ jobs:
 
       - name: Install dependencies and project
         run: |
-          uv pip install --system -e .
-          uv sync --all-extras --dev
+          uv sync --all-extras --dev --frozen
 
       - name: Generate Model Version Matrix
         id: set-matrix
@@ -144,7 +143,7 @@ jobs:
             echo "Running Prefect deployment with params: $PARAMS"
 
             watch_out=$(
-              prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+              uv run prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
                 --params "$PARAMS" \
                 --watch \
                 --watch-interval 30 2>&1 | tee watch.log
@@ -161,7 +160,7 @@ jobs:
             sleep 10
 
             LOG_FILE="${RUN_ID}_run.log"
-            prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+            uv run prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
             
             echo "Checking for MATRIX_JSON in logs:"
             grep -a "MATRIX_JSON" "$LOG_FILE" || echo "No MATRIX_JSON found in logs"
