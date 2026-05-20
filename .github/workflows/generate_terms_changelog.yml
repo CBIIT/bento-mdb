@@ -102,7 +102,7 @@ jobs:
           echo "PARAMS=$PARAMS"
 
           watch_out=$(
-            prefect deployment run update-terms/update-terms \
+            uv run prefect deployment run update-terms/update-terms \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee watch.log
@@ -118,7 +118,7 @@ jobs:
           LOG_FILE="${RUN_ID}_run.log"
           echo "Log file: $LOG_FILE"
 
-          prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+          uv run prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
 
           echo "First 10 lines of log file:"
           head -n 10 "$LOG_FILE" || echo "Failed to read log file"

@@ -107,7 +107,7 @@ jobs:
             }')
 
             echo "Running deployment for $file..."
-            DEPLOY_OUTPUT=$(prefect deployment run liquibase-update/liquibase-update --params "$PARAMS" 2>&1)
+            DEPLOY_OUTPUT=$(uv run prefect deployment run liquibase-update/liquibase-update --params "$PARAMS" 2>&1)
             echo "$DEPLOY_OUTPUT"
 
             RUN_UUID=$(echo "$DEPLOY_OUTPUT" | grep -oE 'UUID: [0-9a-fA-F-]+' | awk '{print $2}')

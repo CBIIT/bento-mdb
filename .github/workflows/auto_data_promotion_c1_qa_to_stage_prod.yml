@@ -99,7 +99,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-qa",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion-upper' \
+          uv run prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -143,7 +143,7 @@ jobs:
           echo "Running mdb-export-s3 with params: $PARAMS"
 
           watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3-prod \
+            uv run prefect deployment run mdb-export-s3/mdb-export-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee export_watch.log
@@ -207,7 +207,7 @@ jobs:
           echo "Running mdb-import-s3 with params: $PARAMS"
 
           watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3-prod \
+            uv run prefect deployment run mdb-import-s3/mdb-import-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee import_watch.log
@@ -250,7 +250,7 @@ jobs:
           set -xeuo pipefail
           PARAMS=$(jq -n '{"mdb_id": "cloud-one-mdb-stage", "dry_run": false}')
           echo "Running mdb-prune-prerelease with params: $PARAMS"
-          prefect deployment run mdb-prune-prerelease/prune-prerelease-prod \
+          uv run prefect deployment run mdb-prune-prerelease/prune-prerelease-prod \
             --params "$PARAMS" \
             --watch
 
@@ -293,7 +293,7 @@ jobs:
             }')
           echo "Running mdb-export-s3 (stage) with params: $PARAMS"
           watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3-prod \
+            uv run prefect deployment run mdb-export-s3/mdb-export-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee export_watch.log
@@ -353,7 +353,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-stage",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion-upper' \
+          uv run prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -402,7 +402,7 @@ jobs:
           echo "Running mdb-import-s3 with params: $PARAMS (key=$S3_KEY)"
 
           watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3-prod \
+            uv run prefect deployment run mdb-import-s3/mdb-import-s3-prod \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee import_watch.log
@@ -455,7 +455,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-prod",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion-upper' \
+          uv run prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 
@@ -474,7 +474,7 @@ jobs:
               "qa_mdb_id": "cloud-one-mdb-prod",
               "models_filter": $filters
             }')
-          prefect deployment run 'check-promotion/check-promotion-upper' \
+          uv run prefect deployment run 'check-promotion/check-promotion-upper' \
             --params "$PARAMS" \
             --watch
 

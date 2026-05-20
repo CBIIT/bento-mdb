@@ -89,7 +89,7 @@ jobs:
           PARAMS=$(jq -n \
             --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
             '{"stage": "pre", "models_filter": $filters}')
-          prefect deployment run 'check-promotion/check-promotion' \
+          uv run prefect deployment run 'check-promotion/check-promotion' \
             --params "$PARAMS" \
             --watch
 
@@ -133,7 +133,7 @@ jobs:
           echo "Running mdb-export-s3 with params: $PARAMS"
 
           watch_out=$(
-            prefect deployment run mdb-export-s3/mdb-export-s3 \
+            uv run prefect deployment run mdb-export-s3/mdb-export-s3 \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee export_watch.log
@@ -195,7 +195,7 @@ jobs:
           echo "Running mdb-import-s3 with params: $PARAMS"
 
           watch_out=$(
-            prefect deployment run mdb-import-s3/mdb-import-s3 \
+            uv run prefect deployment run mdb-import-s3/mdb-import-s3 \
               --params "$PARAMS" \
               --watch \
               --watch-interval 30 2>&1 | tee import_watch.log
@@ -242,7 +242,7 @@ jobs:
           PARAMS=$(jq -n \
             --argjson filters '${{ needs.detect-updated-models.outputs.model_filters }}' \
             '{"stage": "post", "models_filter": $filters}')
-          prefect deployment run 'check-promotion/check-promotion' \
+          uv run prefect deployment run 'check-promotion/check-promotion' \
             --params "$PARAMS" \
             --watch
 
