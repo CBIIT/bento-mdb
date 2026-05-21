@@ -72,6 +72,7 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: ${{ github.actor }}
+          role-duration-seconds: 21600
 
       - name: Run liquibase update on changelog files
         id: liquibase-update

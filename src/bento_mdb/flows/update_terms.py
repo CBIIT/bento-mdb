@@ -7,16 +7,11 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from github import Github, GithubException, InputGitAuthor
+import boto3
 from prefect import flow, get_run_logger, task
-from prefect.blocks.system import Secret
 
 from bento_mdb.cde_cypher import convert_model_cdes_to_changelog
 from bento_mdb.clients import CADSRClient, NCItClient
-from bento_mdb.constants import (
-    GITHUB_TOKEN_SECRET,
-    MDB_UPDATES_GH_REPO,
-)
 from bento_mdb.mdb_utils import init_mdb_connection
 from bento_mdb.model_cdes import (
     add_ncit_synonyms_to_model_cde_spec,
@@ -27,13 +22,13 @@ if TYPE_CHECKING:
     from bento_mdb.datatypes import MDBCDESpec, ModelCDESpec
 
 
-def make_changelog_output_more_visible(changelog_file: Path) -> None:
+def make_changelog_output_more_visible(changelog_files: list[str]) -> None:
     """
     Make the changelog output more visible in logs.
 
     Print multiple times with clear markers.
     """
-    result_json = json.dumps([str(changelog_file)])
+    result_json = json.dumps(changelog_files)
     print("\n" + "*" * 80)  # noqa: T201
     print("RESULT_JSON_BEGIN")  # noqa: T201
     print(f"RESULT_JSON:{result_json}")  # noqa: T201
@@ -83,101 +78,19 @@ def update_mdb_cdes_from_term_sources(
 
 
 @task
-def commit_new_files(files: list[Path]) -> list:
-    """Commit new files to GitHub."""
+def upload_changelog_to_s3(changelog_file: Path, bucket: str) -> str:
+    """Upload a generated term changelog to S3 and return its key."""
     logger = get_run_logger()
-    github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
-    gh = Github(github_token)
-    repo = gh.get_repo(MDB_UPDATES_GH_REPO)
-    committer = InputGitAuthor("GitHub Actions Bot", "actions@github.com")
-
-    results = []
-    for file_path in files:
-        try:
-            if file_path.is_absolute():
-                repo_path = str(file_path.relative_to(Path.cwd()))
-            else:
-                repo_path = str(file_path)
-            repo_path = repo_path.lstrip("/")
-            logger.info("Converting %s to %s", file_path, repo_path)
-            with file_path.open("r", encoding="utf-8") as f:
-                file_content = f.read()
-
-            file_exists = False
-            file_sha = None
-            try:
-                dir_path = "/".join(repo_path.split("/")[:-1])
-                filename = repo_path.split("/")[-1]
-                if not dir_path:
-                    dir_path = ""
-                logger.info("Checking directory '%s' for file '%s'", dir_path, filename)
-                dir_contents = repo.get_contents(dir_path)
-                if isinstance(dir_contents, list):
-                    for item in dir_contents:
-                        if item.path == repo_path:
-                            file_exists = True
-                            file_sha = item.sha
-                            logger.info(
-                                "Found file %s with SHA: %s",
-                                repo_path,
-                                file_sha,
-                            )
-                elif dir_contents.path == repo_path:
-                    file_exists = True
-                    file_sha = dir_contents.sha
-            except GithubException as e:
-                if e.status == 404:
-                    logger.info("Directory %s does not exist", dir_path)
-                    file_exists = False
-                else:
-                    raise
-            try:
-                if file_exists and file_sha is not None:
-                    logger.info("Updating existing file %s", repo_path)
-                    commit_msg = f"Update {repo_path} (GitHub Actions)"
-                    result = repo.update_file(
-                        path=repo_path,
-                        message=commit_msg,
-                        content=file_content,
-                        sha=file_sha,
-                        committer=committer,
-                    )
-                    results.append(
-                        f"Updated {repo_path} (commit: {result['commit'].sha[:7]})",
-                    )
-                else:
-                    logger.info("Creating new file %s", repo_path)
-                    commit_msg = f"Add {repo_path} (GitHub Actions)"
-                    result = repo.create_file(
-                        path=repo_path,
-                        message=commit_msg,
-                        content=file_content,
-                        committer=committer,
-                    )
-                    results.append(
-                        f"Created {repo_path} (commit: {result['commit'].sha[:7]})",
-                    )
-            except GithubException as e:
-                if e.status == 422 and "too large" in str(e):
-                    logger.exception("File %s is too large for GitHub API", repo_path)
-                    results.append(
-                        f"Error: File {repo_path} is too large for GitHub API",
-                    )
-                else:
-                    raise
-        except Exception as e:
-            error_msg = f"Error updating {file_path}: {e}"
-            results.append(error_msg)
-            logger.exception(error_msg)
-
-    for result in results:
-        logger.info(result)
-
-    if any("Error" in result for result in results):
-        msg = "Some files failed to update. See logs for details."
-        raise RuntimeError(msg)
-
-    return results
+    s3_key = f"term_changelogs/{changelog_file.name}"
+    logger.info("Uploading %s to s3://%s/%s", changelog_file, bucket, s3_key)
+    boto3.client("s3").upload_file(
+        str(changelog_file),
+        bucket,
+        s3_key,
+        ExtraArgs={"ContentType": "application/xml"},
+    )
+    logger.info("Uploaded term changelog to s3://%s/%s", bucket, s3_key)
+    return s3_key
 
 
 @flow(name="update-terms", log_prints=True)
@@ -185,6 +98,7 @@ def update_terms(
     mdb_id: str,
     author: str,
     commit: str | None = None,
+    s3_bucket: str | None = None,
     *,
     no_commit: bool = False,
 ) -> None:
@@ -202,13 +116,16 @@ def update_terms(
     changelog_file.parent.mkdir(parents=True, exist_ok=True)
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
 
+    changelog_files: list[str] = []
     if changelog.count_changesets() == 0:
-        logger.info("No changesets to commit")
-        no_commit = True
+        logger.info("No changesets to report")
+    elif no_commit:
+        logger.info("Skipping S3 upload because no_commit is true")
+    elif s3_bucket:
+        changelog_files.append(upload_changelog_to_s3(changelog_file, s3_bucket))
+    else:
+        msg = "s3_bucket is required unless no_commit is true"
+        raise ValueError(msg)
 
-    if not no_commit:
-        logger.info("Committing changes...")
-        commit_new_files([changelog_file])
-
-    # Print changlog file as JSON for GitHub Actions
-    make_changelog_output_more_visible(changelog_file)
+    # Print changelog file as JSON for GitHub Actions
+    make_changelog_output_more_visible(changelog_files)
