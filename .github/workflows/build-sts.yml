@@ -243,7 +243,7 @@ jobs:
             '{image_ref: $image_ref}')
         fi
         echo "PARAMS=$PARAMS"
-        prefect deployment run twistlock-scan/twistlock-scan \
+        uv run prefect deployment run twistlock-scan/twistlock-scan \
           --params "$PARAMS" \
           --watch \
           --watch-interval 30
@@ -269,7 +269,7 @@ jobs:
             '{image_ref: $image_ref}')
         fi
         echo "PARAMS=$PARAMS"
-        prefect deployment run twistlock-scan/twistlock-scan \
+        uv run prefect deployment run twistlock-scan/twistlock-scan \
           --params "$PARAMS" \
           --watch \
           --watch-interval 30
