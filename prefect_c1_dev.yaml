@@ -158,3 +158,27 @@ deployments:
     name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: twistlock-scan
+  version:
+  tags: []
+  concurrency_limit:
+  description: "Twistlock registry API: POST on-demand ECR scan, poll queue/progress, GET results (Prefect Secrets). No Docker on worker."
+  entrypoint: src/bento_mdb/flows/twistlock_scan.py:twistlock_scan_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
+- name: twistlock-registry-verify
+  version:
+  tags: []
+  concurrency_limit:
+  description: "Twistlock GET registry compact lookup only — check if image_ref already indexed (no scan)."
+  entrypoint: src/bento_mdb/flows/twistlock_scan.py:verify_twistlock_registry_image_flow
+  parameters: {}
+  schedule: null
+  work_pool:
+    name: mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
