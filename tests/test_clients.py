@@ -696,6 +696,31 @@ class TestNCItClient:
         assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
         assert "origin_version" in annotations[0]["removed_pvs"][0]
 
+    def test_check_cdes_against_mdb_detect_removed_pvs_released(
+        self,
+        mdb_cde_with_three_pvs,
+        cadsr_response_two_pvs,
+    ) -> None:
+        """Test removed PV detection also runs for RELEASED CDEs."""
+        client = CADSRClient()
+        import unittest.mock as mock
+
+        cadsr_cde_details_released = {
+            "CDECode": "15260691",
+            "CDEVersion": "1",
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEWorkflowStatus": "RELEASED",
+        }
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_response_two_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_released):
+                annotations = client.check_cdes_against_mdb(mdb_cde_with_three_pvs)
+
+        assert len(annotations) > 0
+        assert "removed_pvs" in annotations[0]
+        assert len(annotations[0]["removed_pvs"]) == 1
+        assert annotations[0]["removed_pvs"][0]["value"] == "Bone"
+        assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
+
     def test_check_cdes_against_mdb_detect_metadata_change(
         self,
         mdb_cde_with_changed_name,

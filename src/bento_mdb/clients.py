@@ -20,7 +20,11 @@ import stamina
 import yaml
 from tqdm import tqdm
 
-from bento_mdb.constants import CADSR_WORKFLOW_STATUS_DRAFT_NEW, NCIM_TSV_NAME
+from bento_mdb.constants import (
+    CADSR_WORKFLOW_STATUS_DRAFT_NEW,
+    CADSR_WORKFLOW_STATUS_RELEASED,
+    NCIM_TSV_NAME,
+)
 
 if TYPE_CHECKING:
     from bento_mdb.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
@@ -230,7 +234,7 @@ class CADSRClient:
         annotation_spec: AnnotationSpec,
         run_logger: logging.Logger = get_logger(),
     ) -> bool:
-        """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
+        """Check for removed PVs and metadata changes in DRAFT NEW/RELEASED CDEs."""
         is_updated = False
 
         # Check for removed PVs - compare by value for accuracy
@@ -277,10 +281,10 @@ class CADSRClient:
         #     is_updated = True
         #     annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
 
-        # For DRAFT NEW CDEs, log the status only if changes found
+        # For DRAFT NEW/RELEASED CDEs, log the status only if changes found
         if is_updated:
             run_logger.info(
-                "DRAFT NEW CDE detected for %s with status: '%s'",
+                "CDE detected for %s with status: '%s'",
                 cde_spec["CDECode"],
                 cadsr_cde_details.get("CDEWorkflowStatus"),
             )
@@ -368,7 +372,7 @@ class CADSRClient:
                     update_annotation = True
                     annotation_spec["value_set"].append(pv)
 
-            # Check for removed PVs and metadata changes (only for DRAFT NEW CDEs)
+            # Check for removed PVs and metadata changes (for DRAFT NEW and RELEASED CDEs)
             try:
                 cadsr_cde_details = self.fetch_cde_details(
                     cde_id=cde_spec["CDECode"],
@@ -386,7 +390,10 @@ class CADSRClient:
                 )
                 continue
 
-            if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
+            if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") in (
+                CADSR_WORKFLOW_STATUS_DRAFT_NEW,
+                CADSR_WORKFLOW_STATUS_RELEASED,
+            ):
                 update_annotation |= self._check_draft_new_cde_changes(
                     cadsr_cde_details,
                     cadsr_pvs,

@@ -93,8 +93,8 @@ class TestConvertAnnotationToChangesets:
         # Create annotation with removed_pvs (with origin_id)
         annotation_with_removed_pvs = TEST_ANNOTATION_SPEC.copy()
         annotation_with_removed_pvs["removed_pvs"] = [  # type: ignore
-            {"value": "Mouse", "origin_id": "2578400"},
-            {"value": "Dog", "origin_id": "5729587"},
+            {"value": "Mouse", "origin_id": "2578400", "origin_version": "1"},
+            {"value": "Dog", "origin_id": "5729587", "origin_version": "1"},
         ]
         
         changesets = convert_annotation_to_changesets(
@@ -109,11 +109,14 @@ class TestConvertAnnotationToChangesets:
         ]
         
         # Check that DELETE statements are present for removed PVs (deletes relationship only)
-        # Uses value for matching
+        # Uses composite key for matching (origin_id + value + origin_version, within value_set)
         delete_statements = [stmt for stmt in actual if "DELETE r" in stmt]
         assert len(delete_statements) >= 2
-        assert any("value: 'Mouse'" in stmt for stmt in delete_statements)
-        assert any("value: 'Dog'" in stmt for stmt in delete_statements)
+        assert any("pv.origin_id = '2578400'" in stmt for stmt in delete_statements)
+        assert any("pv.origin_id = '5729587'" in stmt for stmt in delete_statements)
+        assert any("pv.value = 'Mouse'" in stmt for stmt in delete_statements)
+        assert any("pv.value = 'Dog'" in stmt for stmt in delete_statements)
+        assert all("coalesce(pv.origin_version, '')" in stmt for stmt in delete_statements)
         # Verify it has origin_name check
         assert all("toLower(pv.origin_name) CONTAINS 'cadsr'" in stmt for stmt in delete_statements)
         # Verify it's not deleting the node itself
@@ -204,8 +207,8 @@ class TestConvertAnnotationToChangesets:
             },
             "value_set": [],  # No new PVs
             "removed_pvs": [  # type: ignore
-                {"value": "OldPV1", "origin_id": "2559594"},
-                {"value": "OldPV2", "origin_id": "2559595"},
+                {"value": "OldPV1", "origin_id": "2559594", "origin_version": "1"},
+                {"value": "OldPV2", "origin_id": "2559595", "origin_version": "2"},
             ],
         }
         
@@ -222,8 +225,8 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (pv:term {value: 'OldPV1'})-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' DELETE r",
-            "MATCH (pv:term {value: 'OldPV2'})-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' DELETE r",
+            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559594' AND pv.value = 'OldPV1' AND coalesce(pv.origin_version, '') = '1' DELETE r",
+            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559595' AND pv.value = 'OldPV2' AND coalesce(pv.origin_version, '') = '2' DELETE r",
         ]
         assert_equal(actual, expected)
 

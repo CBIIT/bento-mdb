@@ -53,6 +53,7 @@ MDB_UPDATES_GH_REPO = "CBIIT/bento-mdb"
 # =============================================================================
 
 CADSR_WORKFLOW_STATUS_DRAFT_NEW = "DRAFT NEW"
+CADSR_WORKFLOW_STATUS_RELEASED = "RELEASED"
 
 # =============================================================================
 # External Data Source Constants
