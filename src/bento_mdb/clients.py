@@ -237,21 +237,36 @@ class CADSRClient:
         """Check for removed PVs and metadata changes in DRAFT NEW/RELEASED CDEs."""
         is_updated = False
 
-        # Check for removed PVs - compare by value for accuracy
-        cadsr_pv_values = {pv["value"] for pv in cadsr_pvs if pv}
+        # Check for removed PVs using composite key (value + origin_id + origin_version)
+        cadsr_pv_keys = {
+            (
+                pv["value"],
+                str(pv.get("origin_id", "")),
+                str(pv.get("origin_version", "")),
+            )
+            for pv in cadsr_pvs
+            if pv and pv.get("value") is not None
+        }
         removed_pv_objects = [
             {
-                "value": pv["value"], 
+                "value": pv["value"],
                 "origin_id": pv["origin_id"],
                 "origin_version": pv.get("origin_version", ""),
             }
-            for pv in mdb_pv_objects 
-            if pv["value"] not in cadsr_pv_values
+            for pv in mdb_pv_objects
+            if (
+                pv.get("value"),
+                str(pv.get("origin_id", "")),
+                str(pv.get("origin_version", "")),
+            ) not in cadsr_pv_keys
         ]
         if removed_pv_objects:
-            removed_values = [pv["value"] for pv in removed_pv_objects]
+            removed_values = [
+                f"{pv['value']}|{pv['origin_id']}|{pv.get('origin_version', '')}"
+                for pv in removed_pv_objects
+            ]
             run_logger.info(
-                "Removed PVs (by value) from caDSR for %sv%s: %s",
+                "Removed PVs (by composite key) from caDSR for %sv%s: %s",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
                 removed_values,

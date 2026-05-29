@@ -230,6 +230,43 @@ class TestConvertAnnotationToChangesets:
         ]
         assert_equal(actual, expected)
 
+    def test_convert_annotation_to_changesets_skip_removed_pv_without_origin_version(self) -> None:
+        """Removed PV with empty origin_version should be skipped for unlink."""
+        annotation_only_removed = {
+            "entity": {},
+            "annotation": {
+                "key": ("CDE Name", "caDSR"),
+                "attrs": {
+                    "origin_id": "12345",
+                    "origin_version": "1.0",
+                    "origin_name": "caDSR",
+                    "value": "CDE Name",
+                },
+            },
+            "value_set": [],
+            "removed_pvs": [  # type: ignore
+                {"value": "OldPV1", "origin_id": "2559594", "origin_version": ""},
+                {"value": "OldPV2", "origin_id": "2559595", "origin_version": "2"},
+            ],
+        }
+
+        changesets = convert_annotation_to_changesets(
+            annotation_only_removed,  # type: ignore
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
+            for x in changesets
+        ]
+
+        expected = [
+            "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
+            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559595' AND pv.value = 'OldPV2' AND coalesce(pv.origin_version, '') = '2' DELETE r",
+        ]
+        assert_equal(actual, expected)
+
 
 class TestConvertModelCDES:
     def test_convert_model_cdes_to_changelog_id(self):
