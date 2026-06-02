@@ -795,6 +795,12 @@ class TestNCItClient:
         removed_keys = {(x["value"], x["origin_id"], x["origin_version"]) for x in removed}
         assert ("Chr X", "3636171", "1") in removed_keys
         assert ("Chr Y", "3636170", "1") in removed_keys
+        added_keys = {
+            (x["value"], x["origin_id"], x["origin_version"])
+            for x in annotations[0]["value_set"]
+        }
+        assert ("Chr X", "17141238", "1") in added_keys
+        assert ("Chr Y", "17141239", "1") in added_keys
 
     def test_check_cdes_against_mdb_detect_metadata_change(
         self,

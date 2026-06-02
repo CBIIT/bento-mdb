@@ -1,6 +1,7 @@
 """Tests for cde changelog generation script."""
 
 from bento_mdb.cde_cypher import (
+    create_delete_pv_cypher,
     convert_annotation_to_changesets,
     convert_model_cdes_to_changelog,
 )
@@ -16,6 +17,19 @@ from tests.test_utils import (
 
 TEST_COMMIT = "CDEPV-TEST"
 TEST_AUTHOR = "TOLKIEN"
+
+
+def test_create_delete_pv_cypher_escapes_single_quotes() -> None:
+    actual = create_delete_pv_cypher("Children's Hospital", "123", "1", "456", "2")
+    expected = (
+        "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '456|2'}) "
+        "WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
+        "AND pv.origin_id = '123' "
+        "AND pv.value = 'Children''s Hospital' "
+        "AND coalesce(pv.origin_version, '') = '1' "
+        "DELETE r"
+    )
+    assert_equal(actual, expected)
 
 
 class TestConvertAnnotationToChangesets:
