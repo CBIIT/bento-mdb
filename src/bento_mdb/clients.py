@@ -45,6 +45,15 @@ def get_logger():
 
 logger = get_logger()
 
+
+def _pv_composite_key(pv: PermissibleValue) -> tuple[str | None, str, str]:
+    return (
+        pv.get("value"),
+        str(pv.get("origin_id") or ""),
+        str(pv.get("origin_version") or ""),
+    )
+
+
 def get_last_sync_date(
     source: str,
     yaml_path: Path = SYNC_STATUS_YAML,
@@ -239,11 +248,7 @@ class CADSRClient:
 
         # Check for removed PVs using composite key (value + origin_id + origin_version)
         cadsr_pv_keys = {
-            (
-                pv["value"],
-                str(pv.get("origin_id", "")),
-                str(pv.get("origin_version", "")),
-            )
+            _pv_composite_key(pv)
             for pv in cadsr_pvs
             if pv and pv.get("value") is not None
         }
@@ -254,11 +259,7 @@ class CADSRClient:
                 "origin_version": pv.get("origin_version", ""),
             }
             for pv in mdb_pv_objects
-            if (
-                pv.get("value"),
-                str(pv.get("origin_id", "")),
-                str(pv.get("origin_version", "")),
-            ) not in cadsr_pv_keys
+            if _pv_composite_key(pv) not in cadsr_pv_keys
         ]
         if removed_pv_objects:
             removed_values = [
@@ -316,11 +317,11 @@ class CADSRClient:
         run_logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             try:
-                mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
                 mdb_pv_objects = cde_spec["permissibleValues"]
+                mdb_pv_keys = {_pv_composite_key(pv) for pv in mdb_pv_objects}
                 mdb_alternates = {}
                 for mdb_pv in mdb_pv_objects:
-                    mdb_alternates[mdb_pv["value"]] = mdb_pv.get("alternates", [])
+                    mdb_alternates[_pv_composite_key(mdb_pv)] = mdb_pv.get("alternates", [])
                 cadsr_pvs = self.fetch_cde_valueset(
                     cde_id=cde_spec["CDECode"],
                     cde_version=cde_spec.get("CDEVersion"),
@@ -367,9 +368,10 @@ class CADSRClient:
                         cde_spec.get("CDEVersion"),
                     )
                     continue
-                if pv["value"] in mdb_pvs:
+                pv_key = _pv_composite_key(pv)
+                if pv_key in mdb_pv_keys:
                     # check if alternate values are the same
-                    mdb_pv_alternates = [alt["value"] for alt in mdb_alternates[pv["value"]]]
+                    mdb_pv_alternates = [alt["value"] for alt in mdb_alternates[pv_key]]
                     cadsr_pv_alternates = [alt["value"] for alt in pv.get("alternates", [])]
                     new_alternates = []
                     for cadsr_alt in cadsr_pv_alternates:
