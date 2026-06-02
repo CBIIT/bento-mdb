@@ -27,8 +27,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _escape_cypher_string(value: str) -> str:
+    return value.replace("'", "''")
+
+
 def create_delete_pv_cypher(
     pv_value: str,
+    pv_origin_id: str,
+    pv_origin_version: str,
     cde_id: str,
     cde_ver: str,
 ) -> str:
@@ -37,11 +43,14 @@ def create_delete_pv_cypher(
     Deletes only the relationship between PV and ValueSet, not the PV node itself.
     This is safer in case the PV is used by other ValueSets.
     """
+    escaped_pv_value = _escape_cypher_string(pv_value)
+    escaped_origin_version = _escape_cypher_string(pv_origin_version or "")
     return (
-        f"MATCH (pv:term {{value: '{pv_value}'}})"
-        f"-[r:has_term]-"
-        f"(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
+        f"MATCH (pv:term)-[r:has_term]-(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
         f"WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
+        f"AND pv.origin_id = '{pv_origin_id}' "
+        f"AND pv.value = '{escaped_pv_value}' "
+        f"AND coalesce(pv.origin_version, '') = '{escaped_origin_version}' "
         f"DELETE r"
     )
 
@@ -91,8 +100,34 @@ def convert_annotation_to_changesets(
         logger.info("Removing %d PVs from %s", len(removed_pvs), cde_id)
         for pv_obj in removed_pvs:
             pv_value = pv_obj["value"]
-            delete_stmt = create_delete_pv_cypher(pv_value, cde_id, old_ver)
+            pv_origin_id = pv_obj["origin_id"]
+            pv_origin_version = pv_obj.get("origin_version", "")
+            # Skip when origin_version is missing to avoid ambiguous unlink.
+            if not pv_origin_version:
+                logger.warning(
+                    "Skip unlink for removed PV due to empty origin_version: cde=%s version=%s pv_origin_id=%s pv_value=%s",
+                    cde_id,
+                    old_ver,
+                    pv_origin_id,
+                    pv_value,
+                )
+                continue
+            delete_stmt = create_delete_pv_cypher(
+                pv_value,
+                pv_origin_id,
+                pv_origin_version,
+                cde_id,
+                old_ver,
+            )
             statements.append(delete_stmt)  # type: ignore
+            logger.info(
+                "Unlinked removed PV from value set: cde=%s version=%s pv_origin_id=%s pv_origin_version=%s pv_value=%s",
+                cde_id,
+                old_ver,
+                pv_origin_id,
+                pv_origin_version,
+                pv_value,
+            )
 
     # Update annotation term if CDE name changed
     cde_full_name = annotation.get("CDEFullName")
@@ -106,7 +141,7 @@ def convert_annotation_to_changesets(
         set_clauses = []
 
         logger.info("Updating CDE name for %s to: %s", cde_id, cde_full_name)
-        escaped_name = cde_full_name.replace("'", "\\'")
+        escaped_name = _escape_cypher_string(cde_full_name)
         set_clauses.append(f"t.value = '{escaped_name}'")
 
         # Note: The CADsr CDE version is not updated; it should be determined by the data model.

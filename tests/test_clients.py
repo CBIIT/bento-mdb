@@ -696,6 +696,112 @@ class TestNCItClient:
         assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
         assert "origin_version" in annotations[0]["removed_pvs"][0]
 
+    def test_check_cdes_against_mdb_detect_removed_pvs_released(
+        self,
+        mdb_cde_with_three_pvs,
+        cadsr_response_two_pvs,
+    ) -> None:
+        """Test removed PV detection also runs for RELEASED CDEs."""
+        client = CADSRClient()
+        import unittest.mock as mock
+
+        cadsr_cde_details_released = {
+            "CDECode": "15260691",
+            "CDEVersion": "1",
+            "CDEFullName": "Disease Primary Anatomic Site Category",
+            "CDEWorkflowStatus": "RELEASED",
+        }
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_response_two_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_released):
+                annotations = client.check_cdes_against_mdb(mdb_cde_with_three_pvs)
+
+        assert len(annotations) > 0
+        assert "removed_pvs" in annotations[0]
+        assert len(annotations[0]["removed_pvs"]) == 1
+        assert annotations[0]["removed_pvs"][0]["value"] == "Bone"
+        assert annotations[0]["removed_pvs"][0]["origin_id"] == "2816296"
+
+    def test_check_cdes_against_mdb_detect_replaced_origin_id_same_value(
+        self,
+    ) -> None:
+        """Detect removed PV when value is same but origin_id changes."""
+        client = CADSRClient()
+        import unittest.mock as mock
+
+        mdb_cde = [
+            {
+                "CDECode": "11379445",
+                "CDEVersion": "1.00",
+                "CDEFullName": "Chromosome",
+                "CDEOrigin": "caDSR",
+                "models": [],
+                "permissibleValues": [
+                    {
+                        "value": "Chr X",
+                        "origin_id": "3636171",
+                        "origin_definition": "old X",
+                        "origin_version": "1",
+                        "origin_name": "caDSR",
+                        "ncit_concept_codes": [],
+                        "synonyms": [],
+                    },
+                    {
+                        "value": "Chr Y",
+                        "origin_id": "3636170",
+                        "origin_definition": "old Y",
+                        "origin_version": "1",
+                        "origin_name": "caDSR",
+                        "ncit_concept_codes": [],
+                        "synonyms": [],
+                    },
+                ],
+            },
+        ]
+        cadsr_pvs = [
+            {
+                "value": "Chr X",
+                "origin_id": "17141238",
+                "origin_definition": "new X",
+                "origin_version": "1",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": [],
+                "synonyms": [],
+            },
+            {
+                "value": "Chr Y",
+                "origin_id": "17141239",
+                "origin_definition": "new Y",
+                "origin_version": "1",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": [],
+                "synonyms": [],
+            },
+        ]
+        cadsr_cde_details_released = {
+            "CDECode": "11379445",
+            "CDEVersion": "1.00",
+            "CDEFullName": "Chromosome",
+            "CDEWorkflowStatus": "RELEASED",
+        }
+
+        with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):
+            with mock.patch.object(client, "fetch_cde_details", return_value=cadsr_cde_details_released):
+                annotations = client.check_cdes_against_mdb(mdb_cde)
+
+        assert len(annotations) > 0
+        assert "removed_pvs" in annotations[0]
+        removed = annotations[0]["removed_pvs"]
+        assert len(removed) == 2
+        removed_keys = {(x["value"], x["origin_id"], x["origin_version"]) for x in removed}
+        assert ("Chr X", "3636171", "1") in removed_keys
+        assert ("Chr Y", "3636170", "1") in removed_keys
+        added_keys = {
+            (x["value"], x["origin_id"], x["origin_version"])
+            for x in annotations[0]["value_set"]
+        }
+        assert ("Chr X", "17141238", "1") in added_keys
+        assert ("Chr Y", "17141239", "1") in added_keys
+
     def test_check_cdes_against_mdb_detect_metadata_change(
         self,
         mdb_cde_with_changed_name,
