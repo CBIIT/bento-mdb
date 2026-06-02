@@ -25,8 +25,8 @@ def test_create_delete_pv_cypher_escapes_single_quotes() -> None:
         "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '456|2'}) "
         "WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
         "AND pv.origin_id = '123' "
-        "AND pv.value = 'Children''s Hospital' "
-        "AND coalesce(pv.origin_version, '') = '1' "
+        'AND pv.value = "Children\'s Hospital" '
+        'AND coalesce(pv.origin_version, \'\') = "1" '
         "DELETE r"
     )
     assert_equal(actual, expected)
@@ -128,8 +128,8 @@ class TestConvertAnnotationToChangesets:
         assert len(delete_statements) >= 2
         assert any("pv.origin_id = '2578400'" in stmt for stmt in delete_statements)
         assert any("pv.origin_id = '5729587'" in stmt for stmt in delete_statements)
-        assert any("pv.value = 'Mouse'" in stmt for stmt in delete_statements)
-        assert any("pv.value = 'Dog'" in stmt for stmt in delete_statements)
+        assert any('pv.value = "Mouse"' in stmt for stmt in delete_statements)
+        assert any('pv.value = "Dog"' in stmt for stmt in delete_statements)
         assert all("coalesce(pv.origin_version, '')" in stmt for stmt in delete_statements)
         # Verify it has origin_name check
         assert all("toLower(pv.origin_name) CONTAINS 'cadsr'" in stmt for stmt in delete_statements)
@@ -167,7 +167,7 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (t:term {origin_id: '12345'}) WHERE toLower(t.origin_name) CONTAINS 'cadsr' SET t.value = 'New CDE Name'",
+            'MATCH (t:term {origin_id: \'12345\'}) WHERE toLower(t.origin_name) CONTAINS \'cadsr\' SET t.value = "New CDE Name"',
         ]
         assert_equal(actual, expected)
 
@@ -202,7 +202,7 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|2.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=2.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (t:term {origin_id: '12345'}) WHERE toLower(t.origin_name) CONTAINS 'cadsr' SET t.value = 'New Name'",
+            'MATCH (t:term {origin_id: \'12345\'}) WHERE toLower(t.origin_name) CONTAINS \'cadsr\' SET t.value = "New Name"',
         ]
         assert_equal(actual, expected)
 
@@ -239,8 +239,8 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559594' AND pv.value = 'OldPV1' AND coalesce(pv.origin_version, '') = '1' DELETE r",
-            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559595' AND pv.value = 'OldPV2' AND coalesce(pv.origin_version, '') = '2' DELETE r",
+            'MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: \'12345|1.0\'}) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559594\' AND pv.value = "OldPV1" AND coalesce(pv.origin_version, \'\') = "1" DELETE r',
+            'MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: \'12345|1.0\'}) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND coalesce(pv.origin_version, \'\') = "2" DELETE r',
         ]
         assert_equal(actual, expected)
 
@@ -277,7 +277,7 @@ class TestConvertAnnotationToChangesets:
 
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' AND pv.origin_id = '2559595' AND pv.value = 'OldPV2' AND coalesce(pv.origin_version, '') = '2' DELETE r",
+            'MATCH (pv:term)-[r:has_term]-(vs:value_set {handle: \'12345|1.0\'}) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND coalesce(pv.origin_version, \'\') = "2" DELETE r',
         ]
         assert_equal(actual, expected)
 

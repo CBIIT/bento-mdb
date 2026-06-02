@@ -27,8 +27,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _escape_cypher_string(value: str) -> str:
-    return value.replace("'", "''")
+def _cypher_string_literal(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def create_delete_pv_cypher(
@@ -43,14 +44,14 @@ def create_delete_pv_cypher(
     Deletes only the relationship between PV and ValueSet, not the PV node itself.
     This is safer in case the PV is used by other ValueSets.
     """
-    escaped_pv_value = _escape_cypher_string(pv_value)
-    escaped_origin_version = _escape_cypher_string(pv_origin_version or "")
+    pv_value_literal = _cypher_string_literal(pv_value)
+    origin_version_literal = _cypher_string_literal(pv_origin_version or "")
     return (
         f"MATCH (pv:term)-[r:has_term]-(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
         f"WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
         f"AND pv.origin_id = '{pv_origin_id}' "
-        f"AND pv.value = '{escaped_pv_value}' "
-        f"AND coalesce(pv.origin_version, '') = '{escaped_origin_version}' "
+        f"AND pv.value = {pv_value_literal} "
+        f"AND coalesce(pv.origin_version, '') = {origin_version_literal} "
         f"DELETE r"
     )
 
@@ -141,8 +142,8 @@ def convert_annotation_to_changesets(
         set_clauses = []
 
         logger.info("Updating CDE name for %s to: %s", cde_id, cde_full_name)
-        escaped_name = _escape_cypher_string(cde_full_name)
-        set_clauses.append(f"t.value = '{escaped_name}'")
+        escaped_name = _cypher_string_literal(cde_full_name)
+        set_clauses.append(f"t.value = {escaped_name}")
 
         # Note: The CADsr CDE version is not updated; it should be determined by the data model.
         if set_clauses:

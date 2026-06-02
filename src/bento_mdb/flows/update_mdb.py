@@ -295,10 +295,10 @@ def liquibase_update_flow(
             # make these replacements in a more efficient way
             cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
             if not dry_run:
-                mdb.put_with_statement(cypher_statement)
+                # mdb.put_with_statement(cypher_statement)
                 changeset_end = time.time()
             
-            logger.info(f"Changelog {num} took {changeset_end - changeset_start:.2f} seconds")
+            logger.info(f"Tets-Changelog {num} took {changeset_end - changeset_start:.2f} seconds")
             num = num + 1
             logger.info("Completed changelog update %d", num)
     except Exception:
