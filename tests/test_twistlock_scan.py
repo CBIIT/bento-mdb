@@ -315,6 +315,51 @@ def test_registry_scan_uses_compact_fallback_when_existing_row_matches_ecr_diges
     assert len(http.matching_calls("compact=true")) >= 3
 
 
+def test_registry_scan_uses_compact_fallback_when_scan_time_is_fresh(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(
+        existing={
+            "name": TEST_REPO_IMAGE,
+            "id": "sha256:image-id-not-ecr-manifest",
+            "scanTime": "2026-06-03T20:48:42.231Z",
+        }
+    )
+    http.progress = []
+    http.compact_result = {
+        "name": TEST_REPO_IMAGE,
+        "id": "sha256:image-id-not-ecr-manifest",
+        "scanTime": "2026-06-04T16:30:00.000Z",
+        "vulnerabilityDistribution": {"critical": 0, "high": 0},
+    }
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
+    now_values = iter(
+        [
+            1_780_589_900.0,
+            1_780_589_900.0,
+            1_780_589_910.0,
+            1_780_589_920.0,
+            1_780_589_930.0,
+            1_780_589_970.0,
+        ]
+    )
+    monkeypatch.setattr(flow_module.time, "time", lambda: next(now_values))
+    monkeypatch.setattr(flow_module.time, "sleep", lambda _seconds: None)
+
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
+        ImageRef.parse(TEST_REPO_IMAGE),
+        microservice_report_name=None,
+        trigger_registry_scan_select=False,
+        poll_timeout_seconds=60,
+        poll_interval_seconds=10,
+        expected_image_digest="sha256:ecr-manifest",
+    )
+
+    assert len(http.matching_calls("compact=true")) >= 3
+
+
 def test_registry_scan_treats_empty_compact_dict_as_existing_row(
     monkeypatch,
 ) -> None:

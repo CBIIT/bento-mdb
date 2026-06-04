@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import re
 import ssl
@@ -502,6 +503,40 @@ def _find_digest_value(data: object) -> str | None:
     return None
 
 
+def _parse_scan_time_epoch(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value) / 1000.0 if value > 1e12 else float(value)
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(text).timestamp()
+    except ValueError:
+        return None
+
+
+def _find_scan_time_epoch(data: object) -> float | None:
+    if isinstance(data, dict):
+        for key in ("scanTime", "scan_time", "lastScanTime"):
+            found = _parse_scan_time_epoch(data.get(key))
+            if found is not None:
+                return found
+        for val in data.values():
+            found = _find_scan_time_epoch(val)
+            if found is not None:
+                return found
+    elif isinstance(data, list):
+        for item in data:
+            found = _find_scan_time_epoch(item)
+            if found is not None:
+                return found
+    return None
+
+
 def _compact_result(
     settings: TwistlockSettings,
     token: str,
@@ -544,6 +579,7 @@ def _wait_until_ready(
     interval_seconds: int,
     use_compact_row_completion: bool,
     expected_image_digest: str | None = None,
+    min_scan_time_epoch: float | None = None,
 ) -> None:
     started = time.time()
     seen_nonempty_progress = False
@@ -564,12 +600,24 @@ def _wait_until_ready(
             row = _compact_result(settings, token, image_ref, required=False)
             if row is not None:
                 row_digest = _find_digest_value(row)
-                if expected_image_digest and row_digest != expected_image_digest:
+                row_scan_time = _find_scan_time_epoch(row)
+                row_is_fresh = (
+                    min_scan_time_epoch is not None
+                    and row_scan_time is not None
+                    and row_scan_time >= min_scan_time_epoch
+                )
+                if (
+                    expected_image_digest
+                    and row_digest != expected_image_digest
+                    and not row_is_fresh
+                ):
                     logger.info(
-                        "registry compact row present but digest is not the expected ECR digest "
-                        "(row_digest=%r expected=%r); continuing to wait",
+                        "registry compact row present but neither digest nor scanTime proves this scan is fresh "
+                        "(row_digest=%r expected=%r row_scan_time=%r min_scan_time=%r); continuing to wait",
                         row_digest,
                         expected_image_digest,
+                        row_scan_time,
+                        min_scan_time_epoch,
                     )
                 else:
                     logger.info(
@@ -668,6 +716,7 @@ def _run_registry_scan(
     logger.info(
         "step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)..."
     )
+    scan_enqueue_started = time.time()
     _start_registry_scan(settings, token, image_ref)
     logger.info("on-demand scan request accepted")
 
@@ -698,6 +747,7 @@ def _run_registry_scan(
         interval_seconds=poll_interval_seconds,
         use_compact_row_completion=(existing is None),
         expected_image_digest=expected_image_digest,
+        min_scan_time_epoch=scan_enqueue_started,
     )
 
     logger.info("step 4: GET registry (compact result via API)...")
