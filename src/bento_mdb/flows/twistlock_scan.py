@@ -36,6 +36,9 @@ _SEVERITY_SORT_KEY = {
     "negligible": 5,
     "unknown": 9,
 }
+_ECR_REGISTRY_PATTERN = re.compile(
+    r"^(?P<account>\d+)\.dkr\.ecr\.(?P<region>[^.]+)\.amazonaws\.com(?:\.[^/]+)?$"
+)
 
 
 @dataclass(frozen=True)
@@ -454,6 +457,50 @@ def _registry_progress(
     return _http_json_request("GET", url, token=token, timeout=60)
 
 
+def _ecr_image_digest(image_ref: ImageRef) -> str | None:
+    m = _ECR_REGISTRY_PATTERN.match(image_ref.registry)
+    if not m:
+        return None
+
+    try:
+        import boto3
+    except ImportError as e:
+        raise RuntimeError(
+            "boto3 is required to verify ECR images before Twistlock scans."
+        ) from e
+
+    ecr = boto3.client("ecr", region_name=m.group("region"))
+    resp = ecr.describe_images(
+        repositoryName=image_ref.repo,
+        imageIds=[{"imageTag": image_ref.tag}],
+    )
+    details = resp.get("imageDetails") or []
+    if not details:
+        raise RuntimeError(f"ECR image not found: {image_ref.value!r}")
+    digest = details[0].get("imageDigest")
+    if not digest:
+        raise RuntimeError(f"ECR image digest missing: {image_ref.value!r}")
+    return str(digest)
+
+
+def _find_digest_value(data: object) -> str | None:
+    if isinstance(data, dict):
+        for key in ("digest", "imageDigest"):
+            val = data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        for val in data.values():
+            found = _find_digest_value(val)
+            if found:
+                return found
+    elif isinstance(data, list):
+        for item in data:
+            found = _find_digest_value(item)
+            if found:
+                return found
+    return None
+
+
 def _compact_result(
     settings: TwistlockSettings,
     token: str,
@@ -495,6 +542,7 @@ def _wait_until_ready(
     timeout_seconds: int,
     interval_seconds: int,
     use_compact_row_completion: bool,
+    expected_image_digest: str | None = None,
 ) -> None:
     started = time.time()
     seen_nonempty_progress = False
@@ -509,15 +557,25 @@ def _wait_until_ready(
                 f"(no compact row and no usable progress). image_ref={image_ref.value!r}"
             )
 
-        # Some registry scans never expose progress; a new compact row means the image is indexed.
-        if use_compact_row_completion:
+        # Some registry scans never expose progress; a compact row with the expected
+        # ECR digest means this exact image has been indexed.
+        if use_compact_row_completion or expected_image_digest:
             row = _compact_result(settings, token, image_ref, required=False)
             if row is not None:
-                logger.info(
-                    "registry compact row present (scan/index ready); snippet: %s",
-                    json.dumps(row)[:500],
-                )
-                return
+                row_digest = _find_digest_value(row)
+                if expected_image_digest and row_digest != expected_image_digest:
+                    logger.info(
+                        "registry compact row present but digest is not the expected ECR digest "
+                        "(row_digest=%r expected=%r); continuing to wait",
+                        row_digest,
+                        expected_image_digest,
+                    )
+                else:
+                    logger.info(
+                        "registry compact row present (scan/index ready); snippet: %s",
+                        json.dumps(row)[:500],
+                    )
+                    return
 
         polls += 1
         resp = _registry_progress(settings, token, image_ref)
@@ -548,7 +606,9 @@ def _wait_until_ready(
                     "registry progress poll #%s returned empty list (compact fallback %s)",
                     polls,
                     (
-                        "on"
+                        "on - waiting for expected ECR digest"
+                        if expected_image_digest
+                        else "on"
                         if use_compact_row_completion
                         else "off - row existed before enqueue"
                     ),
@@ -559,7 +619,9 @@ def _wait_until_ready(
                     "registry/progress still empty after %s polls; continuing until timeout (%s).",
                     empty_streak,
                     (
-                        "polling compact registry for a new row"
+                        "polling compact registry for the expected ECR digest"
+                        if expected_image_digest
+                        else "polling compact registry for a new row"
                         if use_compact_row_completion
                         else "waiting on progress only"
                     ),
@@ -577,6 +639,7 @@ def _run_registry_scan(
     trigger_registry_scan_select: bool,
     poll_timeout_seconds: int,
     poll_interval_seconds: int,
+    expected_image_digest: str | None = None,
 ) -> None:
     token = _twistlock_authenticate(settings)
     logger.info("Twistlock authentication succeeded")
@@ -633,6 +696,7 @@ def _run_registry_scan(
         timeout_seconds=poll_timeout_seconds,
         interval_seconds=poll_interval_seconds,
         use_compact_row_completion=(existing is None),
+        expected_image_digest=expected_image_digest,
     )
 
     logger.info("step 4: GET registry (compact result via API)...")
@@ -728,14 +792,28 @@ def twistlock_scan_flow(
     )
 
     logger.info("authenticating to Twistlock console...")
+    parsed_image_ref = ImageRef.parse(image_ref)
+    expected_image_digest = _ecr_image_digest(parsed_image_ref)
+    if expected_image_digest:
+        logger.info(
+            "verified ECR image before Twistlock scan: image_ref=%r digest=%r",
+            parsed_image_ref.value,
+            expected_image_digest,
+        )
+    else:
+        logger.info(
+            "image_ref is not an ECR registry reference; skipping ECR digest preflight"
+        )
+
     _run_registry_scan(
         settings,
         logger,
-        ImageRef.parse(image_ref),
+        parsed_image_ref,
         microservice_report_name=microservice_report_name,
         trigger_registry_scan_select=trigger_registry_scan_select,
         poll_timeout_seconds=poll_timeout_seconds,
         poll_interval_seconds=poll_interval_seconds,
+        expected_image_digest=expected_image_digest,
     )
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -123,6 +125,32 @@ def test_trigger_scan_select_uses_resolved_collection_and_project(
                 "tag": "",
             }
         }
+    ]
+
+
+def test_ecr_image_digest_uses_describe_images_without_docker(monkeypatch) -> None:
+    calls = []
+
+    class FakeEcrClient:
+        def describe_images(self, **kwargs):
+            calls.append(kwargs)
+            return {"imageDetails": [{"imageDigest": "sha256:abc123"}]}
+
+    def fake_client(service_name, *, region_name):
+        calls.append({"service_name": service_name, "region_name": region_name})
+        return FakeEcrClient()
+
+    monkeypatch.setitem(sys.modules, "boto3", SimpleNamespace(client=fake_client))
+
+    digest = flow_module._ecr_image_digest(ImageRef.parse(TEST_FAST_API_IMAGE))
+
+    assert digest == "sha256:abc123"
+    assert calls == [
+        {"service_name": "ecr", "region_name": "us-east-1"},
+        {
+            "repositoryName": "crdc-mdb-sts-fast-api",
+            "imageIds": [{"imageTag": "main.1"}],
+        },
     ]
 
 
@@ -258,6 +286,32 @@ def test_registry_scan_disables_compact_fallback_when_row_already_exists(
 
     assert not http.matching_calls("/registry/scan/select?")
     assert len(http.matching_calls("/registry/progress?")) == 1
+
+
+def test_registry_scan_uses_compact_fallback_when_existing_row_matches_ecr_digest(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(existing={"name": TEST_REPO_IMAGE, "digest": "sha256:old"})
+    http.progress = []
+    http.compact_result = {
+        "name": TEST_REPO_IMAGE,
+        "digest": "sha256:new",
+        "vulnerabilityDistribution": {"critical": 0, "high": 0},
+    }
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
+
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
+        ImageRef.parse(TEST_REPO_IMAGE),
+        microservice_report_name=None,
+        trigger_registry_scan_select=False,
+        poll_timeout_seconds=60,
+        poll_interval_seconds=10,
+        expected_image_digest="sha256:new",
+    )
+
+    assert len(http.matching_calls("compact=true")) >= 3
 
 
 def test_registry_scan_treats_empty_compact_dict_as_existing_row(
