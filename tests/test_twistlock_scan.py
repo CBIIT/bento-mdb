@@ -148,6 +148,7 @@ def test_ecr_image_digest_uses_describe_images_without_docker(monkeypatch) -> No
     assert calls == [
         {"service_name": "ecr", "region_name": "us-east-1"},
         {
+            "registryId": "123456789012",
             "repositoryName": "crdc-mdb-sts-fast-api",
             "imageIds": [{"imageTag": "main.1"}],
         },

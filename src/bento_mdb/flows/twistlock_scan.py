@@ -471,6 +471,7 @@ def _ecr_image_digest(image_ref: ImageRef) -> str | None:
 
     ecr = boto3.client("ecr", region_name=m.group("region"))
     resp = ecr.describe_images(
+        registryId=m.group("account"),
         repositoryName=image_ref.repo,
         imageIds=[{"imageTag": image_ref.tag}],
     )
