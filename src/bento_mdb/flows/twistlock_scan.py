@@ -689,6 +689,7 @@ def _run_registry_scan(
     poll_timeout_seconds: int,
     poll_interval_seconds: int,
     expected_image_digest: str | None = None,
+    force_rescan: bool = False,
 ) -> None:
     token = _twistlock_authenticate(settings)
     logger.info("Twistlock authentication succeeded")
@@ -706,52 +707,62 @@ def _run_registry_scan(
             "Snippet: %s",
             json.dumps(existing)[:800],
         )
+        if not force_rescan:
+            logger.info(
+                "using existing Twistlock registry result; set force_rescan=true to enqueue and wait for a new scan"
+            )
+            result = existing
+            goto_result_evaluation = True
+        else:
+            goto_result_evaluation = False
     else:
+        goto_result_evaluation = False
         logger.info(
             "No compact registry row yet for %r (Twistlock may not have indexed this tag). "
             "Proceeding with on-demand scan.",
             image_ref.value,
         )
 
-    logger.info(
-        "step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)..."
-    )
-    scan_enqueue_started = time.time()
-    _start_registry_scan(settings, token, image_ref)
-    logger.info("on-demand scan request accepted")
-
-    # Optional extra nudge for consoles where registry scanners do not pick up ECR changes promptly.
-    if trigger_registry_scan_select:
+    if not goto_result_evaluation:
         logger.info(
-            "step 2b: POST registry/scan/select (optional registry scan-select helper)..."
+            "step 2: POST registry/scan (enqueue on-demand ECR scan in Twistlock)..."
         )
-        try:
-            _trigger_scan_select(settings, token, image_ref.registry)
-            logger.info("registry scan/select completed")
-        except RuntimeError as e:
-            logger.warning(
-                "registry/scan/select failed (continuing with progress poll): %s", e
+        scan_enqueue_started = time.time()
+        _start_registry_scan(settings, token, image_ref)
+        logger.info("on-demand scan request accepted")
+
+        # Optional extra nudge for consoles where registry scanners do not pick up ECR changes promptly.
+        if trigger_registry_scan_select:
+            logger.info(
+                "step 2b: POST registry/scan/select (optional registry scan-select helper)..."
             )
+            try:
+                _trigger_scan_select(settings, token, image_ref.registry)
+                logger.info("registry scan/select completed")
+            except RuntimeError as e:
+                logger.warning(
+                    "registry/scan/select failed (continuing with progress poll): %s", e
+                )
 
-    logger.info(
-        "step 3: wait for scan (registry/progress + compact fallback when no prior row)... "
-        "had_compact_before_enqueue=%s",
-        existing is not None,
-    )
-    _wait_until_ready(
-        settings,
-        logger,
-        token,
-        image_ref,
-        timeout_seconds=poll_timeout_seconds,
-        interval_seconds=poll_interval_seconds,
-        use_compact_row_completion=(existing is None),
-        expected_image_digest=expected_image_digest,
-        min_scan_time_epoch=scan_enqueue_started,
-    )
+        logger.info(
+            "step 3: wait for scan (registry/progress + compact fallback when no prior row)... "
+            "had_compact_before_enqueue=%s",
+            existing is not None,
+        )
+        _wait_until_ready(
+            settings,
+            logger,
+            token,
+            image_ref,
+            timeout_seconds=poll_timeout_seconds,
+            interval_seconds=poll_interval_seconds,
+            use_compact_row_completion=(existing is None),
+            expected_image_digest=expected_image_digest,
+            min_scan_time_epoch=scan_enqueue_started,
+        )
 
-    logger.info("step 4: GET registry (compact result via API)...")
-    result = _compact_result(settings, token, image_ref, required=True)
+        logger.info("step 4: GET registry (compact result via API)...")
+        result = _compact_result(settings, token, image_ref, required=True)
     ms_label = _microservice_report_label(image_ref.value, microservice_report_name)
     logger.info(
         "step 4b: vulnerability report (prefer non-compact registry payload for CVE rows)..."
@@ -807,6 +818,7 @@ def twistlock_scan_flow(
     trigger_registry_scan_select: bool = False,
     poll_timeout_seconds: int = 1800,
     poll_interval_seconds: int = 15,
+    force_rescan: bool = False,
 ) -> None:
     """ECR image scan via Twistlock Console Registry API (no Docker on Prefect worker).
 
@@ -865,6 +877,7 @@ def twistlock_scan_flow(
         poll_timeout_seconds=poll_timeout_seconds,
         poll_interval_seconds=poll_interval_seconds,
         expected_image_digest=expected_image_digest,
+        force_rescan=force_rescan,
     )
 
 

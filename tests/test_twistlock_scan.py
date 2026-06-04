@@ -269,10 +269,15 @@ def test_registry_scan_orchestrates_gateway_without_existing_row(
     }
 
 
-def test_registry_scan_disables_compact_fallback_when_row_already_exists(
+def test_registry_scan_uses_existing_registry_row_when_row_already_exists(
     monkeypatch,
 ) -> None:
-    http = FakeHttp(existing={"name": "already-indexed"})
+    http = FakeHttp(
+        existing={
+            "name": "already-indexed",
+            "vulnerabilityDistribution": {"critical": 0, "high": 0},
+        }
+    )
     monkeypatch.setattr(flow_module, "_http_json_request", http)
 
     flow_module._run_registry_scan(
@@ -286,6 +291,34 @@ def test_registry_scan_disables_compact_fallback_when_row_already_exists(
     )
 
     assert not http.matching_calls("/registry/scan/select?")
+    assert not http.matching_calls("/registry/scan")
+    assert not http.matching_calls("/registry/progress?")
+
+
+def test_registry_scan_force_rescan_waits_when_row_already_exists(
+    monkeypatch,
+) -> None:
+    http = FakeHttp(
+        existing={
+            "name": "already-indexed",
+            "vulnerabilityDistribution": {"critical": 0, "high": 0},
+        }
+    )
+    monkeypatch.setattr(flow_module, "_http_json_request", http)
+
+    flow_module._run_registry_scan(
+        _test_settings(),
+        FakeLogger(),
+        ImageRef.parse(TEST_REPO_IMAGE),
+        microservice_report_name=None,
+        trigger_registry_scan_select=False,
+        poll_timeout_seconds=60,
+        poll_interval_seconds=10,
+        force_rescan=True,
+    )
+
+    assert not http.matching_calls("/registry/scan/select?")
+    assert http.matching_calls("/registry/scan")
     assert len(http.matching_calls("/registry/progress?")) == 1
 
 
@@ -310,6 +343,7 @@ def test_registry_scan_uses_compact_fallback_when_existing_row_matches_ecr_diges
         poll_timeout_seconds=60,
         poll_interval_seconds=10,
         expected_image_digest="sha256:new",
+        force_rescan=True,
     )
 
     assert len(http.matching_calls("compact=true")) >= 3
@@ -355,6 +389,7 @@ def test_registry_scan_uses_compact_fallback_when_scan_time_is_fresh(
         poll_timeout_seconds=60,
         poll_interval_seconds=10,
         expected_image_digest="sha256:ecr-manifest",
+        force_rescan=True,
     )
 
     assert len(http.matching_calls("compact=true")) >= 3
@@ -374,6 +409,7 @@ def test_registry_scan_treats_empty_compact_dict_as_existing_row(
         trigger_registry_scan_select=False,
         poll_timeout_seconds=60,
         poll_interval_seconds=10,
+        force_rescan=True,
     )
 
     assert len(http.matching_calls("compact=true")) == 2
