@@ -234,7 +234,7 @@ class CADSRClient:
             "CDEOrigin": cde.get("origin")
         }
 
-    def _check_draft_new_cde_changes(
+    def _check_cde_changes(
         self,
         cadsr_cde_details: dict,
         cadsr_pvs: list[PermissibleValue | None],
@@ -411,7 +411,7 @@ class CADSRClient:
                 CADSR_WORKFLOW_STATUS_DRAFT_NEW,
                 CADSR_WORKFLOW_STATUS_RELEASED,
             ):
-                update_annotation |= self._check_draft_new_cde_changes(
+                update_annotation |= self._check_cde_changes(
                     cadsr_cde_details,
                     cadsr_pvs,
                     mdb_pv_objects,

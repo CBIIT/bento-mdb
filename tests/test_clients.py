@@ -677,7 +677,7 @@ class TestNCItClient:
         """
         client = CADSRClient()
         import unittest.mock as mock
-        # Return DRAFT NEW status to trigger _check_draft_new_cde_changes
+        # Return DRAFT NEW status to trigger _check_cde_changes
         cadsr_cde_details_draft_new = {
             "CDECode": "15260691",
             "CDEVersion": "1",
@@ -819,7 +819,7 @@ class TestNCItClient:
 
         client = CADSRClient()
         import unittest.mock as mock
-        # Ensure DRAFT NEW status is set to trigger _check_draft_new_cde_changes
+        # Ensure DRAFT NEW status is set to trigger _check_cde_changes
         cadsr_cde_details = dict(cadsr_cde_with_new_name)
         cadsr_cde_details["CDEWorkflowStatus"] = "DRAFT NEW"
         with mock.patch.object(client, "fetch_cde_valueset", return_value=cadsr_pvs):

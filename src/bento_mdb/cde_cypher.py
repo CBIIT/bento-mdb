@@ -47,11 +47,11 @@ def create_delete_pv_cypher(
     pv_value_literal = _cypher_string_literal(pv_value)
     origin_version_literal = _cypher_string_literal(pv_origin_version or "")
     return (
-        f"MATCH (pv:term)-[r:has_term]-(vs:value_set {{handle: '{cde_id}|{cde_ver}'}}) "
+        f"MATCH (vs:value_set {{handle: '{cde_id}|{cde_ver}'}})-[r:has_term]->(pv:term) "
         f"WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
         f"AND pv.origin_id = '{pv_origin_id}' "
         f"AND pv.value = {pv_value_literal} "
-        f"AND coalesce(pv.origin_version, '') = {origin_version_literal} "
+        f"AND pv.origin_version = {origin_version_literal} "
         f"DELETE r"
     )
 
