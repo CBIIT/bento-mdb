@@ -337,6 +337,111 @@ def test_registry_scan_treats_null_compact_lookup_as_missing_row(
     assert http.matching_calls("/registry/scan")
 
 
+def test_registry_progress_uses_on_demand_repo_and_tag_query(monkeypatch) -> None:
+    calls = []
+
+    def fake_http_json_request(method, url, *, token=None, body=None, timeout=120):
+        calls.append(
+            {
+                "method": method,
+                "url": url,
+                "token": token,
+                "body": body,
+                "timeout": timeout,
+            }
+        )
+        return []
+
+    monkeypatch.setattr(flow_module, "_http_json_request", fake_http_json_request)
+
+    out = flow_module._registry_progress(
+        _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE)
+    )
+
+    assert out == []
+    assert calls == [
+        {
+            "method": "GET",
+            "url": (
+                "https://twistlock.example.test/api/v34.02/registry/progress"
+                "?onDemand=true&repo=repo&tag=tag"
+            ),
+            "token": "token-1",
+            "body": None,
+            "timeout": 60,
+        }
+    ]
+
+
+def test_compact_result_required_raises_when_empty_list_has_no_row(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: [],
+    )
+
+    with pytest.raises(RuntimeError, match="No registry scan result found"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+        )
+
+
+def test_compact_result_required_raises_when_null_response_has_no_row(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: None,
+    )
+
+    with pytest.raises(RuntimeError, match="No registry scan result found"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+        )
+
+
+def test_compact_result_returns_first_row_from_list(monkeypatch) -> None:
+    row = {"vulnerabilityDistribution": {"critical": 0, "high": 0}}
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: [row],
+    )
+
+    out = flow_module._compact_result(
+        _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+    )
+
+    assert out == row
+
+
+def test_compact_result_rejects_unexpected_list_item(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: ["not-a-row"],
+    )
+
+    with pytest.raises(RuntimeError, match="Unexpected registry result item type: str"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=False
+        )
+
+
+def test_compact_result_rejects_unexpected_response_type(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: "not-a-response",
+    )
+
+    with pytest.raises(RuntimeError, match="Unexpected registry result type: str"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=False
+        )
+
+
 def test_raise_if_critical_high_reports_fails_after_reports_are_collected() -> None:
     reports = [
         {
