@@ -79,6 +79,23 @@ def test_twistlock_settings_uses_overrides_and_optional_secret_values() -> None:
     assert settings.scan_select_project == "Project B"
 
 
+def test_parse_image_refs_accepts_single_string() -> None:
+    refs = flow_module._parse_image_refs(TEST_REPO_IMAGE)
+
+    assert [ref.value for ref in refs] == [TEST_REPO_IMAGE]
+
+
+def test_parse_image_refs_accepts_list() -> None:
+    refs = flow_module._parse_image_refs([TEST_REPO_IMAGE, TEST_FAST_API_IMAGE])
+
+    assert [ref.value for ref in refs] == [TEST_REPO_IMAGE, TEST_FAST_API_IMAGE]
+
+
+def test_parse_image_refs_rejects_empty_list() -> None:
+    with pytest.raises(RuntimeError, match="at least one"):
+        flow_module._parse_image_refs([])
+
+
 def test_trigger_scan_select_uses_resolved_collection_and_project(
     monkeypatch,
 ) -> None:
@@ -240,10 +257,15 @@ def test_registry_scan_orchestrates_gateway_without_existing_row(
     }
 
 
-def test_registry_scan_disables_compact_fallback_when_row_already_exists(
+def test_registry_scan_rescans_when_row_already_exists(
     monkeypatch,
 ) -> None:
-    http = FakeHttp(existing={"name": "already-indexed"})
+    http = FakeHttp(
+        existing={
+            "name": "already-indexed",
+            "vulnerabilityDistribution": {"critical": 0, "high": 0},
+        }
+    )
     monkeypatch.setattr(flow_module, "_http_json_request", http)
 
     flow_module._run_registry_scan(
@@ -257,7 +279,8 @@ def test_registry_scan_disables_compact_fallback_when_row_already_exists(
     )
 
     assert not http.matching_calls("/registry/scan/select?")
-    assert len(http.matching_calls("/registry/progress?")) == 1
+    assert http.matching_calls("/registry/scan")
+    assert not http.matching_calls("/registry/progress?")
 
 
 def test_registry_scan_treats_empty_compact_dict_as_existing_row(
@@ -276,7 +299,7 @@ def test_registry_scan_treats_empty_compact_dict_as_existing_row(
         poll_interval_seconds=10,
     )
 
-    assert len(http.matching_calls("compact=true")) == 2
+    assert len(http.matching_calls("compact=true")) == 3
 
 
 def test_registry_scan_verify_treats_empty_compact_dict_as_found(
@@ -312,3 +335,31 @@ def test_registry_scan_treats_null_compact_lookup_as_missing_row(
     )
 
     assert http.matching_calls("/registry/scan")
+
+
+def test_raise_if_critical_high_reports_fails_after_reports_are_collected() -> None:
+    reports = [
+        {
+            "image_ref": TEST_FAST_API_IMAGE,
+            "microservice": "crdc-mdb-sts-fast-api",
+            "status": "passed",
+            "passed": True,
+            "critical": 0,
+            "high": 0,
+            "vulnerabilities": [],
+            "message": "ok",
+        },
+        {
+            "image_ref": TEST_REPO_IMAGE,
+            "microservice": "repo",
+            "status": "failed",
+            "passed": False,
+            "critical": 22,
+            "high": 56,
+            "vulnerabilities": [],
+            "message": "Scan policy failed: critical=22 high=56",
+        },
+    ]
+
+    with pytest.raises(RuntimeError, match="critical=22 high=56"):
+        flow_module._raise_if_critical_high_reports(reports)
