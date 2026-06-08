@@ -1,0 +1,21 @@
+Handle: TEST
+Version: 1.2.3
+Nodes:
+  program:
+    Props:
+      - program_name
+Relationships: {}
+PropDefinitions:
+  program_name:
+    Desc: |
+      The name of the program
+    Enum:
+      - Origin: CRDC
+        Code: CRDC00001
+        Value: NCI Program Names
+        Version: "1"
+    Term:
+      - Origin: caDSR
+        Value: Program Name Text
+        Code: "11444542"
+        Version: "2.00"

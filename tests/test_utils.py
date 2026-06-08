@@ -738,6 +738,69 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                     },
                 },
                 "value_set": [],
+                "edp_reference": None,
+            },
+        ],
+    },
+)
+
+TEST_ANNOTATION_SPEC_EDP = AnnotationSpec(
+    entity={
+        "key": ("program", "program_name"),
+        "attrs": {
+            "handle": "program_name",
+            "model": "TEST",
+            "value_domain": "value_set",
+        },
+        "entity_has_enum": True,
+    },
+    annotation={
+        "key": ("program_name_text", "caDSR", "11444542", "2.00"),
+        "attrs": {
+            "handle": "program_name_text",
+            "value": "Program Name Text",
+            "origin_id": "11444542",
+            "origin_version": "2.00",
+            "origin_name": "caDSR",
+        },
+    },
+    value_set=[],
+    edp_reference={
+        "origin_id": "CRDC00001",
+        "origin_name": "CRDC",
+    },
+)
+
+TEST_MAKE_MODEL_CDE_SPEC_EDP = ModelCDESpec(
+    {
+        "handle": "TEST",
+        "version": "1.2.3",
+        "annotations": [
+            {
+                "entity": {
+                    "key": ("program", "program_name"),
+                    "attrs": {
+                        "handle": "program_name",
+                        "model": "TEST",
+                        "value_domain": "value_set",
+                    },
+                    "entity_has_enum": True,
+                },
+                "annotation": {
+                    "key": ("program_name_text", "caDSR", "11444542", "2.00"),
+                    "attrs": {
+                        "handle": "program_name_text",
+                        "value": "Program Name Text",
+                        "origin_id": "11444542",
+                        "origin_version": "2.00",
+                        "origin_name": "caDSR",
+                    },
+                },
+                "value_set": [],
+                "edp_reference": {
+                    "origin_id": "CRDC00001",
+                    "origin_name": "CRDC",
+                },
             },
         ],
     },

@@ -268,8 +268,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bento-mdf", specifier = "==0.11.11" },
-    { name = "bento-meta", specifier = "==0.2.19" },
+    { name = "bento-mdf", specifier = ">=0.11.11" },
+    { name = "bento-meta", specifier = ">=0.2.19" },
     { name = "boto3", specifier = ">=1.38.36" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "liquichange", specifier = ">=0.2.1" },

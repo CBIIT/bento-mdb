@@ -10,6 +10,7 @@ from tests.test_utils import (
     TEST_ANNOTATION_SPEC_NO_VS,
     TEST_MODEL_CDE_SPEC,
     TEST_MODEL_CDE_SPEC_NO_ANNOTATIONS,
+    TEST_ANNOTATION_SPEC_EDP,
     assert_equal,
     remove_nanoids_from_str,
 )
@@ -238,3 +239,61 @@ class TestConvertModelCDES:
     def test_convert_model_cdes_to_changelog_no_annotations(self):
         changelog = convert_model_cdes_to_changelog(TEST_MODEL_CDE_SPEC_NO_ANNOTATIONS)
         assert_equal(len(changelog.subelements), 0)
+
+class TestConvertAnnotationToChangesetsEdp:
+    """Tests for EDP-backed CDE annotations."""
+
+    def test_edp_annotation_emits_specifies_value_set(self) -> None:
+        """An annotation with edp_reference should emit a single specifies_value_set changeset."""
+        changesets = convert_annotation_to_changesets(
+            TEST_ANNOTATION_SPEC_EDP,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        assert len(changesets) == 1
+        stmt = changesets[0].change_type.text
+        assert "specifies_value_set" in stmt
+        assert "11444542" in stmt   # CDE origin_id
+        assert "CRDC00001" in stmt  # EDP origin_id
+        assert "CRDC" in stmt       # EDP origin_name
+
+    def test_edp_annotation_does_not_emit_value_set_merge(self) -> None:
+        """An EDP annotation should not create a value_set node or has_term rels."""
+        changesets = convert_annotation_to_changesets(
+            TEST_ANNOTATION_SPEC_EDP,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        stmt = changesets[0].change_type.text
+        assert "has_term" not in stmt
+        assert "MERGE (n0:value_set" not in stmt
+        
+    def test_edp_annotation_cypher_structure(self) -> None:
+        """The emitted Cypher should MATCH cde, MATCH edp->vs, MERGE the relationship."""
+        changesets = convert_annotation_to_changesets(
+            TEST_ANNOTATION_SPEC_EDP,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        stmt = changesets[0].change_type.text
+        expected = (
+            "MATCH (cde:term {origin_id: '11444542'}) "
+            "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
+            "MATCH (edp:term {origin_name: 'CRDC', origin_id: 'CRDC00001'})"
+            "-[:represents]->(vs:value_set) "
+            "MERGE (cde)-[:specifies_value_set]->(vs)"
+        )
+        assert_equal(stmt, expected)
+
+    def test_no_edp_reference_follows_normal_path(self) -> None:
+        """An annotation without edp_reference should follow the normal PV path."""
+        changesets = convert_annotation_to_changesets(
+            TEST_ANNOTATION_SPEC_NO_VS,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        assert len(changesets) == 0  # no PVs, no EDP, nothing to emit

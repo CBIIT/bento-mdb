@@ -23,6 +23,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+def get_edp_enum_term(entity):
+    """Return the EDP term from entity.value_set.edp_term, or None if not present."""
+    value_set = getattr(entity, "value_set", None)
+    if not value_set:
+        return None
+    return getattr(value_set, "edp_term", None)
+
 
 def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
     """Load model specs from YAML file."""
@@ -99,6 +106,7 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                 # if 'caDSR' not in origin name, not a CDE
                 if "cadsr" not in term_key[1].lower():
                     continue
+                _edp_term = get_edp_enum_term(entity)
                 cde_spec["annotations"].append(
                     {
                         "entity": {
@@ -111,6 +119,11 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                             "attrs": term.get_attr_dict(),
                         },
                         "value_set": [],
+
+                        "edp_reference": {
+                            "origin_id": _edp_term.origin_id,
+                            "origin_name": _edp_term.origin_name,
+                        } if _edp_term else None,
                     },
                 )
     return cde_spec

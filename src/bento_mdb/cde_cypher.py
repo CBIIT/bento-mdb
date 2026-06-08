@@ -46,6 +46,17 @@ def create_delete_pv_cypher(
     )
 
 
+def _generate_edp_link_cypher(cde_id: str, edp_origin_id: str, edp_origin_name: str) -> str:
+    """Cypher to link a CDE term to its EDP value_set via specifies_value_set."""
+    return (
+        f"MATCH (cde:term {{origin_id: '{cde_id}'}}) "
+        f"WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
+        f"MATCH (edp:term {{origin_name: '{edp_origin_name}', origin_id: '{edp_origin_id}'}})"
+        f"-[:represents]->(vs:value_set) "
+        f"MERGE (cde)-[:specifies_value_set]->(vs)"
+    )
+
+
 def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
     changeset_id: int,
@@ -58,8 +69,16 @@ def convert_annotation_to_changesets(
     has_removed_pvs = annotation.get("removed_pvs") and len(annotation.get("removed_pvs", [])) > 0
     has_metadata_changes = annotation.get("CDEFullName") or annotation.get("CDEVersion")
     
+    # Check for EDP reference, then if it exists, emit only the specifies_value_set relationship
+    edp_ref = annotation.get("edp_reference")
+    if edp_ref:
+        cde_id = annotation["annotation"]["attrs"].get("origin_id", "")
+        stmt = _generate_edp_link_cypher(cde_id, edp_ref["origin_id"], edp_ref["origin_name"])
+        return [Changeset(id=str(changeset_id), author=author, change_type=CypherChange(text=stmt))]
+    
     if not (has_new_pvs or has_removed_pvs or has_metadata_changes):
         return []
+    
     statements: list[Statement] = []
     changesets = []
     cde_attrs = annotation["annotation"]["attrs"]

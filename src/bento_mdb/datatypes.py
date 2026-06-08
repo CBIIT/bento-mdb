@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,7 +46,7 @@ class AnnotationSpec(TypedDict):
     entity: dict
     annotation: dict
     value_set: list[PermissibleValue | None]
-
+    edp_reference: NotRequired[dict | None]
 
 class ModelCDESpec(TypedDict):
     """CRDC model CDE spec."""
