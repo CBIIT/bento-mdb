@@ -20,7 +20,11 @@ import stamina
 import yaml
 from tqdm import tqdm
 
-from bento_mdb.constants import CADSR_WORKFLOW_STATUS_DRAFT_NEW, NCIM_TSV_NAME
+from bento_mdb.constants import (
+    CADSR_WORKFLOW_STATUS_DRAFT_NEW,
+    CADSR_WORKFLOW_STATUS_RELEASED,
+    NCIM_TSV_NAME,
+)
 
 if TYPE_CHECKING:
     from bento_mdb.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
@@ -40,6 +44,15 @@ def get_logger():
         return logging.getLogger(__name__)
 
 logger = get_logger()
+
+
+def _pv_composite_key(pv: PermissibleValue) -> tuple[str | None, str, str]:
+    return (
+        pv.get("value"),
+        str(pv.get("origin_id") or ""),
+        str(pv.get("origin_version") or ""),
+    )
+
 
 def get_last_sync_date(
     source: str,
@@ -221,7 +234,7 @@ class CADSRClient:
             "CDEOrigin": cde.get("origin")
         }
 
-    def _check_draft_new_cde_changes(
+    def _check_cde_changes(
         self,
         cadsr_cde_details: dict,
         cadsr_pvs: list[PermissibleValue | None],
@@ -230,24 +243,31 @@ class CADSRClient:
         annotation_spec: AnnotationSpec,
         run_logger: logging.Logger = get_logger(),
     ) -> bool:
-        """Check for removed PVs and metadata changes in DRAFT NEW CDEs. Returns True if updates found."""
+        """Check for removed PVs and metadata changes in DRAFT NEW/RELEASED CDEs."""
         is_updated = False
 
-        # Check for removed PVs - compare by value for accuracy
-        cadsr_pv_values = {pv["value"] for pv in cadsr_pvs if pv}
+        # Check for removed PVs using composite key (value + origin_id + origin_version)
+        cadsr_pv_keys = {
+            _pv_composite_key(pv)
+            for pv in cadsr_pvs
+            if pv and pv.get("value") is not None
+        }
         removed_pv_objects = [
             {
-                "value": pv["value"], 
+                "value": pv["value"],
                 "origin_id": pv["origin_id"],
                 "origin_version": pv.get("origin_version", ""),
             }
-            for pv in mdb_pv_objects 
-            if pv["value"] not in cadsr_pv_values
+            for pv in mdb_pv_objects
+            if _pv_composite_key(pv) not in cadsr_pv_keys
         ]
         if removed_pv_objects:
-            removed_values = [pv["value"] for pv in removed_pv_objects]
+            removed_values = [
+                f"{pv['value']}|{pv['origin_id']}|{pv.get('origin_version', '')}"
+                for pv in removed_pv_objects
+            ]
             run_logger.info(
-                "Removed PVs (by value) from caDSR for %sv%s: %s",
+                "Removed PVs (by composite key) from caDSR for %sv%s: %s",
                 cde_spec["CDECode"],
                 cde_spec.get("CDEVersion"),
                 removed_values,
@@ -277,10 +297,10 @@ class CADSRClient:
         #     is_updated = True
         #     annotation_spec["CDEVersion"] = cadsr_cde_details["CDEVersion"]
 
-        # For DRAFT NEW CDEs, log the status only if changes found
+        # For DRAFT NEW/RELEASED CDEs, log the status only if changes found
         if is_updated:
             run_logger.info(
-                "DRAFT NEW CDE detected for %s with status: '%s'",
+                "CDE detected for %s with status: '%s'",
                 cde_spec["CDECode"],
                 cadsr_cde_details.get("CDEWorkflowStatus"),
             )
@@ -297,11 +317,11 @@ class CADSRClient:
         run_logger.info("total cdes to check: %s", len(mdb_cdes))
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             try:
-                mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
                 mdb_pv_objects = cde_spec["permissibleValues"]
+                mdb_pv_keys = {_pv_composite_key(pv) for pv in mdb_pv_objects}
                 mdb_alternates = {}
                 for mdb_pv in mdb_pv_objects:
-                    mdb_alternates[mdb_pv["value"]] = mdb_pv.get("alternates", [])
+                    mdb_alternates[_pv_composite_key(mdb_pv)] = mdb_pv.get("alternates", [])
                 cadsr_pvs = self.fetch_cde_valueset(
                     cde_id=cde_spec["CDECode"],
                     cde_version=cde_spec.get("CDEVersion"),
@@ -348,9 +368,10 @@ class CADSRClient:
                         cde_spec.get("CDEVersion"),
                     )
                     continue
-                if pv["value"] in mdb_pvs:
+                pv_key = _pv_composite_key(pv)
+                if pv_key in mdb_pv_keys:
                     # check if alternate values are the same
-                    mdb_pv_alternates = [alt["value"] for alt in mdb_alternates[pv["value"]]]
+                    mdb_pv_alternates = [alt["value"] for alt in mdb_alternates[pv_key]]
                     cadsr_pv_alternates = [alt["value"] for alt in pv.get("alternates", [])]
                     new_alternates = []
                     for cadsr_alt in cadsr_pv_alternates:
@@ -368,7 +389,7 @@ class CADSRClient:
                     update_annotation = True
                     annotation_spec["value_set"].append(pv)
 
-            # Check for removed PVs and metadata changes (only for DRAFT NEW CDEs)
+            # Check for removed PVs and metadata changes (for DRAFT NEW and RELEASED CDEs)
             try:
                 cadsr_cde_details = self.fetch_cde_details(
                     cde_id=cde_spec["CDECode"],
@@ -386,8 +407,11 @@ class CADSRClient:
                 )
                 continue
 
-            if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") == CADSR_WORKFLOW_STATUS_DRAFT_NEW:
-                update_annotation |= self._check_draft_new_cde_changes(
+            if cadsr_cde_details and cadsr_cde_details.get("CDEWorkflowStatus") in (
+                CADSR_WORKFLOW_STATUS_DRAFT_NEW,
+                CADSR_WORKFLOW_STATUS_RELEASED,
+            ):
+                update_annotation |= self._check_cde_changes(
                     cadsr_cde_details,
                     cadsr_pvs,
                     mdb_pv_objects,

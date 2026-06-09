@@ -1,6 +1,7 @@
 """Tests for cde changelog generation script."""
 
 from bento_mdb.cde_cypher import (
+    create_delete_pv_cypher,
     convert_annotation_to_changesets,
     convert_model_cdes_to_changelog,
 )
@@ -16,6 +17,19 @@ from tests.test_utils import (
 
 TEST_COMMIT = "CDEPV-TEST"
 TEST_AUTHOR = "TOLKIEN"
+
+
+def test_create_delete_pv_cypher_escapes_single_quotes() -> None:
+    actual = create_delete_pv_cypher("Children's Hospital", "123", "1", "456", "2")
+    expected = (
+        "MATCH (vs:value_set {handle: '456|2'})-[r:has_term]->(pv:term) "
+        "WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
+        "AND pv.origin_id = '123' "
+        'AND pv.value = "Children\'s Hospital" '
+        'AND pv.origin_version = "1" '
+        "DELETE r"
+    )
+    assert_equal(actual, expected)
 
 
 class TestConvertAnnotationToChangesets:
@@ -93,8 +107,8 @@ class TestConvertAnnotationToChangesets:
         # Create annotation with removed_pvs (with origin_id)
         annotation_with_removed_pvs = TEST_ANNOTATION_SPEC.copy()
         annotation_with_removed_pvs["removed_pvs"] = [  # type: ignore
-            {"value": "Mouse", "origin_id": "2578400"},
-            {"value": "Dog", "origin_id": "5729587"},
+            {"value": "Mouse", "origin_id": "2578400", "origin_version": "1"},
+            {"value": "Dog", "origin_id": "5729587", "origin_version": "1"},
         ]
         
         changesets = convert_annotation_to_changesets(
@@ -109,11 +123,14 @@ class TestConvertAnnotationToChangesets:
         ]
         
         # Check that DELETE statements are present for removed PVs (deletes relationship only)
-        # Uses value for matching
+        # Uses composite key for matching (origin_id + value + origin_version, within value_set)
         delete_statements = [stmt for stmt in actual if "DELETE r" in stmt]
         assert len(delete_statements) >= 2
-        assert any("value: 'Mouse'" in stmt for stmt in delete_statements)
-        assert any("value: 'Dog'" in stmt for stmt in delete_statements)
+        assert any("pv.origin_id = '2578400'" in stmt for stmt in delete_statements)
+        assert any("pv.origin_id = '5729587'" in stmt for stmt in delete_statements)
+        assert any('pv.value = "Mouse"' in stmt for stmt in delete_statements)
+        assert any('pv.value = "Dog"' in stmt for stmt in delete_statements)
+        assert all("pv.origin_version" in stmt for stmt in delete_statements)
         # Verify it has origin_name check
         assert all("toLower(pv.origin_name) CONTAINS 'cadsr'" in stmt for stmt in delete_statements)
         # Verify it's not deleting the node itself
@@ -150,7 +167,7 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (t:term {origin_id: '12345'}) WHERE toLower(t.origin_name) CONTAINS 'cadsr' SET t.value = 'New CDE Name'",
+            'MATCH (t:term {origin_id: \'12345\'}) WHERE toLower(t.origin_name) CONTAINS \'cadsr\' SET t.value = "New CDE Name"',
         ]
         assert_equal(actual, expected)
 
@@ -185,7 +202,7 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|2.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=2.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (t:term {origin_id: '12345'}) WHERE toLower(t.origin_name) CONTAINS 'cadsr' SET t.value = 'New Name'",
+            'MATCH (t:term {origin_id: \'12345\'}) WHERE toLower(t.origin_name) CONTAINS \'cadsr\' SET t.value = "New Name"',
         ]
         assert_equal(actual, expected)
 
@@ -204,8 +221,8 @@ class TestConvertAnnotationToChangesets:
             },
             "value_set": [],  # No new PVs
             "removed_pvs": [  # type: ignore
-                {"value": "OldPV1", "origin_id": "2559594"},
-                {"value": "OldPV2", "origin_id": "2559595"},
+                {"value": "OldPV1", "origin_id": "2559594", "origin_version": "1"},
+                {"value": "OldPV2", "origin_id": "2559595", "origin_version": "2"},
             ],
         }
         
@@ -222,8 +239,45 @@ class TestConvertAnnotationToChangesets:
         
         expected = [
             "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            "MATCH (pv:term {value: 'OldPV1'})-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' DELETE r",
-            "MATCH (pv:term {value: 'OldPV2'})-[r:has_term]-(vs:value_set {handle: '12345|1.0'}) WHERE toLower(pv.origin_name) CONTAINS 'cadsr' DELETE r",
+            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559594\' AND pv.value = "OldPV1" AND pv.origin_version = "1" DELETE r',
+            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND pv.origin_version = "2" DELETE r',
+        ]
+        assert_equal(actual, expected)
+
+    def test_convert_annotation_to_changesets_skip_removed_pv_without_origin_version(self) -> None:
+        """Removed PV with empty origin_version should be skipped for unlink."""
+        annotation_only_removed = {
+            "entity": {},
+            "annotation": {
+                "key": ("CDE Name", "caDSR"),
+                "attrs": {
+                    "origin_id": "12345",
+                    "origin_version": "1.0",
+                    "origin_name": "caDSR",
+                    "value": "CDE Name",
+                },
+            },
+            "value_set": [],
+            "removed_pvs": [  # type: ignore
+                {"value": "OldPV1", "origin_id": "2559594", "origin_version": ""},
+                {"value": "OldPV2", "origin_id": "2559595", "origin_version": "2"},
+            ],
+        }
+
+        changesets = convert_annotation_to_changesets(
+            annotation_only_removed,  # type: ignore
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
+            for x in changesets
+        ]
+
+        expected = [
+            "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
+            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND pv.origin_version = "2" DELETE r',
         ]
         assert_equal(actual, expected)
 
