@@ -79,6 +79,23 @@ def test_twistlock_settings_uses_overrides_and_optional_secret_values() -> None:
     assert settings.scan_select_project == "Project B"
 
 
+def test_parse_image_refs_accepts_single_string() -> None:
+    refs = flow_module._parse_image_refs(TEST_REPO_IMAGE)
+
+    assert [ref.value for ref in refs] == [TEST_REPO_IMAGE]
+
+
+def test_parse_image_refs_accepts_list() -> None:
+    refs = flow_module._parse_image_refs([TEST_REPO_IMAGE, TEST_FAST_API_IMAGE])
+
+    assert [ref.value for ref in refs] == [TEST_REPO_IMAGE, TEST_FAST_API_IMAGE]
+
+
+def test_parse_image_refs_rejects_empty_list() -> None:
+    with pytest.raises(RuntimeError, match="at least one"):
+        flow_module._parse_image_refs([])
+
+
 def test_trigger_scan_select_uses_resolved_collection_and_project(
     monkeypatch,
 ) -> None:
@@ -240,10 +257,15 @@ def test_registry_scan_orchestrates_gateway_without_existing_row(
     }
 
 
-def test_registry_scan_disables_compact_fallback_when_row_already_exists(
+def test_registry_scan_rescans_when_row_already_exists(
     monkeypatch,
 ) -> None:
-    http = FakeHttp(existing={"name": "already-indexed"})
+    http = FakeHttp(
+        existing={
+            "name": "already-indexed",
+            "vulnerabilityDistribution": {"critical": 0, "high": 0},
+        }
+    )
     monkeypatch.setattr(flow_module, "_http_json_request", http)
 
     flow_module._run_registry_scan(
@@ -257,7 +279,8 @@ def test_registry_scan_disables_compact_fallback_when_row_already_exists(
     )
 
     assert not http.matching_calls("/registry/scan/select?")
-    assert len(http.matching_calls("/registry/progress?")) == 1
+    assert http.matching_calls("/registry/scan")
+    assert not http.matching_calls("/registry/progress?")
 
 
 def test_registry_scan_treats_empty_compact_dict_as_existing_row(
@@ -276,7 +299,7 @@ def test_registry_scan_treats_empty_compact_dict_as_existing_row(
         poll_interval_seconds=10,
     )
 
-    assert len(http.matching_calls("compact=true")) == 2
+    assert len(http.matching_calls("compact=true")) == 3
 
 
 def test_registry_scan_verify_treats_empty_compact_dict_as_found(
@@ -312,3 +335,136 @@ def test_registry_scan_treats_null_compact_lookup_as_missing_row(
     )
 
     assert http.matching_calls("/registry/scan")
+
+
+def test_registry_progress_uses_on_demand_repo_and_tag_query(monkeypatch) -> None:
+    calls = []
+
+    def fake_http_json_request(method, url, *, token=None, body=None, timeout=120):
+        calls.append(
+            {
+                "method": method,
+                "url": url,
+                "token": token,
+                "body": body,
+                "timeout": timeout,
+            }
+        )
+        return []
+
+    monkeypatch.setattr(flow_module, "_http_json_request", fake_http_json_request)
+
+    out = flow_module._registry_progress(
+        _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE)
+    )
+
+    assert out == []
+    assert calls == [
+        {
+            "method": "GET",
+            "url": (
+                "https://twistlock.example.test/api/v34.02/registry/progress"
+                "?onDemand=true&repo=repo&tag=tag"
+            ),
+            "token": "token-1",
+            "body": None,
+            "timeout": 60,
+        }
+    ]
+
+
+def test_compact_result_required_raises_when_empty_list_has_no_row(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: [],
+    )
+
+    with pytest.raises(RuntimeError, match="No registry scan result found"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+        )
+
+
+def test_compact_result_required_raises_when_null_response_has_no_row(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: None,
+    )
+
+    with pytest.raises(RuntimeError, match="No registry scan result found"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+        )
+
+
+def test_compact_result_returns_first_row_from_list(monkeypatch) -> None:
+    row = {"vulnerabilityDistribution": {"critical": 0, "high": 0}}
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: [row],
+    )
+
+    out = flow_module._compact_result(
+        _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=True
+    )
+
+    assert out == row
+
+
+def test_compact_result_rejects_unexpected_list_item(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: ["not-a-row"],
+    )
+
+    with pytest.raises(RuntimeError, match="Unexpected registry result item type: str"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=False
+        )
+
+
+def test_compact_result_rejects_unexpected_response_type(monkeypatch) -> None:
+    monkeypatch.setattr(
+        flow_module,
+        "_registry_result",
+        lambda settings, token, image_ref, *, compact: "not-a-response",
+    )
+
+    with pytest.raises(RuntimeError, match="Unexpected registry result type: str"):
+        flow_module._compact_result(
+            _test_settings(), "token-1", ImageRef.parse(TEST_REPO_IMAGE), required=False
+        )
+
+
+def test_raise_if_critical_high_reports_fails_after_reports_are_collected() -> None:
+    reports = [
+        {
+            "image_ref": TEST_FAST_API_IMAGE,
+            "microservice": "crdc-mdb-sts-fast-api",
+            "status": "passed",
+            "passed": True,
+            "critical": 0,
+            "high": 0,
+            "vulnerabilities": [],
+            "message": "ok",
+        },
+        {
+            "image_ref": TEST_REPO_IMAGE,
+            "microservice": "repo",
+            "status": "failed",
+            "passed": False,
+            "critical": 22,
+            "high": 56,
+            "vulnerabilities": [],
+            "message": "Scan policy failed: critical=22 high=56",
+        },
+    ]
+
+    with pytest.raises(RuntimeError, match="critical=22 high=56"):
+        flow_module._raise_if_critical_high_reports(reports)
