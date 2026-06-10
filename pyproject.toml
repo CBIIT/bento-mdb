@@ -32,6 +32,7 @@ get_pvs_and_synonyms = "scripts.get_pvs_and_synonyms:main"
 make_model_cde_changelog = "scripts.make_model_cde_changelog:main"
 make_model_changelog = "scripts.make_model_changelog:main"
 renumber_changelog = "scripts.renumber_changelog:main"
+make_edp_changelog = "scripts.make_edp_changelog:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bento_mdb", "scripts"]

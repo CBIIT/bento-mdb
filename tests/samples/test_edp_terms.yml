@@ -1,0 +1,13 @@
+Terms:
+  term_1:
+    Origin: OBIB
+    Code: "OBIB:0000070"
+    Version: "2024-01-01"
+    Value: term_1
+    Definition: "First test term."
+  term_2:
+    Origin: OBIB
+    Code: "OBIB:0000071"
+    Version: "2024-01-01"
+    Value: term_2
+    Definition: "Second test term."

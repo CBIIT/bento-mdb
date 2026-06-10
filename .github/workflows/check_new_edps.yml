@@ -1,0 +1,67 @@
+name: Check New EDPs
+
+on:
+  schedule:
+    - cron: "30 22 * * *"  # daily 22:30 UTC, after check_new_mdfs
+  workflow_dispatch:
+    inputs:
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  check_new_edps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      edps_changed: ${{ steps.check.outputs.edps_changed }}
+    steps:
+      - name: Checkout bento-mdb
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ github.token }}
+
+      - name: Checkout bento-edps
+        uses: actions/checkout@v4
+        with:
+          repository: CBIIT/bento-edps
+          path: edp-repo
+          token: ${{ github.token }}
+
+      - name: Check for EDP changes
+        id: check
+        run: |
+          LAST_SHA_FILE="config/last_edp_sha.txt"
+          CURRENT_SHA=$(git -C edp-repo rev-parse HEAD)
+          echo "Current EDP repo SHA: $CURRENT_SHA"
+
+          if [ -f "$LAST_SHA_FILE" ]; then
+            LAST_SHA=$(cat "$LAST_SHA_FILE")
+            echo "Last processed SHA: $LAST_SHA"
+            if [ "$CURRENT_SHA" = "$LAST_SHA" ]; then
+              echo "No EDP changes detected."
+              echo "edps_changed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "EDP changes detected."
+          echo "edps_changed=true" >> $GITHUB_OUTPUT
+          echo "$CURRENT_SHA" > "$LAST_SHA_FILE"
+
+      - name: Configure Git
+        if: ${{ steps.check.outputs.edps_changed == 'true' && github.event.inputs.no_commit != 'true' }}
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Commit updated EDP SHA
+        if: ${{ steps.check.outputs.edps_changed == 'true' && github.event.inputs.no_commit != 'true' }}
+        run: |
+          git add config/last_edp_sha.txt
+          git diff --cached --quiet || git commit -m "chore: update last_edp_sha to $(cat config/last_edp_sha.txt)"
+          git push origin ${{ github.ref_name }}

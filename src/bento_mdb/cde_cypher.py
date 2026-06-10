@@ -52,7 +52,7 @@ def _generate_edp_link_cypher(cde_id: str, edp_origin_id: str, edp_origin_name: 
         f"MATCH (cde:term {{origin_id: '{cde_id}'}}) "
         f"WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
         f"MATCH (edp:term {{origin_name: '{edp_origin_name}', origin_id: '{edp_origin_id}'}})"
-        f"-[:represents]->(vs:value_set) "
+        f"-[:specifies_value_set]->(vs:value_set) "
         f"MERGE (cde)-[:specifies_value_set]->(vs)"
     )
 

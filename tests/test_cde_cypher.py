@@ -283,7 +283,7 @@ class TestConvertAnnotationToChangesetsEdp:
             "MATCH (cde:term {origin_id: '11444542'}) "
             "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
             "MATCH (edp:term {origin_name: 'CRDC', origin_id: 'CRDC00001'})"
-            "-[:represents]->(vs:value_set) "
+            "-[:specifies_value_set]->(vs:value_set) "
             "MERGE (cde)-[:specifies_value_set]->(vs)"
         )
         assert_equal(stmt, expected)

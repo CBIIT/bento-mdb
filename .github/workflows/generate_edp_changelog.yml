@@ -1,0 +1,102 @@
+name: Generate EDP Changelog
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+
+on:
+  workflow_run:
+    workflows: ["Check New EDPs"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      no_commit:
+        description: "Don't upload to S3 or commit upload log."
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  generate-edp-changelog:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_EDP_CHANGELOG_BUCKET }}
+    outputs:
+      changelog_files: ${{ steps.upload.outputs.s3_keys }}
+    steps:
+      - name: Checkout bento-mdb
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Checkout bento-edps
+        uses: actions/checkout@v4
+        with:
+          repository: CBIIT/bento-edps
+          path: edp-repo
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Generate EDP Changelog
+        run: |
+          mkdir -p data/output/edp_changelogs/
+          make_edp_changelog \
+            --edp_yaml_files edp-repo/model-desc/edp-props.yml \
+            --terms_files edp-repo/model-desc/terms/obib-terms.yml \
+            --output_file data/output/edp_changelogs/edp_changelog.xml \
+            --author "GitHub Actions" \
+            --_commit "${{ github.sha }}"
+
+      - name: AWS OIDC Authentication
+        if: ${{ !inputs.no_commit }}
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ${{ github.actor }}
+
+      - name: Upload EDP changelog to S3
+        id: upload
+        if: ${{ !inputs.no_commit }}
+        run: |
+          S3_KEY="external_ont_changelogs/edp_changelog.xml"
+          aws s3 cp data/output/edp_changelogs/edp_changelog.xml \
+            "s3://${S3_BUCKET}/${S3_KEY}" \
+            --content-type application/xml
+          echo "s3_keys=[\"${S3_KEY}\"]" >> $GITHUB_OUTPUT
+          echo "Uploaded: $S3_KEY"
+
+      - name: Commit S3 upload log
+        if: ${{ !inputs.no_commit && steps.upload.outputs.s3_keys != '' }}
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git pull origin ${{ github.ref_name }}
+          COMMIT_MSG="s3-upload-log run=${RUN_ID} keys=${{ steps.upload.outputs.s3_keys }}"
+          git commit --allow-empty -m "$COMMIT_MSG"
+          git push origin ${{ github.ref_name }}
