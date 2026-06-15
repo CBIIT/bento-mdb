@@ -147,6 +147,8 @@ def add_cde_pvs_to_model_cde_spec(
     """Add CDE PVs to a ModelCDESpec."""
     logger.info("Getting CDE value sets from caDSR...")
     for annotation in cde_spec["annotations"]:
+        if annotation.get("edp_reference"):
+            continue  # Ignore cadsr client list or by-ref url since edp pvs are handled by bento-edp
         cde_id = annotation["annotation"]["attrs"].get("origin_id")
         cde_version = annotation["annotation"]["attrs"].get("origin_version")
         entity_key = str(annotation["entity"]["key"])
@@ -167,6 +169,8 @@ def add_ncit_synonyms_to_model_cde_spec(
     """Add NCIt synonyms to a ModelCDESpec."""
     logger.info("Getting synonyms from NCIt...")
     for annotation in cde_spec["annotations"]:
+        if annotation.get("edp_reference"):
+            continue  # Ignore cadsr client list or by-ref url since edp pvs are handled by bento-edp
         value_set = annotation.get("value_set", [])
         for pv in value_set:
             if pv is None:

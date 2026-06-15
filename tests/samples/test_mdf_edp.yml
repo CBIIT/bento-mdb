@@ -9,13 +9,13 @@ PropDefinitions:
   program_name:
     Desc: |
       The name of the program
-    Enum:
-      - Origin: CRDC
-        Code: CRDC00001
-        Value: NCI Program Names
-        Version: "1"
+    Ext: true
     Term:
-      - Origin: caDSR
-        Value: Program Name Text
-        Code: "11444542"
-        Version: "2.00"
+      Origin: CRDC
+      Code: CRDC00001
+      Value: NCI Program Names
+      Version: "1"
+      Definition: Test EDP for program names.
+    Enum:
+      - term_1
+      - term_2

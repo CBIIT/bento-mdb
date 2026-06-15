@@ -128,6 +128,37 @@ class TestModelCDESpec:
 
     def test_add_ncit_synonyms_to_model_cde_spec(self) -> None:
         """Test adding NCIt synonyms to model CDE spec."""
+    
+    def test_add_cde_pvs_skips_edp_annotations(self) -> None:
+        """EDP-backed annotations should not be sent to caDSR API."""
+        from unittest.mock import MagicMock
+        from bento_mdb.model_cdes import add_cde_pvs_to_model_cde_spec
+        mock_client = MagicMock()
+        cde_spec = {
+            "annotations": [
+                {"annotation": {"attrs": {"origin_id": "11444542"}}, 
+                "value_set": [], 
+                "edp_reference": {"origin_id": "CRDC00001", "origin_name": "CRDC"}}
+            ]
+        }
+        add_cde_pvs_to_model_cde_spec(cde_spec, mock_client)
+        mock_client.fetch_cde_valueset.assert_not_called()
+
+    def test_add_ncit_synonyms_skips_edp_annotations(self) -> None:
+        """EDP-backed annotations should not be sent to NCIt API."""
+        from unittest.mock import MagicMock
+        from bento_mdb.model_cdes import add_ncit_synonyms_to_model_cde_spec
+        mock_client = MagicMock()
+        cde_spec = {
+            "annotations": [
+                {"annotation": {"attrs": {}}, 
+                "value_set": [{"value": "test", "synonyms": []}], 
+                "edp_reference": {"origin_id": "CRDC00001", "origin_name": "CRDC"}}
+            ]
+        }
+        add_ncit_synonyms_to_model_cde_spec(cde_spec, mock_client)
+        mock_client.ncim_mapping.__contains__ = MagicMock(return_value=False)
+        assert cde_spec["annotations"][0]["value_set"][0]["synonyms"] == []
 
     def test_load_model_cde_spec(self) -> None:
         """Test loading model CDE spec."""
