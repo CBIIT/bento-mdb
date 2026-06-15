@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 import json
 import re
@@ -293,7 +294,7 @@ def _log_twistlock_vulnerability_report(
     *,
     microservice_name: str,
     image_ref: str,
-) -> None:
+) -> list[dict[str, str]]:
     """Emit a fixed-width table to Prefect logs (CVE + optional CDE-style ids when present in JSON)."""
     rows = _collect_vulnerability_rows(payload)
     logger.info(
@@ -337,12 +338,32 @@ def _log_twistlock_vulnerability_report(
             "(structure may differ by Console version). Payload snippet: %s",
             snippet,
         )
+    return [
+        {
+            "microservice": microservice_name,
+            "cve": rec["cve"],
+            "cde_id": rec["cde_id"] or "—",
+            "severity": rec["severity"],
+            "date": rec["date"],
+            "package": rec["package"] or "—",
+        }
+        for rec in rows
+    ]
 
 
 def _microservice_report_label(image_ref: str, override: str | None) -> str:
     if override and override.strip():
         return override.strip()
     return ImageRef.parse(image_ref).repo
+
+
+def _parse_image_refs(image_ref: str | Sequence[str]) -> list[ImageRef]:
+    if isinstance(image_ref, str):
+        return [ImageRef.parse(image_ref)]
+    refs = [ImageRef.parse(value) for value in image_ref]
+    if not refs:
+        raise RuntimeError("image_ref must include at least one image reference.")
+    return refs
 
 
 def _find_critical_high_counts(data: object) -> tuple[int, int] | None:
@@ -363,16 +384,35 @@ def _find_critical_high_counts(data: object) -> tuple[int, int] | None:
     return None
 
 
-def _evaluate_registry_scan_result(result: dict) -> None:
+def _evaluate_registry_scan_result(result: dict) -> dict[str, object]:
     counts = _find_critical_high_counts(result)
     if counts is None:
-        raise RuntimeError(
-            "Could not find critical/high counts in registry scan response. "
-            f"Response (truncated): {json.dumps(result)[:1200]}"
-        )
+        return {
+            "status": "unknown",
+            "passed": False,
+            "critical": None,
+            "high": None,
+            "message": (
+                "Could not find critical/high counts in registry scan response. "
+                f"Response (truncated): {json.dumps(result)[:1200]}"
+            ),
+        }
     critical, high = counts
     if critical > 0 or high > 0:
-        raise RuntimeError(f"Scan policy: failing on critical={critical} high={high}")
+        return {
+            "status": "failed",
+            "passed": False,
+            "critical": critical,
+            "high": high,
+            "message": f"Scan policy failed: critical={critical} high={high}",
+        }
+    return {
+        "status": "passed",
+        "passed": True,
+        "critical": critical,
+        "high": high,
+        "message": "Scan policy passed: no critical/high vulnerabilities.",
+    }
 
 
 def _twistlock_authenticate(settings: TwistlockSettings) -> str:
@@ -509,7 +549,7 @@ def _wait_until_ready(
                 f"(no compact row and no usable progress). image_ref={image_ref.value!r}"
             )
 
-        # Some registry scans never expose progress; a new compact row means the image is indexed.
+        # Some registry scans never expose progress; a compact row means the image is indexed.
         if use_compact_row_completion:
             row = _compact_result(settings, token, image_ref, required=False)
             if row is not None:
@@ -559,7 +599,7 @@ def _wait_until_ready(
                     "registry/progress still empty after %s polls; continuing until timeout (%s).",
                     empty_streak,
                     (
-                        "polling compact registry for a new row"
+                        "polling compact registry for a row"
                         if use_compact_row_completion
                         else "waiting on progress only"
                     ),
@@ -577,7 +617,7 @@ def _run_registry_scan(
     trigger_registry_scan_select: bool,
     poll_timeout_seconds: int,
     poll_interval_seconds: int,
-) -> None:
+) -> dict[str, object]:
     token = _twistlock_authenticate(settings)
     logger.info("Twistlock authentication succeeded")
     logger.info(
@@ -591,7 +631,7 @@ def _run_registry_scan(
     if existing is not None:
         logger.info(
             "Twistlock registry already has a row for this image (compact lookup succeeded). "
-            "Snippet: %s",
+            "Proceeding with on-demand scan. Snippet: %s",
             json.dumps(existing)[:800],
         )
     else:
@@ -621,7 +661,7 @@ def _run_registry_scan(
             )
 
     logger.info(
-        "step 3: wait for scan (registry/progress + compact fallback when no prior row)... "
+        "step 3: wait for scan (registry/progress + compact fallback)... "
         "had_compact_before_enqueue=%s",
         existing is not None,
     )
@@ -632,11 +672,12 @@ def _run_registry_scan(
         image_ref,
         timeout_seconds=poll_timeout_seconds,
         interval_seconds=poll_interval_seconds,
-        use_compact_row_completion=(existing is None),
+        use_compact_row_completion=True,
     )
 
     logger.info("step 4: GET registry (compact result via API)...")
     result = _compact_result(settings, token, image_ref, required=True)
+
     ms_label = _microservice_report_label(image_ref.value, microservice_report_name)
     logger.info(
         "step 4b: vulnerability report (prefer non-compact registry payload for CVE rows)..."
@@ -649,15 +690,30 @@ def _run_registry_scan(
             e,
         )
         detailed = result
-    _log_twistlock_vulnerability_report(
+    vulnerability_rows = _log_twistlock_vulnerability_report(
         logger,
         detailed,
         microservice_name=ms_label,
         image_ref=image_ref.value,
     )
     logger.info("evaluating scan output against policy...")
-    _evaluate_registry_scan_result(result)
-    logger.info("Twistlock registry scan passed (no critical/high).")
+    policy = _evaluate_registry_scan_result(result)
+    if policy["passed"]:
+        logger.info("Twistlock registry scan passed (no critical/high).")
+    else:
+        logger.warning(
+            "Twistlock registry scan did not pass policy: %s", policy["message"]
+        )
+    return {
+        "image_ref": image_ref.value,
+        "microservice": ms_label,
+        "status": policy["status"],
+        "passed": policy["passed"],
+        "critical": policy["critical"],
+        "high": policy["high"],
+        "vulnerabilities": vulnerability_rows,
+        "message": policy["message"],
+    }
 
 
 def _verify_registry_image(
@@ -682,9 +738,40 @@ def _verify_registry_image(
     return out
 
 
+def _scan_error_report(image_ref: ImageRef, error: Exception) -> dict[str, object]:
+    return {
+        "image_ref": image_ref.value,
+        "microservice": image_ref.repo,
+        "status": "error",
+        "passed": False,
+        "critical": None,
+        "high": None,
+        "vulnerabilities": [],
+        "message": str(error),
+    }
+
+
+def _raise_if_critical_high_reports(reports: list[dict[str, object]]) -> None:
+    failed_reports = [
+        report
+        for report in reports
+        if (report.get("critical") or 0) > 0 or (report.get("high") or 0) > 0
+    ]
+    if not failed_reports:
+        return
+
+    parts = [
+        f"{report['image_ref']} critical={report['critical']} high={report['high']}"
+        for report in failed_reports
+    ]
+    raise RuntimeError(
+        "Twistlock scan policy failed after all image scans: " + "; ".join(parts)
+    )
+
+
 @flow(name="twistlock-scan", log_prints=True)
 def twistlock_scan_flow(
-    image_ref: str,
+    image_ref: str | list[str],
     *,
     twistlock_address: str | None = None,
     microservice_report_name: str | None = None,
@@ -692,17 +779,19 @@ def twistlock_scan_flow(
     trigger_registry_scan_select: bool = False,
     poll_timeout_seconds: int = 1800,
     poll_interval_seconds: int = 15,
-) -> None:
+) -> dict[str, object]:
     """ECR image scan via Twistlock Console Registry API (no Docker on Prefect worker).
 
     Pipeline:
 
     #. ``POST /api/<ver>/authenticate`` → bearer token
-    #. ``POST /api/<ver>/registry/scan`` — submit **on-demand** scan for ``registry/repo:tag`` (Twistlock queue)
+    #. ``POST /api/<ver>/registry/scan`` — submit **on-demand** scan for each ``registry/repo:tag`` (Twistlock queue)
     #. Optional ``POST /api/v1/registry/scan/select`` — trigger registry scan-select helper
     #. Poll ``registry/progress`` and (when no compact row existed before enqueue) compact ``GET /registry?name=…``
     #. ``GET /api/<ver>/registry?name=<image_ref>&compact=true`` — fetch result; log CVE/CDE-style report;
-       enforce critical/high policy
+       report critical/high policy result
+
+    ``image_ref`` may be a single string or a list of image references.
 
     Optional ``microservice_report_name``: label for the vulnerability report table (defaults to ECR repo path).
 
@@ -714,6 +803,7 @@ def twistlock_scan_flow(
     """
     logger = get_run_logger()
     logger.info("twistlock_scan_flow starting (image_ref=%r)", image_ref)
+    parsed_image_refs = _parse_image_refs(image_ref)
 
     settings = TwistlockSettings.from_prefect(
         PrefectTwistlockSettingsLoader(), address_override=twistlock_address
@@ -728,15 +818,44 @@ def twistlock_scan_flow(
     )
 
     logger.info("authenticating to Twistlock console...")
-    _run_registry_scan(
-        settings,
-        logger,
-        ImageRef.parse(image_ref),
-        microservice_report_name=microservice_report_name,
-        trigger_registry_scan_select=trigger_registry_scan_select,
-        poll_timeout_seconds=poll_timeout_seconds,
-        poll_interval_seconds=poll_interval_seconds,
-    )
+    reports: list[dict[str, object]] = []
+    for idx, parsed_image_ref in enumerate(parsed_image_refs, start=1):
+        if len(parsed_image_refs) > 1:
+            logger.info(
+                "starting Twistlock registry scan %s/%s: %s",
+                idx,
+                len(parsed_image_refs),
+                parsed_image_ref.value,
+            )
+
+        try:
+            reports.append(
+                _run_registry_scan(
+                    settings,
+                    logger,
+                    parsed_image_ref,
+                    microservice_report_name=microservice_report_name,
+                    trigger_registry_scan_select=trigger_registry_scan_select,
+                    poll_timeout_seconds=poll_timeout_seconds,
+                    poll_interval_seconds=poll_interval_seconds,
+                )
+            )
+        except Exception as e:
+            logger.exception(
+                "Twistlock registry scan errored; adding error to final report and continuing. "
+                "image_ref=%r",
+                parsed_image_ref.value,
+            )
+            reports.append(_scan_error_report(parsed_image_ref, e))
+
+    failed_count = sum(1 for report in reports if not report["passed"])
+    _raise_if_critical_high_reports(reports)
+    return {
+        "image_count": len(reports),
+        "passed_count": len(reports) - failed_count,
+        "failed_count": failed_count,
+        "reports": reports,
+    }
 
 
 @flow(name="twistlock-registry-verify", log_prints=True)
