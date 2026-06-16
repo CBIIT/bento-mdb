@@ -66,7 +66,7 @@ jobs:
           make_edp_changelog \
             --edp_yaml_files edp-repo/model-desc/edp-props.yml \
             --terms_files edp-repo/model-desc/terms/obib-terms.yml \
-            --output_file data/output/edp_changelogs/edp_changelog.xml \
+            --output_file data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml \
             --author "GitHub Actions" \
             --_commit "${{ github.sha }}"
 
@@ -82,8 +82,8 @@ jobs:
         id: upload
         if: ${{ !inputs.no_commit }}
         run: |
-          S3_KEY="external_ont_changelogs/edp_changelog.xml"
-          aws s3 cp data/output/edp_changelogs/edp_changelog.xml \
+          S3_KEY="external_ont_changelogs/edp_changelog_${{ github.run_id }}.xml"
+          aws s3 cp data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml \
             "s3://${S3_BUCKET}/${S3_KEY}" \
             --content-type application/xml
           echo "s3_keys=[\"${S3_KEY}\"]" >> $GITHUB_OUTPUT

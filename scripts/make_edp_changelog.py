@@ -71,10 +71,9 @@ def _generate_edp_changesets(
         Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=vs_stmt))
     )
     cs_id += 1
-
+    pv_terms = prop.value_set.terms if prop.value_set else {}
     # 3. MERGE each PV term from the value_set and link via has_term
     # bento-mdf merges Terms section definitions into value_set.terms by value
-    pv_terms = prop.value_set.terms if prop.value_set else {}
     for pv_term in pv_terms.values():
         pv_origin = pv_term.origin_name or ""
         pv_code = pv_term.origin_id or ""
