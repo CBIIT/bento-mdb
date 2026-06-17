@@ -1,17 +1,14 @@
 """Generate Liquibase changelog for EDP definitions."""
 
 from __future__ import annotations
-
+import xml.etree.ElementTree as ET
 import logging
 import re
 from pathlib import Path
-
+import yaml
 import click
-from bento_mdf.mdf import MDFReader
 from liquichange.changelog import Changelog, Changeset, CypherChange
-
 from bento_mdb.cypher_utils import DEFAULT_AUTHOR, DEFAULT_COMMIT
-from bento_mdb.model_cdes import get_edp_enum_term
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +21,70 @@ def _escape(value: str) -> str:
     return value.replace("'", "\\'")
 
 
+def _load_yaml(path: Path) -> dict:
+    with Path(path).open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _load_terms(terms_files: list[Path]) -> dict:
+    terms = {}
+    for terms_file in terms_files:
+        data = _load_yaml(terms_file)
+        terms.update(data.get("Terms") or {})
+    return terms
+
+
+def _normalize_term_spec(spec: dict, *, fallback_value: str | None = None) -> dict:
+    value = spec.get("Value") or fallback_value or ""
+    return {
+        "origin_name": spec.get("Origin") or "",
+        "origin_id": str(spec.get("Code") or ""),
+        "origin_version": str(spec.get("Version") or ""),
+        "value": str(value),
+        "origin_definition": spec.get("Definition") or "",
+    }
+
+
+def _edp_specs_from_files(edp_yaml_files: list[Path]) -> list[tuple[str, dict]]:
+    edp_specs = []
+    for edp_yaml_file in edp_yaml_files:
+        data = _load_yaml(edp_yaml_file)
+        for prop_handle, spec in (data.get("PropDefinitions") or {}).items():
+            if spec.get("Ext") is True:
+                edp_specs.append((prop_handle, spec))
+    return edp_specs
+
+
 def _generate_edp_changesets(
-    prop,
+    prop_handle: str,
+    spec: dict,
+    terms: dict,
     author: str,
     _commit: str,
     start_id: int,
 ) -> list[Changeset]:
-    """Generate all changesets for a single EDP property (bento-meta Property object)."""
-    edp_term = get_edp_enum_term(prop)
-    if not edp_term:
-        return []
+    """Generate changesets for one EDP definition."""
+    term_spec = spec.get("Term")
+    if not isinstance(term_spec, dict):
+        msg = f"EDP '{prop_handle}' must define Term as a mapping."
+        raise ValueError(msg)
 
-    origin_name = edp_term.origin_name or ""
-    origin_id = edp_term.origin_id or ""
-    origin_version = edp_term.origin_version or ""
-    value = edp_term.value or ""
-    definition = edp_term.origin_definition or ""
-    handle = _to_snake_case(value) if value else _to_snake_case(prop.handle)
+    enum_values = spec.get("Enum") or []
+    if not isinstance(enum_values, list):
+        msg = f"EDP '{prop_handle}' must define Enum as a list."
+        raise ValueError(msg)
+
+    edp = _normalize_term_spec(term_spec)
+    origin_name = edp["origin_name"]
+    origin_id = edp["origin_id"]
+    origin_version = edp["origin_version"]
+    value = edp["value"]
+    definition = edp["origin_definition"]
+    handle = _to_snake_case(value) if value else _to_snake_case(prop_handle)
 
     changesets = []
     cs_id = start_id
 
-    # 1. MERGE the EDP term node
     edp_term_stmt = (
         f"MERGE (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
         f"SET edp.handle = '{_escape(handle)}', "
@@ -59,7 +98,6 @@ def _generate_edp_changesets(
     )
     cs_id += 1
 
-    # 2. MERGE value_set and link to EDP term via specifies_value_set
     vs_handle = f"{origin_id}|{origin_version}"
     vs_stmt = (
         f"MATCH (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
@@ -71,20 +109,20 @@ def _generate_edp_changesets(
         Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=vs_stmt))
     )
     cs_id += 1
-    pv_terms = prop.value_set.terms if prop.value_set else {}
-    # 3. MERGE each PV term from the value_set and link via has_term
-    # bento-mdf merges Terms section definitions into value_set.terms by value
-    for pv_term in pv_terms.values():
-        pv_origin = pv_term.origin_name or ""
-        pv_code = pv_term.origin_id or ""
-        pv_value = pv_term.value or ""
-        pv_version = pv_term.origin_version or ""
-        pv_definition = pv_term.origin_definition or ""
-        pv_handle = _to_snake_case(pv_value) if pv_value else pv_code
 
-        if not pv_code:
-            logger.warning("PV term '%s' has no origin_id, skipping", pv_value)
-            continue
+    for enum_value in enum_values:
+        pv_spec = terms.get(enum_value)
+        if not pv_spec:
+            msg = f"EDP '{prop_handle}' references enum value '{enum_value}' with no matching Terms entry."
+            raise ValueError(msg)
+
+        pv = _normalize_term_spec(pv_spec, fallback_value=str(enum_value))
+        pv_origin = pv["origin_name"]
+        pv_code = pv["origin_id"]
+        pv_value = pv["value"]
+        pv_version = pv["origin_version"]
+        pv_definition = pv["origin_definition"]
+        pv_handle = _to_snake_case(pv_value) if pv_value else pv_code
 
         pv_stmt = (
             f"MERGE (pv:term {{origin_name: '{_escape(pv_origin)}', origin_id: '{_escape(pv_code)}'}}) "
@@ -118,29 +156,29 @@ def generate_edp_changelog(
     author: str = DEFAULT_AUTHOR,
     _commit: str = DEFAULT_COMMIT,
 ) -> Changelog:
-    """Parse EDP YAML files via bento-mdf and generate a Liquibase changelog."""
-    # Pass all files to MDFReader — it handles merging Terms into value_set.terms
-    all_files = list(edp_yaml_files) + list(terms_files)
-    logger.info("Loading EDP files via MDFReader: %s", [str(f) for f in all_files])
-    mdf = MDFReader(*all_files)
-    model = mdf.model
+    """Parse EDP YAML files and generate a Liquibase changelog."""
+    terms = _load_terms(terms_files)
+    edp_specs = _edp_specs_from_files(edp_yaml_files)
 
     changelog = Changelog()
     cs_id = 1
 
-    for prop_key, prop in model.props.items():
-        edp_term = get_edp_enum_term(prop)
-        if not edp_term:
-            continue
-
-        logger.info("Generating changesets for EDP property: %s", prop_key)
-        changesets = _generate_edp_changesets(prop, author, _commit, cs_id)
+    for prop_handle, spec in edp_specs:
+        logger.info("Generating changesets for EDP definition: %s", prop_handle)
+        changesets = _generate_edp_changesets(
+            prop_handle,
+            spec,
+            terms,
+            author,
+            _commit,
+            cs_id,
+        )
         for cs in changesets:
             changelog.add_changeset(cs)
         cs_id += len(changesets)
 
     if cs_id == 1:
-        logger.warning("No EDP properties found in provided files.")
+        logger.warning("No EDP definitions found in provided files.")
 
     return changelog
 
@@ -174,5 +212,9 @@ def main(
     changelog = generate_edp_changelog(edp_paths, terms_paths, author=author, _commit=_commit)
     out = Path(output_file)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(changelog.to_xml(), encoding="utf-8")
+    out.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        + ET.tostring(changelog.to_xml(), encoding="unicode"),
+        encoding="utf-8",
+    )
     click.echo(f"Written: {out}")

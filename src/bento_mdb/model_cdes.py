@@ -24,10 +24,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 def get_edp_enum_term(entity):
-    """Return the EDP term from entity.value_set.edp_term, or None if not present."""
+    """Return the single EDP term referenced by entity.value_set, or None."""
     value_set = getattr(entity, "value_set", None)
     if not value_set:
         return None
+
+    edp_terms = getattr(value_set, "edp_terms", None)
+    if edp_terms:
+        if len(edp_terms) > 1:
+            logger.warning(
+                "Expected one EDP term for entity '%s', found %s. Using the first.",
+                getattr(entity, "handle", None),
+                len(edp_terms),
+            )
+        return next(iter(edp_terms.values()))
+
+    # Backward-compatible fallback for older objects/tests.
     return getattr(value_set, "edp_term", None)
 
 

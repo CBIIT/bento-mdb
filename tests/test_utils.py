@@ -723,6 +723,7 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                         "is_key": "False",
                         "is_nullable": "False",
                         "is_strict": "True",
+                        "is_extended": "False",
                         "desc": "Species binomial of study participants",
                     },
                     "entity_has_enum": True,
@@ -766,7 +767,7 @@ TEST_ANNOTATION_SPEC_EDP = AnnotationSpec(
     },
     value_set=[],
     edp_reference={
-        "origin_id": "CRDC00001",
+        "origin_id": "CRDC00005",
         "origin_name": "CRDC",
     },
 )
@@ -783,6 +784,12 @@ TEST_MAKE_MODEL_CDE_SPEC_EDP = ModelCDESpec(
                         "handle": "program_name",
                         "model": "TEST",
                         "value_domain": "value_set",
+                        "is_required": "False",
+                        "is_key": "False",
+                        "is_nullable": "False",
+                        "is_strict": "True",
+                        "is_extended": "False",
+                        "desc": "The name of the program\n",
                     },
                     "entity_has_enum": True,
                 },
@@ -798,7 +805,7 @@ TEST_MAKE_MODEL_CDE_SPEC_EDP = ModelCDESpec(
                 },
                 "value_set": [],
                 "edp_reference": {
-                    "origin_id": "CRDC00001",
+                    "origin_id": "CRDC00005",
                     "origin_name": "CRDC",
                 },
             },

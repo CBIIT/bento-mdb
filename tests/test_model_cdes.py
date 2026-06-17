@@ -138,7 +138,7 @@ class TestModelCDESpec:
             "annotations": [
                 {"annotation": {"attrs": {"origin_id": "11444542"}}, 
                 "value_set": [], 
-                "edp_reference": {"origin_id": "CRDC00001", "origin_name": "CRDC"}}
+                "edp_reference": {"origin_id": "CRDC00005", "origin_name": "CRDC"}}
             ]
         }
         add_cde_pvs_to_model_cde_spec(cde_spec, mock_client)
@@ -153,7 +153,7 @@ class TestModelCDESpec:
             "annotations": [
                 {"annotation": {"attrs": {}}, 
                 "value_set": [{"value": "test", "synonyms": []}], 
-                "edp_reference": {"origin_id": "CRDC00001", "origin_name": "CRDC"}}
+                "edp_reference": {"origin_id": "CRDC00005", "origin_name": "CRDC"}}
             ]
         }
         add_ncit_synonyms_to_model_cde_spec(cde_spec, mock_client)
@@ -237,16 +237,21 @@ def test_process_mdb_cdes() -> None:
 class TestGetEdpEnumTerm:
     """Tests for get_edp_enum_term."""
 
-    TEST_EDP_MDF = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
-    @pytest.mark.xfail(reason="Requires bento-mdf EDP enum parsing not compatible")
+    TEST_EDP_MODEL = Path(__file__).parent / "samples" / "test_model_edp.yml"
+    TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
+
     def test_get_edp_enum_term_returns_term_when_edp_present(self) -> None:
         """Property with EDP enum should return the EDP term."""
         from bento_mdb.model_cdes import get_edp_enum_term
-        mdf = MDFReader(self.TEST_EDP_MDF)
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+            ignore_enum_by_reference=True,
+        )
         prop = mdf.model.props[("program", "program_name")]
         result = get_edp_enum_term(prop)
         assert result is not None
-        assert result.origin_id == "CRDC00001"
+        assert result.origin_id == "CRDC00005"
         assert result.origin_name == "CRDC"
 
     def test_get_edp_enum_term_returns_none_when_no_edp(self) -> None:
@@ -262,26 +267,29 @@ class TestGetEdpEnumTerm:
 class TestMakeModelCdeSpecWithEdp:
     """Tests for make_model_cde_spec with EDP properties."""
 
-    TEST_EDP_MDF = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
+    TEST_EDP_MODEL = Path(__file__).parent / "samples" / "test_model_edp.yml"
+    TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
 
-    @pytest.mark.xfail(reason="Requires bento-mdf EDP enum DICT parsing not yet implemented in convert.py")
     def test_make_model_cde_spec_edp_reference_populated(self) -> None:
         """Annotation for EDP-backed CDE should have edp_reference set."""
         from bento_mdf.mdf import MDFReader
-        mdf = MDFReader(self.TEST_EDP_MDF, ignore_enum_by_reference=True)
+        mdf = MDFReader(self.TEST_EDP_MODEL, self.TEST_EDP_PROPS, ignore_enum_by_reference=True)
         actual = make_model_cde_spec(mdf.model)
         assert len(actual["annotations"]) == 1
         edp_ref = actual["annotations"][0].get("edp_reference")
         assert edp_ref is not None
-        assert edp_ref["origin_id"] == "CRDC00001"
+        assert edp_ref["origin_id"] == "CRDC00005"
         assert edp_ref["origin_name"] == "CRDC"
 
-    @pytest.mark.xfail(reason="Requires bento-mdf EDP enum DICT parsing not yet implemented in convert.py")
     def test_make_model_cde_spec_edp_matches_expected(self) -> None:
         """Full spec output for EDP model matches expected structure."""
         from bento_mdf.mdf import MDFReader
         from tests.test_utils import TEST_MAKE_MODEL_CDE_SPEC_EDP
-        mdf = MDFReader(self.TEST_EDP_MDF, ignore_enum_by_reference=True)
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+            ignore_enum_by_reference=True,
+        )
         actual = make_model_cde_spec(mdf.model)
         assert_equal(actual, TEST_MAKE_MODEL_CDE_SPEC_EDP)
 

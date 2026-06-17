@@ -309,7 +309,7 @@ class TestConvertAnnotationToChangesetsEdp:
         stmt = changesets[0].change_type.text
         assert "specifies_value_set" in stmt
         assert "11444542" in stmt   # CDE origin_id
-        assert "CRDC00001" in stmt  # EDP origin_id
+        assert "CRDC00005" in stmt  # EDP origin_id
         assert "CRDC" in stmt       # EDP origin_name
 
     def test_edp_annotation_does_not_emit_value_set_merge(self) -> None:
@@ -334,11 +334,12 @@ class TestConvertAnnotationToChangesetsEdp:
         )
         stmt = changesets[0].change_type.text
         expected = (
-            "MATCH (cde:term {origin_id: '11444542'}) "
-            "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
-            "MATCH (edp:term {origin_name: 'CRDC', origin_id: 'CRDC00001'})"
-            "-[:specifies_value_set]->(vs:value_set) "
-            "MERGE (cde)-[:specifies_value_set]->(vs)"
+        'MATCH (cde:term {origin_id: "11444542"}) '
+        "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
+        'AND cde.origin_version = "2.00" '
+        'MATCH (edp:term {origin_name: "CRDC", origin_id: "CRDC00005"})'
+        "-[:specifies_value_set]->(vs:value_set) "
+        "MERGE (cde)-[:specifies_value_set]->(vs)"
         )
         assert_equal(stmt, expected)
 

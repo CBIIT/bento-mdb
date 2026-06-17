@@ -1,21 +1,15 @@
-Handle: TEST
-Version: 1.2.3
-Nodes:
-  program:
-    Props:
-      - program_name
-Relationships: {}
 PropDefinitions:
   program_name:
     Desc: |
       The name of the program
-    Ext: true
     Term:
-      Origin: CRDC
-      Code: CRDC00001
-      Value: NCI Program Names
-      Version: "1"
-      Definition: Test EDP for program names.
+      - Origin: caDSR
+        Code: "11444542"
+        Value: Program Name Text
+        Version: "2.00"
     Enum:
-      - term_1
-      - term_2
+      - Origin: CRDC
+        Code: CRDC00005
+        Value: NCI Program Names
+        Version: "1"
+        Definition: Test EDP for program names.

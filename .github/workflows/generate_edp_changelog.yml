@@ -63,9 +63,15 @@ jobs:
       - name: Generate EDP Changelog
         run: |
           mkdir -p data/output/edp_changelogs/
+
+          TERMS_ARGS=""
+          for f in edp-repo/model-desc/terms/*.yml; do
+            TERMS_ARGS="$TERMS_ARGS --terms_files $f"
+          done
+
           make_edp_changelog \
             --edp_yaml_files edp-repo/model-desc/edp-props.yml \
-            --terms_files edp-repo/model-desc/terms/obib-terms.yml \
+            $TERMS_ARGS \
             --output_file data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml \
             --author "GitHub Actions" \
             --_commit "${{ github.sha }}"

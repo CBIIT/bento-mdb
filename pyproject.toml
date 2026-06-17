@@ -55,3 +55,7 @@ markers = [
 
 [tool.uv]
 package = true
+
+[tool.uv.sources]
+bento-meta = { git = "https://github.com/CBIIT/bento-meta.git", branch = "DATATEAM-547-549/edp-features", subdirectory = "python" }
+bento-mdf = { git = "https://github.com/CBIIT/bento-mdf.git", branch = "DATATEAM-547-549/edp-features", subdirectory = "python" }
