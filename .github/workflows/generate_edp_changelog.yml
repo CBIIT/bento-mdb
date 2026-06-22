@@ -23,13 +23,29 @@ on:
         default: false
 
 jobs:
-  generate-edp-changelog:
+  changes:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      edp_specs_changed: ${{ steps.filter.outputs.edp_specs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        with:
+          filters: |
+            edp_specs:
+              - 'config/mdb_edps.yml'
+  generate-edp-changelog:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && needs.changes.outputs.edp_specs_changed == 'true') }}
     env:
       AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      S3_BUCKET: ${{ secrets.S3_EDP_CHANGELOG_BUCKET }}
+      S3_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     outputs:
       changelog_files: ${{ steps.upload.outputs.s3_keys }}
     steps:
@@ -72,12 +88,13 @@ jobs:
           make_edp_changelog \
             --edp_yaml_files edp-repo/model-desc/edp-props.yml \
             $TERMS_ARGS \
+            --edp_config_file config/mdb_edps.yml \
             --output_file data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml \
             --author "GitHub Actions" \
             --_commit "${{ github.sha }}"
 
       - name: AWS OIDC Authentication
-        if: ${{ !inputs.no_commit }}
+        if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
@@ -86,7 +103,7 @@ jobs:
 
       - name: Upload EDP changelog to S3
         id: upload
-        if: ${{ !inputs.no_commit }}
+        if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
         run: |
           S3_KEY="external_ont_changelogs/edp_changelog_${{ github.run_id }}.xml"
           aws s3 cp data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml \
@@ -96,7 +113,7 @@ jobs:
           echo "Uploaded: $S3_KEY"
 
       - name: Commit S3 upload log
-        if: ${{ !inputs.no_commit && steps.upload.outputs.s3_keys != '' }}
+        if: ${{ !fromJson(github.event.inputs.no_commit || 'false') && steps.upload.outputs.s3_keys != '' }}
         env:
           RUN_ID: ${{ github.run_id }}
         run: |

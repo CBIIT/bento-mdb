@@ -1,0 +1,13 @@
+OBIB:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  mdf_files:
+  - edp-props.yml
+  - terms/obib-terms.yml
+  latest_version: "1"
+  versions:
+  - version: "1"
+    tag: "1"
+  origin: CRDC
+  code: CRDC0002
+  prop_definition: obib_terms_valueset

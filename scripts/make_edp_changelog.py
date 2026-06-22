@@ -55,6 +55,33 @@ def _edp_specs_from_files(edp_yaml_files: list[Path]) -> list[tuple[str, dict]]:
     return edp_specs
 
 
+def _filter_edp_specs_from_config(
+    edp_specs: list[tuple[str, dict]],
+    edp_config_file: Path | None,
+) -> list[tuple[str, dict]]:
+    if not edp_config_file:
+        return edp_specs
+
+    config = _load_yaml(edp_config_file)
+    allowed = {
+        (
+            spec.get("prop_definition"),
+            str(spec.get("latest_version")),
+        )
+        for spec in config.values()
+        if spec.get("prop_definition") and spec.get("latest_version") is not None
+    }
+
+    filtered = []
+    for prop_handle, spec in edp_specs:
+        term = spec.get("Term") or {}
+        version = str(term.get("Version") or "")
+        if (prop_handle, version) in allowed:
+            filtered.append((prop_handle, spec))
+
+    return filtered
+
+
 def _generate_edp_changesets(
     prop_handle: str,
     spec: dict,
@@ -155,11 +182,14 @@ def generate_edp_changelog(
     terms_files: list[Path],
     author: str = DEFAULT_AUTHOR,
     _commit: str = DEFAULT_COMMIT,
+    edp_config_file: Path | None = None,
 ) -> Changelog:
     """Parse EDP YAML files and generate a Liquibase changelog."""
     terms = _load_terms(terms_files)
-    edp_specs = _edp_specs_from_files(edp_yaml_files)
-
+    edp_specs = _filter_edp_specs_from_config(
+        _edp_specs_from_files(edp_yaml_files),
+        edp_config_file,
+)
     changelog = Changelog()
     cs_id = 1
 
@@ -196,6 +226,12 @@ def generate_edp_changelog(
     required=True,
     help="Paths to terms YAML files (e.g. obib-terms.yml).",
 )
+@click.option(
+    "--edp_config_file",
+    required=False,
+    type=click.Path(exists=True, dir_okay=False, file_okay=True),
+    help="Optional EDP config file used to filter generated EDP versions.",
+)
 @click.option("--output_file", required=True, help="Output Liquibase XML changelog path.")
 @click.option("--author", default=DEFAULT_AUTHOR, help="Author for changesets.")
 @click.option("--_commit", default=DEFAULT_COMMIT, help="Commit SHA for changesets.")
@@ -205,11 +241,18 @@ def main(
     output_file: str,
     author: str,
     _commit: str,
+    edp_config_file: str | None,
 ) -> None:
     """CLI entry point: generate EDP changelog from YAML files."""
     edp_paths = [Path(f) for f in edp_yaml_files]
     terms_paths = [Path(f) for f in terms_files]
-    changelog = generate_edp_changelog(edp_paths, terms_paths, author=author, _commit=_commit)
+    changelog = generate_edp_changelog(
+        edp_paths,
+        terms_paths,
+        author=author,
+        _commit=_commit,
+        edp_config_file=Path(edp_config_file) if edp_config_file else None,
+    )
     out = Path(output_file)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(

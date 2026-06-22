@@ -63,7 +63,7 @@ jobs:
       PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
       AWS_CHANGELOG_ROLE_ARN: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      S3_CHANGELOG_BUCKET: ${{ secrets.S3_EDP_CHANGELOG_BUCKET }}
+      S3_CHANGELOG_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
     with:
       mdb_id: ${{ github.event.inputs.mdb_id || 'fnl-mdb-dev' }}
       changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}

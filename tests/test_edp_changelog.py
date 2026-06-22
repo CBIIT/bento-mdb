@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pytest
+import yaml
 
 from scripts.make_edp_changelog import (
     _escape,
@@ -136,3 +137,87 @@ class TestGenerateEdpChangelog:
         )
         xml_element = changelog.to_xml()
         assert xml_element.tag.endswith("databaseChangeLog")    
+
+    def test_edp_config_filters_to_latest_configured_version(self, tmp_path: Path) -> None:
+        edp_props = tmp_path / "edp-props.yml"
+        terms = tmp_path / "terms.yml"
+        config = tmp_path / "mdb_edps.yml"
+
+        edp_props.write_text(
+            yaml.safe_dump(
+                {
+                    "PropDefinitions": {
+                        "obib_terms_valueset": {
+                            "Ext": True,
+                            "Term": {
+                                "Origin": "CRDC",
+                                "Code": "CRDC0002",
+                                "Version": "2",
+                                "Value": "OBIB",
+                            },
+                            "Enum": ["term_1"],
+                        },
+                        "other_valueset": {
+                            "Ext": True,
+                            "Term": {
+                                "Origin": "CRDC",
+                                "Code": "CRDC0003",
+                                "Version": "1",
+                                "Value": "Other",
+                            },
+                            "Enum": ["term_2"],
+                        },
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        terms.write_text(
+            yaml.safe_dump(
+                {
+                    "Terms": {
+                        "term_1": {
+                            "Origin": "OBIB",
+                            "Code": "0001",
+                            "Version": "1",
+                            "Value": "term_1",
+                        },
+                        "term_2": {
+                            "Origin": "OTHER",
+                            "Code": "0002",
+                            "Version": "1",
+                            "Value": "term_2",
+                        },
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        config.write_text(
+            yaml.safe_dump(
+                {
+                    "OBIB": {
+                        "latest_version": "2",
+                        "prop_definition": "obib_terms_valueset",
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        changelog = generate_edp_changelog(
+            [edp_props],
+            [terms],
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+            edp_config_file=config,
+        )
+
+        stmts = [cs.change_type.text for cs in changelog.subelements]
+        assert any("CRDC0002" in stmt for stmt in stmts)
+        assert not any("CRDC0003" in stmt for stmt in stmts)
