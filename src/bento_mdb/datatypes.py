@@ -47,6 +47,8 @@ class AnnotationSpec(TypedDict):
     annotation: dict
     value_set: list[PermissibleValue | None]
     edp_reference: NotRequired[dict | None]
+    by_reference_urls: NotRequired[list[str]]
+    missing_edp_reference: NotRequired[dict | None]
 
 class ModelCDESpec(TypedDict):
     """CRDC model CDE spec."""
@@ -83,3 +85,9 @@ class MDBCDESpec(TypedDict):
     CDEWorkflowStatus: str | None
     models: list[MDBModelSpec]
     permissibleValues: list[PermissibleValue]
+
+class CDEValueSetFetchResult(TypedDict):
+    """caDSR value set fetch result."""
+
+    permissible_values: list[PermissibleValue | None]
+    by_reference_urls: list[str]

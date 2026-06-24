@@ -27,7 +27,12 @@ from bento_mdb.constants import (
 )
 
 if TYPE_CHECKING:
-    from bento_mdb.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
+    from bento_mdb.datatypes import (
+        AnnotationSpec,
+        CDEValueSetFetchResult,
+        MDBCDESpec,
+        PermissibleValue,
+)
 
 
 RESPONSE_200 = 200
@@ -155,28 +160,67 @@ class CADSRClient:
         else:
             return vs
 
+    def get_by_reference_urls_from_json(
+        self,
+        json_response: dict,
+        run_logger: logging.Logger = get_logger(),
+    ) -> list[str]:
+        """Extract external ontology URLs from caDSR enumerated-by-reference value domains."""
+        if not isinstance(json_response, dict):
+            run_logger.warning("Invalid JSON response")
+            return []
+        
+        data_element = json_response.get("DataElement")
+        if not data_element:
+            run_logger.warning("No DataElement found in JSON response")
+            return []
+
+        value_domain = data_element.get("ValueDomain")
+        if not value_domain:
+            run_logger.warning(
+                "No ValueDomain found for CDE %s v%s",
+                data_element.get("publicId"),
+                data_element.get("version"),
+            )
+            return []
+
+        if str(value_domain.get("type", "")).lower() != "enumerated by reference":
+            return []
+
+        urls = []
+        for pv in value_domain.get("PermissibleValues", []) or []:
+            value = pv.get("value")
+            if isinstance(value, str) and value.lower().startswith(("http://", "https://")):
+                urls.append(value)
+
+        if not urls:
+            run_logger.warning(
+                "CDE %s v%s is Enumerated by Reference but no URL PV was found",
+                data_element.get("publicId"),
+                data_element.get("version"),
+            )
+
+        return sorted(set(urls))
+
     @stamina.retry(on=requests.RequestException, attempts=DEFAULT_RETRIES)
-    def fetch_cde_valueset(
+    def fetch_cde_valueset_info(
         self,
         cde_id: str,
         cde_version: str | None = None,
         entity_key: str | None = None,
         run_logger: logging.Logger = get_logger(),
-    ) -> list[PermissibleValue | None]:
-        """Fetch CDE value set from caDSR II API."""
+    ) -> CDEValueSetFetchResult:
+        """Fetch CDE value set info from caDSR, preserving by-reference URLs."""
         ver_str = (
             f"?version={cde_version}"
             if cde_version and re.match(r"^v?\d{1,3}(\.\d{1,3}){0,2}$", cde_version)
             else ""
         )
-        cde_id_str = (
-            cde_id
-            if cde_id and re.match(r"^\d+$", cde_id)
-            else ""
-        )
+        cde_id_str = cde_id if cde_id and re.match(r"^\d+$", cde_id) else ""
         if not cde_id_str:
             run_logger.error("Invalid CDE ID: %s", cde_id)
-            return []
+            return {"permissible_values": [], "by_reference_urls": []}
+
         cde_id_ver_str = f"{cde_id_str}{ver_str}"
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id_ver_str}"
         headers = {"accept": "application/json"}
@@ -186,23 +230,61 @@ class CADSRClient:
             response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
             response.raise_for_status()
             json_response = response.json()
-            value_set = self.get_valueset_from_json(json_response, run_logger=run_logger)
+            if not isinstance(json_response, dict):
+                run_logger.warning(
+                    "Invalid JSON response for CDE %sv%s for entity %s",
+                    cde_id,
+                    cde_version,
+                    entity_key,
+                )
+                return {"permissible_values": [], "by_reference_urls": []}
         except JSONDecodeError as e:
-            msg = (
-                f"Failed to parse JSON response for entity{entity_key}: {e}\nurl: {url}"
+            run_logger.exception(
+                "Failed to parse JSON response for entity%s: %s\nurl: %s",
+                entity_key,
+                e,
+                url,
             )
-            run_logger.exception(msg)
-            return []
+            return {"permissible_values": [], "by_reference_urls": []}
         except requests.HTTPError:
-            msg = (
-                f"HTTP error fetching value set for CDE {cde_id}v{cde_version}"
-                f" for entity {entity_key}"
+            run_logger.exception(
+                "HTTP error fetching value set for CDE %sv%s for entity %s",
+                cde_id,
+                cde_version,
+                entity_key,
             )
-            run_logger.exception(msg)
-            return []
-        else:
-            return value_set
+            return {"permissible_values": [], "by_reference_urls": []}
 
+        by_reference_urls = self.get_by_reference_urls_from_json(
+            json_response,
+            run_logger=run_logger,
+        )
+        if by_reference_urls:
+            return {
+                "permissible_values": [],
+                "by_reference_urls": by_reference_urls,
+            }
+
+        return {
+            "permissible_values": self.get_valueset_from_json(json_response, run_logger=run_logger),
+            "by_reference_urls": [],
+        }
+    
+    def fetch_cde_valueset(
+        self,
+        cde_id: str,
+        cde_version: str | None = None,
+        entity_key: str | None = None,
+        run_logger: logging.Logger = get_logger(),
+    ) -> list[PermissibleValue | None]:
+        """Fetch concrete CDE permissible values from caDSR II API."""
+        return self.fetch_cde_valueset_info(
+            cde_id,
+            cde_version,
+            entity_key,
+            run_logger,
+        )["permissible_values"]
+        
     @stamina.retry(on=requests.RequestException, attempts=DEFAULT_RETRIES)
     def fetch_cde_details(
         self,

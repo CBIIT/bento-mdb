@@ -769,6 +769,7 @@ TEST_ANNOTATION_SPEC_EDP = AnnotationSpec(
     edp_reference={
         "origin_id": "CRDC00005",
         "origin_name": "CRDC",
+        "origin_version": "1",
     },
 )
 
@@ -807,6 +808,7 @@ TEST_MAKE_MODEL_CDE_SPEC_EDP = ModelCDESpec(
                 "edp_reference": {
                     "origin_id": "CRDC00005",
                     "origin_name": "CRDC",
+                    "origin_version": "1",
                 },
             },
         ],

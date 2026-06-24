@@ -334,12 +334,15 @@ class TestConvertAnnotationToChangesetsEdp:
         )
         stmt = changesets[0].change_type.text
         expected = (
-        'MATCH (cde:term {origin_id: "11444542"}) '
-        "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
-        'AND cde.origin_version = "2.00" '
-        'MATCH (edp:term {origin_name: "CRDC", origin_id: "CRDC00005"})'
-        "-[:specifies_value_set]->(vs:value_set) "
-        "MERGE (cde)-[:specifies_value_set]->(vs)"
+            'MATCH (cde:term {origin_id: "11444542"}) '
+            "WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
+            'AND cde.origin_version = "2.00" '
+            "MATCH (edp:term) "
+            'WHERE edp.origin_name = "CRDC" '
+            'AND edp.origin_id = "CRDC00005" '
+            'AND edp.origin_version = "1" '
+            "MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+            "MERGE (cde)-[:specifies_value_set]->(vs)"
         )
         assert_equal(stmt, expected)
 

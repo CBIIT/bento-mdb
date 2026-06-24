@@ -159,6 +159,200 @@ class TestModelCDESpec:
         add_ncit_synonyms_to_model_cde_spec(cde_spec, mock_client)
         mock_client.ncim_mapping.__contains__ = MagicMock(return_value=False)
         assert cde_spec["annotations"][0]["value_set"][0]["synonyms"] == []
+        
+    def test_add_cde_pvs_by_reference_obib_sets_edp_reference(self, tmp_path: Path) -> None:
+        """OBIB by-reference URL should map to configured custom EDP."""
+        from unittest.mock import MagicMock
+
+        from bento_mdb.model_cdes import add_cde_pvs_to_model_cde_spec
+
+        edp_config = tmp_path / "mdb_edps.yml"
+        edp_config.write_text(
+            """
+OBIB:
+  origin: CRDC
+  code: CRDC0002
+  latest_version: "1"
+  by_reference_url_patterns:
+  - bioportal.bioontology.org/ontologies/OBIB
+""",
+            encoding="utf-8",
+        )
+
+        mock_client = MagicMock()
+        mock_client.fetch_cde_valueset_info.return_value = {
+            "permissible_values": [],
+            "by_reference_urls": [
+                "https://bioportal.bioontology.org/ontologies/OBIB/?p=classes",
+            ],
+        }
+
+        cde_spec = {
+            "annotations": [
+                {
+                    "entity": {"key": "sample_type"},
+                    "annotation": {
+                        "attrs": {
+                            "origin_id": "11253427",
+                            "origin_version": "1",
+                        },
+                    },
+                    "value_set": [],
+                    "edp_reference": None,
+                },
+            ],
+        }
+
+        add_cde_pvs_to_model_cde_spec(cde_spec, mock_client, edp_config)
+
+        assert cde_spec["annotations"][0]["edp_reference"] == {
+            "origin_id": "CRDC0002",
+            "origin_name": "CRDC",
+            "origin_version": "1",
+        }
+        assert cde_spec["annotations"][0]["by_reference_urls"] == [
+            "https://bioportal.bioontology.org/ontologies/OBIB/?p=classes",
+        ]
+
+    def test_add_cde_pvs_by_reference_uberon_records_missing_edp_reference(self, tmp_path: Path) -> None:
+        """Unknown by-reference URL should be recorded as missing custom EDP."""
+        from unittest.mock import MagicMock
+
+        from bento_mdb.model_cdes import add_cde_pvs_to_model_cde_spec
+
+        edp_config = tmp_path / "mdb_edps.yml"
+        edp_config.write_text(
+            """
+OBIB:
+  origin: CRDC
+  code: CRDC0002
+  latest_version: "1"
+  by_reference_url_patterns:
+  - obib
+""",
+            encoding="utf-8",
+        )
+
+        mock_client = MagicMock()
+        mock_client.fetch_cde_valueset_info.return_value = {
+            "permissible_values": [],
+            "by_reference_urls": [
+                "https://www.ebi.ac.uk/ols4/ontologies/uberon",
+            ],
+        }
+
+        cde_spec = {
+            "annotations": [
+                {
+                    "entity": {"key": "primary_site"},
+                    "annotation": {
+                        "attrs": {
+                            "origin_id": "14883047",
+                            "origin_version": "1",
+                        },
+                    },
+                    "value_set": [],
+                    "edp_reference": None,
+                },
+            ],
+        }
+
+        add_cde_pvs_to_model_cde_spec(cde_spec, mock_client, edp_config)
+
+        assert cde_spec["annotations"][0]["edp_reference"] is None
+        assert cde_spec["annotations"][0]["by_reference_urls"] == [
+            "https://www.ebi.ac.uk/ols4/ontologies/uberon",
+        ]
+        assert cde_spec["annotations"][0]["missing_edp_reference"] == {
+            "by_reference_urls": [
+                "https://www.ebi.ac.uk/ols4/ontologies/uberon",
+            ],
+            "message": "No configured custom EDP matched caDSR by-reference URL.",
+        }
+
+    def test_add_cde_pvs_normal_pvs_still_populates_value_set(self, tmp_path: Path) -> None:
+        """Concrete caDSR PVs should still use the normal enrichment path."""
+        from unittest.mock import MagicMock
+
+        from bento_mdb.model_cdes import add_cde_pvs_to_model_cde_spec
+
+        edp_config = tmp_path / "mdb_edps.yml"
+        edp_config.write_text("{}", encoding="utf-8")
+
+        expected_value_set = [
+            {
+                "value": "Pediatric",
+                "origin_version": "1",
+                "origin_id": "2597927",
+                "origin_definition": "Having to do with children.",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C39299"],
+                "synonyms": [],
+                "alternates": [],
+            },
+        ]
+
+        mock_client = MagicMock()
+        mock_client.fetch_cde_valueset_info.return_value = {
+            "permissible_values": expected_value_set,
+            "by_reference_urls": [],
+        }
+
+        cde_spec = {
+            "annotations": [
+                {
+                    "entity": {"key": "age_group"},
+                    "annotation": {
+                        "attrs": {
+                            "origin_id": "11524549",
+                            "origin_version": "1",
+                        },
+                    },
+                    "value_set": [],
+                    "edp_reference": None,
+                },
+            ],
+        }
+
+        add_cde_pvs_to_model_cde_spec(cde_spec, mock_client, edp_config)
+
+        assert cde_spec["annotations"][0]["value_set"] == expected_value_set
+        assert cde_spec["annotations"][0]["edp_reference"] is None
+
+    def test_add_cde_pvs_existing_edp_reference_still_skips_cadsr(self, tmp_path: Path) -> None:
+        """Explicit MDF EDP reference should still skip caDSR entirely."""
+        from unittest.mock import MagicMock
+
+        from bento_mdb.model_cdes import add_cde_pvs_to_model_cde_spec
+
+        edp_config = tmp_path / "mdb_edps.yml"
+        edp_config.write_text("{}", encoding="utf-8")
+
+        mock_client = MagicMock()
+
+        cde_spec = {
+            "annotations": [
+                {
+                    "entity": {"key": "program_name"},
+                    "annotation": {
+                        "attrs": {
+                            "origin_id": "11444542",
+                            "origin_version": "2.00",
+                        },
+                    },
+                    "value_set": [],
+                    "edp_reference": {
+                        "origin_id": "CRDC00005",
+                        "origin_name": "CRDC",
+                    },
+                },
+            ],
+        }
+
+        add_cde_pvs_to_model_cde_spec(cde_spec, mock_client, edp_config)
+
+        mock_client.fetch_cde_valueset_info.assert_not_called()
+        assert cde_spec["annotations"][0]["value_set"] == []
 
     def test_load_model_cde_spec(self) -> None:
         """Test loading model CDE spec."""

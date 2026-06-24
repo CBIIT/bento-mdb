@@ -11,3 +11,7 @@ OBIB:
   origin: CRDC
   code: CRDC0002
   prop_definition: obib_terms_valueset
+  by_reference_url_patterns:
+  - bioportal.bioontology.org/ontologies/OBIB
+  - ebi.ac.uk/ols4/ontologies/obib
+  - obib

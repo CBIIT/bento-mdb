@@ -61,11 +61,19 @@ def _generate_edp_link_cypher(
     cde_version: str | None,
     edp_origin_id: str,
     edp_origin_name: str,
+    edp_origin_version: str | None = None,
 ) -> str:
     """Cypher to link a CDE term to its EDP value_set via specifies_value_set."""
     cde_id_literal = _cypher_string_literal(cde_id)
     edp_origin_id_literal = _cypher_string_literal(edp_origin_id)
     edp_origin_name_literal = _cypher_string_literal(edp_origin_name)
+
+    edp_filters = [
+    f"edp.origin_name = {edp_origin_name_literal}",
+    f"edp.origin_id = {edp_origin_id_literal}",
+    ]
+    if edp_origin_version:
+        edp_filters.append(f"edp.origin_version = {_cypher_string_literal(edp_origin_version)}")
 
     cde_filters = [
         "toLower(cde.origin_name) CONTAINS 'cadsr'",
@@ -76,9 +84,9 @@ def _generate_edp_link_cypher(
     return (
         f"MATCH (cde:term {{origin_id: {cde_id_literal}}}) "
         f"WHERE {' AND '.join(cde_filters)} "
-        f"MATCH (edp:term {{origin_name: {edp_origin_name_literal}, "
-        f"origin_id: {edp_origin_id_literal}}})"
-        f"-[:specifies_value_set]->(vs:value_set) "
+        f"MATCH (edp:term) "
+        f"WHERE {' AND '.join(edp_filters)} "
+        f"MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
         f"MERGE (cde)-[:specifies_value_set]->(vs)"
     )
 
@@ -106,6 +114,7 @@ def convert_annotation_to_changesets(
             cde_version,
             edp_ref["origin_id"],
             edp_ref["origin_name"],
+            edp_ref.get("origin_version"),
         )
         return [Changeset(id=str(changeset_id), author=author, change_type=CypherChange(text=stmt))]
     
