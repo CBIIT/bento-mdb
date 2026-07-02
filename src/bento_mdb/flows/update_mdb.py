@@ -1,4 +1,4 @@
-"""Run Liquibase Update on Changelog."""
+"""Run MDB-Changelog-Runner against changelog files."""
 
 from __future__ import annotations
 
@@ -254,7 +254,7 @@ def liquibase_update_flow(
     dry_run: bool = False,
     schema_mode: bool = False,
 ) -> None:
-    """Run Liquibase Update on Changelog."""
+    """Run MDB-Changelog-Runner against a changelog fetched from S3."""
     logger = get_run_logger()
 
     s3 = boto3.client("s3")
