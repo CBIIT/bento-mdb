@@ -283,8 +283,9 @@ def liquibase_update_flow(
 
     prepare_changelog_file_for_runner(changelog_file, logger)
 
-    if scope is None and scope_group is None:
-        scope, scope_group = infer_changelog_scope(key)
+    inferred_scope, inferred_scope_group = infer_changelog_scope(key)
+    scope = inferred_scope if scope is None else scope
+    scope_group = inferred_scope_group if scope_group is None else scope_group
     logger.info(
         "Using changelog scope=%s scope_group=%s schema_mode=%s",
         scope,
