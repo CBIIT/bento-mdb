@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from neo4j import GraphDatabase
@@ -19,6 +19,31 @@ from bento_mdb.flows.update_mdb import (
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_CHANGELOG_FILE_LARGE = Path(CURRENT_DIRECTORY, "samples", "sample_changelog_large.xml")
 TEST_CHANGELOG_FILE_SMALL = Path(CURRENT_DIRECTORY, "samples", "sample_changelog.xml")
+TEST_CHANGELOG_FILE_RUNNER_INTEGRATION = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "sample_changelog_runner_integration.xml",
+)
+TEST_CHANGELOG_FILE_RUNNER_LOGS = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "sample_changelog_runner_logs.xml",
+)
+TEST_CHANGELOG_FILE_RUNNER_REWRITE = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "sample_changelog_runner_rewrite.xml",
+)
+TEST_CHANGELOG_FILE_SPLIT_EXACT = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "sample_changelog_split_exact.xml",
+)
+
+
+@pytest.fixture(scope="session")
+def docker_setup():
+    return ["up -d mdb-versioned"]
 
 
 class FakeTx:
@@ -50,15 +75,7 @@ class TestRunChangelogWithRunner:
         """Run changelog through the provided logger."""
         changelog_file = tmp_path / "changelog.xml"
         changelog_file.write_text(
-            """<?xml version='1.0' encoding='UTF-8'?>
-<databaseChangeLog
-  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-  xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext">
-  <changeSet id="test-runner-logs-1" author="TEST">
-    <neo4j:cypher>CREATE (n:codex_runner_log_test)</neo4j:cypher>
-  </changeSet>
-</databaseChangeLog>
-""",
+            TEST_CHANGELOG_FILE_RUNNER_LOGS.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         logger = logging.getLogger("bento_mdb.test.runner")
@@ -83,15 +100,7 @@ class TestRunChangelogWithRunner:
         """Rewrite XML entity escapes before passing the temp changelog to runner."""
         changelog_file = tmp_path / "changelog.xml"
         changelog_file.write_text(
-            """<?xml version='1.0' encoding='UTF-8'?>
-<databaseChangeLog
-  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-  xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext">
-  <changeSet id="test-runner-rewrite-1" author="TEST">
-    <neo4j:cypher>MATCH (a)-[r]-&gt;(b) WHERE a.value &lt;&gt; &quot;x&quot; RETURN a &amp; b</neo4j:cypher>
-  </changeSet>
-</databaseChangeLog>
-""",
+            TEST_CHANGELOG_FILE_RUNNER_REWRITE.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         logger = logging.getLogger("bento_mdb.test.prepare")
@@ -145,25 +154,19 @@ class TestRunChangelogWithRunner:
         assert infer_changelog_scope("other_changelogs/misc.xml") == ("OTHER", "MISC")
         assert infer_changelog_scope("misc.xml") == ("OTHER", "MISC")
 
-    def test_executes_changelog_against_local_neo4j(self, tmp_path) -> None:
-        """Run changelog through MDB-Changelog-Runner against local Neo4j."""
-        uri = os.getenv("MDB_TEST_NEO4J_URI", "bolt://localhost:7687")
-        user = os.getenv("MDB_TEST_NEO4J_USER", "neo4j")
-        password = os.getenv("MDB_TEST_NEO4J_PASSWORD", "changeme")
+    @pytest.mark.docker
+    def test_executes_changelog_against_local_neo4j(self, tmp_path, mdb_versioned) -> None:
+        """Run changelog through MDB-Changelog-Runner against the test Neo4j container."""
+        uri, _ = mdb_versioned
+        user = "neo4j"
+        password = "changeme"
+        handle = f"mdb-changelog-runner-test-{uuid4()}"
         changelog_file = tmp_path / "changelog.xml"
         changelog_file.write_text(
-            """<?xml version='1.0' encoding='UTF-8'?>
-<databaseChangeLog
-  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-  xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext">
-  <changeSet id="test-runner-integration-1" author="TEST">
-    <neo4j:cypher>
-      MERGE (n:codex_runner_test {handle: 'DATATEAM-628'})
-      SET n.updated_by = 'mdb-changelog-runner'
-    </neo4j:cypher>
-  </changeSet>
-</databaseChangeLog>
-""",
+            TEST_CHANGELOG_FILE_RUNNER_INTEGRATION.read_text(encoding="utf-8").replace(
+                "__HANDLE__",
+                handle,
+            ),
             encoding="utf-8",
         )
 
@@ -184,8 +187,9 @@ class TestRunChangelogWithRunner:
 
             with driver.session() as session:
                 record = session.run(
-                    "MATCH (n:codex_runner_test {handle: 'DATATEAM-628'}) "
+                    "MATCH (n:mdb_changelog_runner_test {handle: $handle}) "
                     "RETURN n.updated_by AS updated_by",
+                    handle=handle,
                 ).single()
             assert result.changesets_executed == 1
             assert record is not None
@@ -194,7 +198,8 @@ class TestRunChangelogWithRunner:
             if connected:
                 with driver.session() as session:
                     session.run(
-                        "MATCH (n:codex_runner_test {handle: 'DATATEAM-628'}) DELETE n",
+                        "MATCH (n:mdb_changelog_runner_test {handle: $handle}) DELETE n",
+                        handle=handle,
                     ).consume()
             driver.close()
 
@@ -214,20 +219,11 @@ class TestSplitChangelogFile:
 
     def test_split_exact_max_changesets(self, tmp_path) -> None:
         """Test splitting when file has exactly max_changesets changesets."""
-        # Create changelog with exactly 5 changesets
         changelog_file = tmp_path / "test_changelog.xml"
-        changesets = []
-        for i in range(1, 6):
-            changesets.append(
-                f"""  <changeSet id="{i}" author="TEST">
-    <neo4j:cypher>CREATE (n:test{i} {{handle:'TEST{i}'}})</neo4j:cypher>
-  </changeSet>"""
-            )
-
-        changelog_content = """<?xml version='1.0' encoding='UTF-8'?>
-<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:neo4j="http://www.liquibase.org/xml/ns/dbchangelog-ext" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-""" + "\n".join(changesets) + "\n</databaseChangeLog>"
-        changelog_file.write_text(changelog_content, encoding="utf-8")
+        changelog_file.write_text(
+            TEST_CHANGELOG_FILE_SPLIT_EXACT.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
 
         result = split_changelog_file(str(changelog_file), max_changesets=5)
 
