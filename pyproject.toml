@@ -55,6 +55,3 @@ markers = [
 
 [tool.uv]
 package = true
-override-dependencies = [
-    "neo4j>=5.28.0,<6.0.0",
-]
