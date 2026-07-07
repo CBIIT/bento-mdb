@@ -719,7 +719,7 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                         "handle": "organism_species",
                         "model": "TEST",
                         "value_domain": "value_set",
-                        "is_required": "Preferred",
+                        "is_required": "False",
                         "is_key": "False",
                         "is_nullable": "False",
                         "is_strict": "True",

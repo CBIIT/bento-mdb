@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://cbiit.github.io/bento-mdb",
+"Homepage" = "https://cbiit.github.io/bento-mdb"
 "Bug Tracker" = "https://github.com/CBIIT/bento-mdb/issues"
 
 [project.scripts]
