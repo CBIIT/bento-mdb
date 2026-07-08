@@ -1,137 +1,161 @@
-"""Run Liquibase Update on Changelog."""
+"""Run MDB-Changelog-Runner against changelog files."""
 
 from __future__ import annotations
 
-import io
+import logging
 import re
-import shutil
-import stat
 import tempfile
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-import time
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
+from mdb_changelog_runner import ChangelogExecutor, ChangelogRunResult
 
 from prefect import flow, get_run_logger, task
-from prefect.blocks.system import Secret
-from pyliquibase import Pyliquibase
 
 from bento_mdb.mdb_utils import init_mdb_connection
-from bento_mdb.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
 
-# liquibase constants
-DRIVER_PATH = "/app/drivers"
-DRIVER_JAR = "liquibase-neo4j-4.31.1-full.jar"
-LIQUIBASE_VERSION = "4.31.1"
-DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
-
-
-@task
-def set_defaults_file(
-    changelog_file: str,
-    mdb_id: str,
-    log_level: str,
-) -> tuple[Path, Path]:
-    """Create temporary defaults file; returns paths of defaults file and log file."""
-    logger = get_run_logger()
-    if mdb_id not in VALID_MDB_IDS:
-        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
-        raise ValueError(msg)
-    if log_level not in VALID_LOG_LEVELS:
-        logger.warning(
-            "Invalid log level %r (valid: %s); defaulting to 'info'.",
-            log_level,
-            list(VALID_LOG_LEVELS.keys()),
-        )
-        log_level = "info"
-
-    uri_secret_name = mdb_id + "-uri"
-    usr_secret_name = mdb_id + "-usr"
-    pwd_secret_name = mdb_id + "-pwd"
-    uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    user = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
-
-    # create liquibase log file
-    log_file = tempfile.NamedTemporaryFile(suffix=".log", delete=False)  # noqa: SIM115
-    log_file_path = Path(log_file.name)
-    log_file.close()
-
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write(f"changelogFile: {changelog_file}\n")
-        f.write(f"url: {uri}\n")
-        f.write(f"username: {user}\n")
-        f.write(f"password: {password}\n")
-        f.write(f"classpath: {DRIVER_PATH}\n")
-        f.write(f"driver: {DRIVER_NAME}\n")
-        f.write(f"logLevel: {log_level}\n")
-        f.write(f"logFile: {log_file_path}\n")
-        temp_file_path = Path(f.name)
-    temp_file_path.chmod(
-        stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
-    )  # User/group read/write only
-    return temp_file_path, log_file_path
+MODEL_CHANGELOG_ROOT = "model_changelogs"
+TERM_CHANGELOG_ROOT = "term_changelogs"
+EXTERNAL_ONTOLOGY_CHANGELOG_ROOT = "external_ont_changelogs"
+DEFAULT_CHANGELOG_SCOPE = ("OTHER", "MISC")
+CHANGELOG_CYPHER_ENTITY_REPLACEMENTS = (
+    ("&gt;", ">"),
+    ("&lt;", "<"),
+    ("&quot;", '"'),
+    ("&apos;", "'"),
+    ("&amp;", "&"),
+)
 
 
-@task
-def run_liquibase_update(  # noqa: C901, PLR0912
-    defaults_file: Path | str,
-    log_file: Path,
+def run_changelog_with_driver(
+    driver: Any,
+    changelog_file: Path | str,
+    changelog_location: str,
+    changelog_scope: str | None = None,
+    changelog_scope_path: str | None = None,
     *,
     dry_run: bool = False,
-) -> None:
-    """Run Liquibase Update on Changelog."""
-    logger = get_run_logger()
-
-    plb = Pyliquibase(
-        defaultsFile=str(defaults_file),
-        jdbcDriversDir=DRIVER_PATH,
-        version=LIQUIBASE_VERSION,
+    schema_mode: bool = False,
+    logger: logging.Logger | None = None,
+) -> ChangelogRunResult:
+    """Run a changelog with MDB-Changelog-Runner using a Neo4j driver."""
+    executor = ChangelogExecutor(driver, logger=logger)
+    changelog_scope = changelog_scope.upper() if changelog_scope else None
+    changelog_scope_path = changelog_scope_path.upper() if changelog_scope_path else None
+    return executor.execute(
+        changelog_file,
+        changelog_location,
+        changelog_scope,
+        changelog_scope_path,
+        dry_run=dry_run,
+        schema_mode=schema_mode,
     )
 
-    # copy Neo4j extension JAR to Liquibase's lib folder
-    ext_jar = Path(DRIVER_PATH) / DRIVER_JAR
-    dest_lib = Path(plb.liquibase_lib_dir)
-    shutil.copy(ext_jar, dest_lib)
-    logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
 
-    out_capture = io.StringIO()
-    err_capture = io.StringIO()
+def run_changelog_with_runner(
+    changelog_file: Path | str,
+    changelog_location: str,
+    mdb_id: str,
+    changelog_scope: str | None = None,
+    changelog_scope_path: str | None = None,
+    *,
+    dry_run: bool = False,
+    schema_mode: bool = False,
+    logger: logging.Logger | None = None,
+) -> ChangelogRunResult:
+    """Run a changelog with MDB-Changelog-Runner."""
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     try:
-        with redirect_stdout(out_capture), redirect_stderr(err_capture):
-            if dry_run: # dry run is still putting stuff in the database - it executes mdb.put_with_statement(cypher_statement)
-                logger.info("Running updateSQL (dry run)...")
-                plb.updateSQL()
-            else:
-                logger.info("Running update...")
-                plb.update()
+        return run_changelog_with_driver(
+            mdb.driver,
+            changelog_file,
+            changelog_location,
+            changelog_scope,
+            changelog_scope_path,
+            dry_run=dry_run,
+            schema_mode=schema_mode,
+            logger=logger,
+        )
     finally:
-        for line in out_capture.getvalue().splitlines():
-            if not line.strip():
-                continue
-            logger.info(line)
-        for line in err_capture.getvalue().splitlines():
-            if not line.strip():
-                continue
-            logger.error(line)
-        if log_file.exists():
-            logger.info("Reading Liquibase logs from %s", log_file)
-            try:
-                with log_file.open("r") as f:
-                    for line in f:
-                        strip_line = line.strip()
-                        if not strip_line:
-                            continue
-                        if "ERROR" in strip_line or "SEVERE" in strip_line:
-                            logger.error(strip_line)
-                        elif "WARNING" in strip_line:
-                            logger.warning(strip_line)
-                        else:
-                            logger.info(strip_line)
-            except Exception:
-                logger.exception("Error reading Liquibase logs from %s", log_file)
+        mdb.close()
+
+
+def infer_changelog_scope(key: str) -> tuple[str | None, str | None]:
+    """Infer runner scope and scope_group from the changelog S3 key.
+
+    Examples:
+    - model_changelogs/CTDC/ctdc/file.xml -> ("MODEL", "CTDC")
+    - term_changelogs/file.xml -> ("TERM", "TERM")
+    - external_ont_changelogs/icdo/file.xml -> ("ICDO", "ICDO")
+    """
+    key_parts = [part for part in key.split("/") if part]
+    if not key_parts:
+        return DEFAULT_CHANGELOG_SCOPE
+
+    if key_parts[0] == MODEL_CHANGELOG_ROOT:
+        group = key_parts[2].upper() if len(key_parts) > 3 else "MISC"
+        return "MODEL", group
+    if key_parts[0] == TERM_CHANGELOG_ROOT:
+        return "TERM", "TERM"
+    if key_parts[0] == EXTERNAL_ONTOLOGY_CHANGELOG_ROOT:
+        group = key_parts[1].upper() if len(key_parts) > 2 else "OTHER"
+        return group, group
+
+    return DEFAULT_CHANGELOG_SCOPE
+
+
+def prepare_changelog_file_for_runner(
+    changelog_file: Path,
+    logger: logging.Logger | Any,
+) -> int:
+    """Validate and rewrite cypher text in a temp changelog before runner execution."""
+    with changelog_file.open("r", encoding="utf-8") as f:
+        content = f.read()
+
+    header_match = re.search(
+        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
+        content,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not header_match:
+        msg = "Could not find databaseChangeLog header in changelog file"
+        raise ValueError(msg)
+
+    changeset_pattern = re.compile(
+        r'(<changeSet[^>]*>.*?</changeSet>)',
+        re.DOTALL,
+    )
+    changesets = changeset_pattern.findall(content)
+
+    total_changesets = len(changesets)
+    logger.info("Found %d changesets in changelog file", total_changesets)
+
+    if total_changesets == 0:
+        msg = "No changesets found in changelog file"
+        raise ValueError(msg)
+
+    cypher_pattern = re.compile(
+        r"(<neo4j:cypher[^>]*>)(.*?)(</neo4j:cypher>)",
+        re.DOTALL,
+    )
+
+    def normalize_cypher(match: re.Match[str]) -> str:
+        cypher_statement = match.group(2).strip()
+        cypher_statement = cypher_statement.replace("<![CDATA[", "").replace("]]>", "").strip()
+        for old, new in CHANGELOG_CYPHER_ENTITY_REPLACEMENTS:
+            cypher_statement = cypher_statement.replace(old, new)
+        return f"{match.group(1)}{_wrap_cdata(cypher_statement)}{match.group(3)}"
+
+    content = cypher_pattern.sub(normalize_cypher, content)
+    changelog_file.write_text(content, encoding="utf-8")
+    return total_changesets
+
+
+def _wrap_cdata(value: str) -> str:
+    return f"<![CDATA[{value.replace(']]>', ']]]]><![CDATA[>')}]]>"
+
 
 @task
 def split_changelog_file(changelog_file: str, max_changesets: int) -> list[Path]:
@@ -224,10 +248,13 @@ def liquibase_update_flow(
     mdb_id: str,
     log_level: str = "info",
     bucket: str | None = None,
+    scope: str | None = None,
+    scope_group: str | None = None,
     *,
     dry_run: bool = False,
+    schema_mode: bool = False,
 ) -> None:
-    """Run Liquibase Update on Changelog."""
+    """Run MDB-Changelog-Runner against a changelog fetched from S3."""
     logger = get_run_logger()
 
     s3 = boto3.client("s3")
@@ -246,68 +273,38 @@ def liquibase_update_flow(
         logger.error("Unexpected S3 error (code=%s) for s3://%s/%s: %s", code, bucket, key, e)
         raise
 
+    changelog_location = f"s3://{bucket}/{key}"
+
     logger.info("Downloading s3://%s/%s", bucket, key)
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
         s3.download_fileobj(bucket, key, tmp)
-        changelog_file = tmp.name
+        changelog_file = Path(tmp.name)
     logger.info("Downloaded to temp file: %s", changelog_file)
 
-    with open(changelog_file, "r") as f:
-        content = f.read()
+    prepare_changelog_file_for_runner(changelog_file, logger)
 
-    # Extract the XML header (first line) and databaseChangeLog opening tag
-    # Find the opening databaseChangeLog tag with all its attributes
-    header_match = re.search(
-        r'(<\?xml[^>]*\?>\s*<databaseChangeLog[^>]*>)',
-        content,
-        re.MULTILINE | re.DOTALL
+    inferred_scope, inferred_scope_group = infer_changelog_scope(key)
+    scope = inferred_scope if scope is None else scope
+    scope_group = inferred_scope_group if scope_group is None else scope_group
+    logger.info(
+        "Using changelog scope=%s scope_group=%s schema_mode=%s",
+        scope,
+        scope_group,
+        schema_mode,
     )
-    if not header_match:
-        msg = "Could not find databaseChangeLog header in changelog file"
-        raise ValueError(msg)
-
-    # Find all changesets using regex that handles multi-line content
-    # This pattern matches from <changeSet to </changeSet> including all content in between
-    changeset_pattern = re.compile(
-        r'(<changeSet[^>]*>.*?</changeSet>)',
-        re.DOTALL
+    result = run_changelog_with_runner(
+        changelog_file,
+        changelog_location,
+        mdb_id,
+        scope,
+        scope_group,
+        dry_run=dry_run,
+        schema_mode=schema_mode,
+        logger=logger,
     )
-    changesets = changeset_pattern.findall(content)
-
-    total_changesets = len(changesets)
-    logger.info("Found %d changesets in changelog file", total_changesets)
-    total_start = time.time()
-
-    
-    if total_changesets == 0:
-        msg = "No changesets found in changelog file"
-        raise ValueError(msg)
-
-    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
-    num = 0
-    try:
-        for changeset in changesets:
-            changeset_start = time.time()
-            cypher_match = re.search(r'<neo4j:cypher>(.*?)</neo4j:cypher>', changeset, re.DOTALL)
-            cypher_statement = cypher_match.group(1).strip() if cypher_match else None
-            # remove cdata wrapper
-            cypher_statement = cypher_statement.replace("<![CDATA[", "").replace("]]>", "").strip()
-            # make these replacements in a more efficient way
-            cypher_statement = cypher_statement.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
-            if not dry_run:
-                mdb.put_with_statement(cypher_statement)
-                changeset_end = time.time()
-            
-            logger.info(f"Changelog {num} took {changeset_end - changeset_start:.2f} seconds")
-            num = num + 1
-            logger.info("Completed changelog update %d", num)
-    except Exception:
-        logger.exception("Error in changelog update")
-        raise
-    finally:
-        mdb.close()
-
-    logger.info("Liquibase finished.")
-    total_end = time.time()
-    logger.info(f"TOTAL RUN TIME: {total_end-total_start:.2f} seconds")
-
+    logger.info(
+        "MDB-Changelog-Runner finished %s (%d changesets, dry_run=%s)",
+        changelog_location,
+        result.changesets_executed,
+        result.dry_run,
+    )

@@ -15,6 +15,7 @@ dependencies = [
     "boto3>=1.38.36",
     "click>=8.1.8",
     "liquichange>=0.2.1",
+    "mdb-changelog-runner==1.0.2",
     "minicypher>=0.1.1",
     "neo4j>=4.4,<6.0",
     "packaging>=24.2",
