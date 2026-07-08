@@ -150,7 +150,7 @@ dependencies = [
     { name = "stamina" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "docker" },
     { name = "prefect-docker" },
@@ -163,37 +163,34 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bento-mdf", git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&branch=DATATEAM-547-549%2Fedp-features" },
-    { name = "bento-meta", git = "https://github.com/CBIIT/bento-meta.git?subdirectory=python&branch=DATATEAM-547-549%2Fedp-features" },
+    { name = "bento-mdf", git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&branch=DATATEAM-550%2Fread-edp-mdf" },
+    { name = "bento-meta", specifier = ">=0.3.2" },
     { name = "boto3", specifier = ">=1.38.36" },
     { name = "click", specifier = ">=8.1.8" },
+    { name = "docker", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "liquichange", specifier = ">=0.2.1" },
     { name = "minicypher", specifier = ">=0.1.1" },
     { name = "neo4j", specifier = ">=4.4,<6.0" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "prefect", specifier = "==3.3.4" },
+    { name = "prefect-docker", marker = "extra == 'dev'", specifier = ">=0.6.2" },
     { name = "prefect-shell", specifier = ">=0.3.1" },
     { name = "pygithub", specifier = ">=2.6.1" },
     { name = "pyliquibase", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.4" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
+    { name = "pytest-docker", marker = "extra == 'dev'", specifier = ">=3.2.1" },
+    { name = "pytest-docker-tools", marker = "extra == 'dev'", specifier = ">=3.1.9" },
     { name = "stamina", specifier = ">=24.3.0" },
+    { name = "testcontainers", marker = "extra == 'dev'", specifier = ">=4.9.2" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "docker", specifier = ">=7.1.0" },
-    { name = "prefect-docker", specifier = ">=0.6.2" },
-    { name = "pytest", specifier = ">=8.3.4" },
-    { name = "pytest-cov", specifier = ">=6.0.0" },
-    { name = "pytest-docker", specifier = ">=3.2.1" },
-    { name = "pytest-docker-tools", specifier = ">=3.1.9" },
-    { name = "testcontainers", specifier = ">=4.9.2" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "bento-mdf"
-version = "0.13.2rc0"
-source = { git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&branch=DATATEAM-547-549%2Fedp-features#148b2a098b0b45b8100e868dc02f22274881e61b" }
+version = "0.13.3b1"
+source = { git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&branch=DATATEAM-550%2Fread-edp-mdf#86e4a6ab60bd4d3abe84f799f29ded7c7993158c" }
 dependencies = [
     { name = "annotated-types" },
     { name = "bento-meta" },
@@ -215,8 +212,8 @@ dependencies = [
 
 [[package]]
 name = "bento-meta"
-version = "0.3.2rc0"
-source = { git = "https://github.com/CBIIT/bento-meta.git?subdirectory=python&branch=DATATEAM-547-549%2Fedp-features#e8db3626c0bb43ab8af5dabdd85ad0ce8f2e147c" }
+version = "0.3.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "cryptography" },
@@ -233,6 +230,10 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
     { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/e4/bf751ee813d7b8b948165ada1687e120ab647371fa4a153899580ca8d267/bento_meta-0.3.2.tar.gz", hash = "sha256:dda93f461e11c0f6761d761f846a93c5b7ccca03e24967367b348bf7b6086b61", size = 45374, upload-time = "2026-06-16T21:03:45.462Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/a4/3f68cb8634be8935ef0e829ecb512d8dd6fd7703e972dfe971f565dee673/bento_meta-0.3.2-py3-none-any.whl", hash = "sha256:053a70d534bf07e0517877995470deab22d9fdc3e5f1850f9391e7fb83d74eb2", size = 52315, upload-time = "2026-06-16T21:03:44.393Z" },
 ]
 
 [[package]]

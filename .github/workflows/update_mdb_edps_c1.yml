@@ -82,5 +82,6 @@ jobs:
         with:
           status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
-            *[C1] EDP Update*
+            *[Cloud One] EDP Update*
+            Environment: Cloud One / cloud-one-mdb-dev
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>

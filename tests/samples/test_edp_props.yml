@@ -5,7 +5,7 @@ PropDefinitions:
     Desc: Test EDP for specimen material names from obib.
     Ext: true
     Term:
-      Origin: CRDC
+    - Origin: CRDC
       Code: CRDC00001
       Value: Test Obib
       Version: "1"

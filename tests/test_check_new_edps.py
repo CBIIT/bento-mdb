@@ -20,13 +20,29 @@ def make_edp_repo(tmp_path: Path, version: str) -> Path:
             "PropDefinitions": {
                 "obib_terms_valueset": {
                     "Ext": True,
-                    "Term": {
-                        "Origin": "CRDC",
-                        "Code": "CRDC0002",
-                        "Version": version,
-                        "Value": "Obib Value Set Reference",
-                    },
+                    "Term": [
+                        {
+                            "Origin": "CRDC",
+                            "Code": "CRDC0002",
+                            "Version": version,
+                            "Value": "Obib Value Set Reference",
+                        },
+                    ],
                     "Enum": ["term_1"],
+                },
+            },
+        },
+    )
+    write_yaml(
+        repo / "model-desc" / "terms" / "obib-terms.yml",
+        {
+            "Terms": {
+                "term_1": {
+                    "Origin": "OBIB",
+                    "Code": "0001",
+                    "Version": "1",
+                    "Value": "term_1",
+                    "Definition": "Test term",
                 },
             },
         },

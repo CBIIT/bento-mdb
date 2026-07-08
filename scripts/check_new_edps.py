@@ -12,6 +12,7 @@ from packaging.version import parse as parse_version
 
 from bento_mdb.clients import GitHubClient
 from bento_mdb.model_cdes import dump_to_yaml
+from bento_mdf import MDF
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +22,31 @@ def load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def load_edp_specs(edp_props_file: Path) -> dict[str, dict]:
-    data = load_yaml(edp_props_file)
-    return data.get("PropDefinitions") or {}
+def load_edp_definitions(edp_repo_path: Path, spec: dict) -> dict:
+    """Load EDP definitions using bento-mdf."""
+    mdf_directory = spec.get("mdf_directory", "model-desc")
+    mdf_files = spec.get("mdf_files") or ["edp-props.yml"]
+
+    files = [edp_repo_path / mdf_directory / file_name for file_name in mdf_files]
+    mdf = MDF(*files, handle="_EDP", raise_error=True)
+
+    return getattr(mdf.model, "edp_definitions", {})
 
 
-def get_edp_version(edp_specs: dict[str, dict], prop_definition: str) -> str | None:
-    spec = edp_specs.get(prop_definition)
-    if not spec:
+def get_edp_version(edp_definitions: dict, prop_definition: str) -> str | None:
+    """Get an EDP version from parsed bento-mdf EDP definitions."""
+    prop = edp_definitions.get(prop_definition)
+    if not prop:
         logger.warning("No EDP PropDefinition found for %s", prop_definition)
         return None
 
-    term = spec.get("Term") or {}
-    version = term.get("Version")
+    if not prop.concept or not prop.concept.terms:
+        logger.warning("No EDP Term found for %s", prop_definition)
+        return None
+
+    edp_term = next(iter(prop.concept.terms.values()))
+    version = getattr(edp_term, "origin_version", None)
+
     return str(version) if version is not None else None
 
 
@@ -48,16 +61,14 @@ def update_edp_versions(
     for edp_name, spec in edp_config.items():
         logger.info("Checking %s for new EDP version...", edp_name)
 
-        mdf_directory = spec.get("mdf_directory", "model-desc")
-        edp_props_file = edp_repo_path / mdf_directory / "edp-props.yml"
-        edp_specs = load_edp_specs(edp_props_file)
+        edp_definitions = load_edp_definitions(edp_repo_path, spec)
 
         prop_definition = spec.get("prop_definition")
         if not prop_definition:
             logger.warning("No prop_definition specified for %s", edp_name)
             continue
 
-        found_version = get_edp_version(edp_specs, prop_definition)
+        found_version = get_edp_version(edp_definitions, prop_definition)
         if not found_version:
             logger.warning("No Version found for %s", edp_name)
             continue

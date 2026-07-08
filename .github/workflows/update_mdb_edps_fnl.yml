@@ -83,4 +83,5 @@ jobs:
           status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'failure' || 'success' }}
           message: |
             *[FNL] EDP Update*
+            Environment: FNL / fnl-mdb-dev
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>

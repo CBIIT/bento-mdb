@@ -9,8 +9,14 @@ import yaml
 import click
 from liquichange.changelog import Changelog, Changeset, CypherChange
 from bento_mdb.cypher_utils import DEFAULT_AUTHOR, DEFAULT_COMMIT
+from bento_mdf import MDF
 
 logger = logging.getLogger(__name__)
+
+def _load_yaml(path: Path) -> dict:
+    """Load a YAML file as a dictionary."""
+    with Path(path).open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
 def _to_snake_case(value: str) -> str:
@@ -21,46 +27,54 @@ def _escape(value: str) -> str:
     return value.replace("'", "\\'")
 
 
-def _load_yaml(path: Path) -> dict:
-    with Path(path).open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _load_terms(terms_files: list[Path]) -> dict:
-    terms = {}
-    for terms_file in terms_files:
-        data = _load_yaml(terms_file)
-        terms.update(data.get("Terms") or {})
-    return terms
-
-
-def _normalize_term_spec(spec: dict, *, fallback_value: str | None = None) -> dict:
-    value = spec.get("Value") or fallback_value or ""
+def _term_attrs(term) -> dict:
+    """Return normalized term attrs from a bento-meta Term."""
+    attrs = term.get_attr_dict()
     return {
-        "origin_name": spec.get("Origin") or "",
-        "origin_id": str(spec.get("Code") or ""),
-        "origin_version": str(spec.get("Version") or ""),
-        "value": str(value),
-        "origin_definition": spec.get("Definition") or "",
+        "origin_name": attrs.get("origin_name") or "",
+        "origin_id": str(attrs.get("origin_id") or ""),
+        "origin_version": str(attrs.get("origin_version") or ""),
+        "value": str(attrs.get("value") or ""),
+        "origin_definition": attrs.get("origin_definition") or "",
     }
 
 
-def _edp_specs_from_files(edp_yaml_files: list[Path]) -> list[tuple[str, dict]]:
-    edp_specs = []
-    for edp_yaml_file in edp_yaml_files:
-        data = _load_yaml(edp_yaml_file)
-        for prop_handle, spec in (data.get("PropDefinitions") or {}).items():
-            if spec.get("Ext") is True:
-                edp_specs.append((prop_handle, spec))
-    return edp_specs
+def _edp_definitions_from_files(
+    edp_yaml_files: list[Path],
+    terms_files: list[Path],
+) -> list[tuple[str, object]]:
+    """Load EDP definitions using bento-mdf."""
+    mdf = MDF(
+        *edp_yaml_files,
+        *terms_files,
+        handle="_EDP",
+        raise_error=True,
+    )
+    edp_definitions = getattr(mdf.model, "edp_definitions", {})
+    return list(edp_definitions.items())
 
 
-def _filter_edp_specs_from_config(
-    edp_specs: list[tuple[str, dict]],
+def _get_edp_term(prop_handle: str, prop) -> object:
+    """Return the single EDP term attached to an EDP property."""
+    if not prop.concept or not prop.concept.terms:
+        msg = f"EDP '{prop_handle}' must define a Term."
+        raise ValueError(msg)
+
+    if len(prop.concept.terms) > 1:
+        logger.warning(
+            "EDP '%s' has multiple Term entries. Using the first.",
+            prop_handle,
+        )
+
+    return next(iter(prop.concept.terms.values()))
+
+
+def _filter_edp_definitions_from_config(
+    edp_definitions: list[tuple[str, object]],
     edp_config_file: Path | None,
-) -> list[tuple[str, dict]]:
+) -> list[tuple[str, object]]:
     if not edp_config_file:
-        return edp_specs
+        return edp_definitions
 
     config = _load_yaml(edp_config_file)
     allowed = {
@@ -73,35 +87,26 @@ def _filter_edp_specs_from_config(
     }
 
     filtered = []
-    for prop_handle, spec in edp_specs:
-        term = spec.get("Term") or {}
-        version = str(term.get("Version") or "")
+    for prop_handle, prop in edp_definitions:
+        edp_term = _get_edp_term(prop_handle, prop)
+        version = str(getattr(edp_term, "origin_version", "") or "")
         if (prop_handle, version) in allowed:
-            filtered.append((prop_handle, spec))
+            filtered.append((prop_handle, prop))
 
     return filtered
 
 
 def _generate_edp_changesets(
     prop_handle: str,
-    spec: dict,
-    terms: dict,
+    prop,
     author: str,
     _commit: str,
     start_id: int,
 ) -> list[Changeset]:
-    """Generate changesets for one EDP definition."""
-    term_spec = spec.get("Term")
-    if not isinstance(term_spec, dict):
-        msg = f"EDP '{prop_handle}' must define Term as a mapping."
-        raise ValueError(msg)
+    """Generate changesets for one parsed EDP definition."""
+    edp_term = _get_edp_term(prop_handle, prop)
+    edp = _term_attrs(edp_term)
 
-    enum_values = spec.get("Enum") or []
-    if not isinstance(enum_values, list):
-        msg = f"EDP '{prop_handle}' must define Enum as a list."
-        raise ValueError(msg)
-
-    edp = _normalize_term_spec(term_spec)
     origin_name = edp["origin_name"]
     origin_id = edp["origin_id"]
     origin_version = edp["origin_version"]
@@ -121,7 +126,11 @@ def _generate_edp_changesets(
         f"edp._commit = '{_escape(_commit)}'"
     )
     changesets.append(
-        Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=edp_term_stmt))
+        Changeset(
+            id=str(cs_id),
+            author=author,
+            change_type=CypherChange(text=edp_term_stmt),
+        ),
     )
     cs_id += 1
 
@@ -133,17 +142,17 @@ def _generate_edp_changesets(
         f"MERGE (edp)-[:specifies_value_set]->(vs)"
     )
     changesets.append(
-        Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=vs_stmt))
+        Changeset(
+            id=str(cs_id),
+            author=author,
+            change_type=CypherChange(text=vs_stmt),
+        ),
     )
     cs_id += 1
 
-    for enum_value in enum_values:
-        pv_spec = terms.get(enum_value)
-        if not pv_spec:
-            msg = f"EDP '{prop_handle}' references enum value '{enum_value}' with no matching Terms entry."
-            raise ValueError(msg)
+    for pv_term_obj in prop.terms.values():
+        pv = _term_attrs(pv_term_obj)
 
-        pv = _normalize_term_spec(pv_spec, fallback_value=str(enum_value))
         pv_origin = pv["origin_name"]
         pv_code = pv["origin_id"]
         pv_value = pv["value"]
@@ -160,7 +169,11 @@ def _generate_edp_changesets(
             f"pv._commit = '{_escape(_commit)}'"
         )
         changesets.append(
-            Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=pv_stmt))
+            Changeset(
+                id=str(cs_id),
+                author=author,
+                change_type=CypherChange(text=pv_stmt),
+            ),
         )
         cs_id += 1
 
@@ -170,7 +183,11 @@ def _generate_edp_changesets(
             f"MERGE (vs)-[:has_term]->(pv)"
         )
         changesets.append(
-            Changeset(id=str(cs_id), author=author, change_type=CypherChange(text=link_stmt))
+            Changeset(
+                id=str(cs_id),
+                author=author,
+                change_type=CypherChange(text=link_stmt),
+            ),
         )
         cs_id += 1
 
@@ -184,21 +201,20 @@ def generate_edp_changelog(
     _commit: str = DEFAULT_COMMIT,
     edp_config_file: Path | None = None,
 ) -> Changelog:
-    """Parse EDP YAML files and generate a Liquibase changelog."""
-    terms = _load_terms(terms_files)
-    edp_specs = _filter_edp_specs_from_config(
-        _edp_specs_from_files(edp_yaml_files),
+    """Parse EDP MDF files with bento-mdf and generate a Liquibase changelog."""
+    edp_definitions = _filter_edp_definitions_from_config(
+        _edp_definitions_from_files(edp_yaml_files, terms_files),
         edp_config_file,
-)
+    )
+
     changelog = Changelog()
     cs_id = 1
 
-    for prop_handle, spec in edp_specs:
+    for prop_handle, prop in edp_definitions:
         logger.info("Generating changesets for EDP definition: %s", prop_handle)
         changesets = _generate_edp_changesets(
             prop_handle,
-            spec,
-            terms,
+            prop,
             author,
             _commit,
             cs_id,
