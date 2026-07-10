@@ -95,7 +95,7 @@ def infer_changelog_scope(key: str) -> tuple[str | None, str | None]:
         return DEFAULT_CHANGELOG_SCOPE
 
     if key_parts[0] == MODEL_CHANGELOG_ROOT:
-        group = key_parts[2].upper() if len(key_parts) > 3 else "MISC"
+        group = key_parts[1].upper() if len(key_parts) > 1 else "MISC"
         return "MODEL", group
     if key_parts[0] == TERM_CHANGELOG_ROOT:
         return "TERM", "TERM"
