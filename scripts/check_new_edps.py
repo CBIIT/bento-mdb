@@ -13,6 +13,7 @@ from packaging.version import parse as parse_version
 from bento_mdb.clients import GitHubClient
 from bento_mdb.model_cdes import dump_to_yaml
 from bento_mdf import MDF
+from bento_meta.model import Model
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ def load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def load_edp_definitions(edp_repo_path: Path, spec: dict) -> dict:
+def load_edp_model(edp_repo_path: Path, spec: dict) -> Model:
     """Load EDP definitions using bento-mdf."""
     mdf_directory = spec.get("mdf_directory", "model-desc")
     mdf_files = spec.get("mdf_files") or ["edp-props.yml"]
@@ -30,7 +31,7 @@ def load_edp_definitions(edp_repo_path: Path, spec: dict) -> dict:
     files = [edp_repo_path / mdf_directory / file_name for file_name in mdf_files]
     mdf = MDF(*files, handle="_EDP", raise_error=True)
 
-    return getattr(mdf.model, "edp_definitions", {})
+    return mdf.model
 
 
 def get_edp_version(edp_definitions: dict, prop_definition: str) -> str | None:
@@ -61,14 +62,21 @@ def update_edp_versions(
     for edp_name, spec in edp_config.items():
         logger.info("Checking %s for new EDP version...", edp_name)
 
-        edp_definitions = load_edp_definitions(edp_repo_path, spec)
+        edp_model = load_edp_model(edp_repo_path, spec)
 
-        prop_definition = spec.get("prop_definition")
-        if not prop_definition:
-            logger.warning("No prop_definition specified for %s", edp_name)
+        try:
+           edp  = edp_model.nodes['_edp'].props[spec['property']]
+        except KeyError:
+            logger.error("No property '%s' defined for %s in config",
+                          spec['property'], edp_name)
             continue
 
-        found_version = get_edp_version(edp_definitions, prop_definition)
+        if not edp.is_extended:
+            logger.error("Property '%s' is not an extended property for %s in config",
+                          spec['property'], edp_name)
+            continue
+        
+        found_version = list(edp.value_set.edp_terms.values())[0].origin_version
         if not found_version:
             logger.warning("No Version found for %s", edp_name)
             continue

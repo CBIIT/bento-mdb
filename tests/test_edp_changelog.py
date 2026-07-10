@@ -69,16 +69,9 @@ class TestGenerateEdpChangesets:
             encoding="utf-8",
         )
 
-        prop_handle, prop = _edp_definitions_from_files([edp_props], [terms])[0]
-
-        with pytest.raises(ValueError, match="must define a Term"):
-            _generate_edp_changesets(
-                prop_handle,
-                prop,
-                TEST_AUTHOR,
-                TEST_COMMIT,
-                1,
-            )
+        # bento-mdf will catch the bad edp
+        with pytest.raises(RuntimeError, match="but has no Term: annotation"):
+            prop_handle, prop = _edp_definitions_from_files([edp_props], [terms])[0]
 
     def test_generates_edp_term_changeset(self) -> None:
         """Should generate MERGE for EDP term node."""

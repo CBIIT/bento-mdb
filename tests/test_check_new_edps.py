@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 from scripts.check_new_edps import update_edp_versions
-
+from pdb import set_trace
 
 def write_yaml(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,7 +60,7 @@ def base_config(latest_version: str = "1") -> dict:
             "versions": [{"version": latest_version, "tag": latest_version}],
             "origin": "CRDC",
             "code": "CRDC0002",
-            "prop_definition": "obib_terms_valueset",
+            "property": "obib_terms_valueset",
         },
     }
 
