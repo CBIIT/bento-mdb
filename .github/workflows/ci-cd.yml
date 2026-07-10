@@ -28,11 +28,11 @@ jobs:
       - name: Install dependencies and project
         run: |
           uv venv 
-          uv pip install -e .[dev]
+          uv pip install --python=.venv/bin/python -e .[dev]
 
       - name: Test with pytest
         run: |
-          uv run pytest tests --cov=bento_mdb --cov-report=xml
+          uv run --python=.venv/bin/python pytest tests --cov=bento_mdb --cov-report=xml
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2
