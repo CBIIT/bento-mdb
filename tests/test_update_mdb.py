@@ -125,7 +125,7 @@ class TestRunChangelogWithRunner:
         )
         assert infer_changelog_scope("model_changelogs/CTDC/file.xml") == (
             "MODEL",
-            "MISC",
+            "CTDC",
         )
         assert infer_changelog_scope("term_changelogs/dev_term_updates.xml") == (
             "TERM",
