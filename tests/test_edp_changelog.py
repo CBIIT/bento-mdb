@@ -244,7 +244,7 @@ class TestGenerateEdpChangelog:
                 {
                     "OBIB": {
                         "latest_version": "2",
-                        "prop_definition": "obib_terms_valueset",
+                        "property": "obib_terms_valueset",
                     },
                 },
                 sort_keys=False,
