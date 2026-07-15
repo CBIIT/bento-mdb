@@ -79,11 +79,11 @@ def _filter_edp_definitions_from_config(
     config = _load_yaml(edp_config_file)
     allowed = {
         (
-            spec.get("prop_definition"),
+            spec.get("property"),
             str(spec.get("latest_version")),
         )
         for spec in config.values()
-        if spec.get("prop_definition") and spec.get("latest_version") is not None
+        if spec.get("property") and spec.get("latest_version") is not None
     }
 
     filtered = []
