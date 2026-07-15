@@ -1,0 +1,15 @@
+Nodes: {}
+Relationships: {}
+PropDefinitions:
+  program_name_valueset:
+    Desc: Test EDP for specimen material names from obib.
+    Ext: true
+    Term:
+    - Origin: CRDC
+      Code: CRDC00001
+      Value: Test Obib
+      Version: "1"
+      Definition: Test EDP for obib pvs.
+    Enum:
+      - term_1
+      - term_2

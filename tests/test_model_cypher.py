@@ -102,7 +102,7 @@ class TestMakeModelChangelog:
             "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'})",
+            "is_extended:False,_commit:'_COMMIT_123'})",
             "MERGE (n0:concept {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
             "CREATE (n0:tag {key:'mapping_source',value:'TEST',nanoid:''})",
             "MERGE (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
@@ -116,19 +116,19 @@ class TestMakeModelChangelog:
             "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'})",
+            "is_extended:False,_commit:'_COMMIT_123'})",
             "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
             "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
             ",_commit:'_COMMIT_123'}), "
             "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'}) "
+            "is_extended:False,_commit:'_COMMIT_123'}) "
             "MERGE (n0)-[r0:has_property]->(n1)",
             "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True"
-            ",_commit:'_COMMIT_123'}), "
+            "is_key:False,is_nullable:False,is_strict:True,"
+            "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
             "MERGE (n0)-[r0:has_concept]->(n1)",
             "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
@@ -140,7 +140,7 @@ class TestMakeModelChangelog:
             "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'}), "
+            "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
             "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
             "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
@@ -153,12 +153,12 @@ class TestMakeModelChangelog:
             "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'}) "
+            "is_extended:False,_commit:'_COMMIT_123'}) "
             "MERGE (n0)-[r0:has_property]->(n1)",
             "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'}), "
+            "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
             "MERGE (n0)-[r0:has_concept]->(n1)",
             "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
@@ -170,7 +170,7 @@ class TestMakeModelChangelog:
             "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
-            "_commit:'_COMMIT_123'}), "
+            "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
             "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
             "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",

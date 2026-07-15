@@ -1,17 +1,19 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "bento-mdb"
 version = "0.1.0"
 description = "Tools for updating MDB"
-authors = [{name="Nelson Moore", email="nelson.moore@essential-soft.com"}]
+authors = [{name="Nelson Moore", email="nelson.moore@essential-soft.com"},
+	   {name="Tazeen Shaukat", email="tazeen.shaukat@essential-soft.com"}]
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "Apache 2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License"
+]
 dependencies = [
-    "bento-mdf==0.11.11",
-    "bento-meta==0.2.19",
+    "bento-mdf>=0.13.3b1",
+    "bento-meta>=0.3.2",
     "boto3>=1.38.36",
     "click>=8.1.8",
     "liquichange>=0.2.1",
@@ -27,17 +29,23 @@ dependencies = [
     "stamina>=24.3.0",
 ]
 
+[project.urls]
+"Homepage" = "https://cbiit.github.io/bento-mdb"
+"Bug Tracker" = "https://github.com/CBIIT/bento-mdb/issues"
+
 [project.scripts]
 check_new_mdfs = "scripts.check_new_mdfs:main"
+check_new_edps = "scripts.check_new_edps:main"
 get_pvs_and_synonyms = "scripts.get_pvs_and_synonyms:main"
 make_model_cde_changelog = "scripts.make_model_cde_changelog:main"
 make_model_changelog = "scripts.make_model_changelog:main"
 renumber_changelog = "scripts.renumber_changelog:main"
+make_edp_changelog = "scripts.make_edp_changelog:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bento_mdb", "scripts"]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "docker>=7.1.0",
     "pytest-cov>=6.0.0",
@@ -48,10 +56,21 @@ dev = [
     "prefect-docker>=0.6.2",
 ]
 
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = ["src","scripts","config"]
+
 [tool.pytest.ini_options]
 markers = [
     "docker: marks tests that require docker",
 ]
 
-[tool.uv]
-package = true
+[tool.uv.sources]
+bento-mdf = { git = "https://github.com/CBIIT/bento-mdf.git", branch = "DATATEAM-550/read-edp-mdf", subdirectory = "python" }

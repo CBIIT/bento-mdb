@@ -1,0 +1,7 @@
+Handle: TEST
+Version: 1.2.3
+Nodes:
+  program:
+    Props:
+      - program_name
+Relationships: {}

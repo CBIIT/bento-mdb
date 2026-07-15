@@ -719,10 +719,11 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                         "handle": "organism_species",
                         "model": "TEST",
                         "value_domain": "value_set",
-                        "is_required": "Preferred",
+                        "is_required": "False",
                         "is_key": "False",
                         "is_nullable": "False",
                         "is_strict": "True",
+                        "is_extended": "False",
                         "desc": "Species binomial of study participants",
                     },
                     "entity_has_enum": True,
@@ -738,6 +739,77 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                     },
                 },
                 "value_set": [],
+                "edp_reference": None,
+            },
+        ],
+    },
+)
+
+TEST_ANNOTATION_SPEC_EDP = AnnotationSpec(
+    entity={
+        "key": ("program", "program_name"),
+        "attrs": {
+            "handle": "program_name",
+            "model": "TEST",
+            "value_domain": "value_set",
+        },
+        "entity_has_enum": True,
+    },
+    annotation={
+        "key": ("program_name_text", "caDSR", "11444542", "2.00"),
+        "attrs": {
+            "handle": "program_name_text",
+            "value": "Program Name Text",
+            "origin_id": "11444542",
+            "origin_version": "2.00",
+            "origin_name": "caDSR",
+        },
+    },
+    value_set=[],
+    edp_reference={
+        "origin_id": "CRDC00005",
+        "origin_name": "CRDC",
+        "origin_version": "1",
+    },
+)
+
+TEST_MAKE_MODEL_CDE_SPEC_EDP = ModelCDESpec(
+    {
+        "handle": "TEST",
+        "version": "1.2.3",
+        "annotations": [
+            {
+                "entity": {
+                    "key": ("program", "program_name"),
+                    "attrs": {
+                        "handle": "program_name",
+                        "model": "TEST",
+                        "value_domain": "value_set",
+                        "is_required": "False",
+                        "is_key": "False",
+                        "is_nullable": "False",
+                        "is_strict": "True",
+                        "is_extended": "False",
+                        "desc": "The name of the program\n",
+                    },
+                    "entity_has_enum": True,
+                },
+                "annotation": {
+                    "key": ("program_name_text", "caDSR", "11444542", "2.00"),
+                    "attrs": {
+                        "handle": "program_name_text",
+                        "value": "Program Name Text",
+                        "origin_id": "11444542",
+                        "origin_version": "2.00",
+                        "origin_name": "caDSR",
+                    },
+                },
+                "value_set": [],
+                "edp_reference": {
+                    "origin_id": "CRDC00005",
+                    "origin_name": "CRDC",
+                    "origin_version": "1",
+                },
             },
         ],
     },

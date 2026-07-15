@@ -23,6 +23,66 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+def get_edp_enum_term(entity):
+    """Return the single EDP term referenced by entity.value_set, or None."""
+    value_set = getattr(entity, "value_set", None)
+    if not value_set:
+        return None
+
+    edp_terms = getattr(value_set, "edp_terms", None)
+    if edp_terms:
+        if len(edp_terms) > 1:
+            logger.warning(
+                "Expected one EDP term for entity '%s', found %s. Using the first.",
+                getattr(entity, "handle", None),
+                len(edp_terms),
+            )
+        return next(iter(edp_terms.values()))
+
+    # Backward-compatible fallback for older objects/tests.
+    return getattr(value_set, "edp_term", None)
+
+def load_edp_by_reference_mappings(
+    edp_config_file: Path = Path("config/mdb_edps.yml"),
+) -> list[dict]:
+    """Load configured caDSR by-reference URL patterns for custom EDPs."""
+    if not edp_config_file.exists():
+        logger.warning("EDP config file not found: %s", edp_config_file)
+        return []
+
+    with edp_config_file.open(mode="r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+
+    mappings = []
+    for edp_name, spec in config.items():
+        for pattern in spec.get("by_reference_url_patterns", []) or []:
+            mappings.append(
+                {
+                    "edp_name": edp_name,
+                    "pattern": str(pattern).lower(),
+                    "origin_id": spec["code"],
+                    "origin_name": spec["origin"],
+                    "origin_version": spec.get("latest_version"),
+                },
+            )
+    return mappings
+
+
+def match_by_reference_url_to_edp(
+    by_reference_urls: list[str],
+    mappings: list[dict],
+) -> dict | None:
+    """Return the configured custom EDP reference matching a caDSR by-reference URL."""
+    for url in by_reference_urls:
+        url_lower = url.lower()
+        for mapping in mappings:
+            if mapping["pattern"] in url_lower:
+                return {
+                    "origin_id": mapping["origin_id"],
+                    "origin_name": mapping["origin_name"],
+                    "origin_version": mapping.get("origin_version"),
+                }
+    return None
 
 def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
     """Load model specs from YAML file."""
@@ -99,6 +159,7 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                 # if 'caDSR' not in origin name, not a CDE
                 if "cadsr" not in term_key[1].lower():
                     continue
+                _edp_term = get_edp_enum_term(entity)
                 cde_spec["annotations"].append(
                     {
                         "entity": {
@@ -111,6 +172,12 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                             "attrs": term.get_attr_dict(),
                         },
                         "value_set": [],
+
+                        "edp_reference": {
+                            "origin_id": _edp_term.origin_id,
+                            "origin_name": _edp_term.origin_name,
+                            "origin_version": getattr(_edp_term, "origin_version", None),
+                        } if _edp_term else None
                     },
                 )
     return cde_spec
@@ -130,21 +197,62 @@ def dump_to_yaml(py_object: object, yaml_file: Path) -> None:
 def add_cde_pvs_to_model_cde_spec(
     cde_spec: ModelCDESpec,
     cadsr_client: CADSRClient,
+    edp_config_file: Path = Path("config/mdb_edps.yml"),
 ) -> None:
     """Add CDE PVs to a ModelCDESpec."""
     logger.info("Getting CDE value sets from caDSR...")
+    edp_mappings = load_edp_by_reference_mappings(edp_config_file)
+
     for annotation in cde_spec["annotations"]:
+        if annotation.get("edp_reference"):
+            continue
+
         cde_id = annotation["annotation"]["attrs"].get("origin_id")
         cde_version = annotation["annotation"]["attrs"].get("origin_version")
         entity_key = str(annotation["entity"]["key"])
-        value_set = cadsr_client.fetch_cde_valueset(
+
+        fetch_result = cadsr_client.fetch_cde_valueset_info(
             cde_id,
             cde_version,
             entity_key,
         )
-        if not value_set:
+
+        value_set = fetch_result["permissible_values"]
+        if value_set:
+            annotation["value_set"] = value_set
             continue
-        annotation["value_set"] = value_set
+
+        by_reference_urls = fetch_result["by_reference_urls"]
+        if not by_reference_urls:
+            continue
+
+        annotation["by_reference_urls"] = by_reference_urls
+        edp_reference = match_by_reference_url_to_edp(
+            by_reference_urls,
+            edp_mappings,
+        )
+
+        if edp_reference:
+            annotation["edp_reference"] = edp_reference
+            logger.info(
+                "Matched caDSR by-reference URL for CDE %sv%s to EDP %s:%s",
+                cde_id,
+                cde_version,
+                edp_reference["origin_name"],
+                edp_reference["origin_id"],
+            )
+            continue
+
+        annotation["missing_edp_reference"] = {
+            "by_reference_urls": by_reference_urls,
+            "message": "No configured custom EDP matched caDSR by-reference URL.",
+        }
+        logger.warning(
+            "CDE %sv%s has caDSR by-reference URL(s), but no matching custom EDP is configured: %s",
+            cde_id,
+            cde_version,
+            by_reference_urls,
+        )
 
 
 def add_ncit_synonyms_to_model_cde_spec(
@@ -154,6 +262,8 @@ def add_ncit_synonyms_to_model_cde_spec(
     """Add NCIt synonyms to a ModelCDESpec."""
     logger.info("Getting synonyms from NCIt...")
     for annotation in cde_spec["annotations"]:
+        if annotation.get("edp_reference"):
+            continue  # Ignore cadsr client list or by-ref url since edp pvs are handled by bento-edp
         value_set = annotation.get("value_set", [])
         for pv in value_set:
             if pv is None:

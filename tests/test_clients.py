@@ -245,6 +245,51 @@ class TestCADSRClient:
         },
     }
 
+    SAMPLE_BY_REFERENCE_RESPONSE = {
+        "DataElement": {
+            "publicId": "11253427",
+            "version": "1",
+            "ValueDomain": {
+                "type": "Enumerated by Reference",
+                "PermissibleValues": [
+                    {
+                        "value": "https://bioportal.bioontology.org/ontologies/OBIB/?p=classes",
+                    },
+                ],
+            },
+        },
+    }
+
+    def test_fetch_cde_valueset_info_by_reference(self, fake_requests_get) -> None:
+        """Enumerated by Reference returns URL info, not concrete PVs."""
+        fake_requests_get(self.SAMPLE_BY_REFERENCE_RESPONSE)
+
+        actual = self.client.fetch_cde_valueset_info("11253427", "1")
+
+        assert_equal(actual["permissible_values"], [])
+        assert_equal(
+            actual["by_reference_urls"],
+            ["https://bioportal.bioontology.org/ontologies/OBIB/?p=classes"],
+        )
+
+    def test_fetch_cde_valueset_by_reference_returns_empty_pvs(self, fake_requests_get) -> None:
+        """Legacy fetch_cde_valueset returns no PVs for by-reference CDEs."""
+        fake_requests_get(self.SAMPLE_BY_REFERENCE_RESPONSE)
+
+        actual = self.client.fetch_cde_valueset("11253427", "1")
+
+        assert_equal(actual, [])
+
+    def test_fetch_cde_valueset_info_normal_pvs(self, fake_requests_get) -> None:
+        """Normal enumerated PV response still returns concrete PVs."""
+        fake_requests_get(self.SAMPLE_RESPONSE)
+
+        actual = self.client.fetch_cde_valueset_info("11524549", "1")
+
+        assert_equal(len(actual["permissible_values"]), 1)
+        assert_equal(actual["permissible_values"][0]["value"], "Pediatric")
+        assert_equal(actual["by_reference_urls"], [])
+
     def test_fetch_cde_valueset(self, fake_requests_get) -> None:
         """Happy path test for fetch_cde_valueset."""
         fake_requests_get(self.SAMPLE_RESPONSE)

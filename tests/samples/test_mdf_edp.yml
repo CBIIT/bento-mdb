@@ -1,0 +1,15 @@
+PropDefinitions:
+  program_name:
+    Desc: |
+      The name of the program
+    Term:
+      - Origin: caDSR
+        Code: "11444542"
+        Value: Program Name Text
+        Version: "2.00"
+    Enum:
+      - Origin: CRDC
+        Code: CRDC00005
+        Value: NCI Program Names
+        Version: "1"
+        Definition: Test EDP for program names.

@@ -1,0 +1,74 @@
+name: Check New EDPs
+
+on:
+  schedule:
+    - cron: "30 22 * * 0"  # weekly Sunday 22:30 UTC
+  workflow_dispatch:
+    inputs:
+      edp_specs_path:
+        description: "Path to YAML file with EDP version specs."
+        required: false
+        default: "config/mdb_edps.yml"
+        type: string
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        default: false
+        type: boolean
+      new_only:
+        description: "Only update if EDP version is newer than latest version."
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  check_new_edps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout bento-mdb
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ github.token }}
+
+      - name: Checkout bento-edps
+        uses: actions/checkout@v4
+        with:
+          repository: CBIIT/bento-edps
+          path: edp-repo
+          token: ${{ github.token }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Run EDP Check Script
+        env:
+          EDP_SPECS_YAML: "${{ github.event.inputs.edp_specs_path || 'config/mdb_edps.yml' }}"
+          NO_COMMIT: "${{ github.event.inputs.no_commit || 'false' }}"
+          NEW_ONLY: "${{ github.event.inputs.new_only || 'true' }}"
+        run: |
+          check_new_edps \
+            --edp_specs_yaml "$EDP_SPECS_YAML" \
+            --edp_repo_path edp-repo \
+            --no_commit "$NO_COMMIT" \
+            --new_only "$NEW_ONLY"

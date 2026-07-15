@@ -56,6 +56,41 @@ def create_delete_pv_cypher(
     )
 
 
+def _generate_edp_link_cypher(
+    cde_id: str,
+    cde_version: str | None,
+    edp_origin_id: str,
+    edp_origin_name: str,
+    edp_origin_version: str | None = None,
+) -> str:
+    """Cypher to link a CDE term to its EDP value_set via specifies_value_set."""
+    cde_id_literal = _cypher_string_literal(cde_id)
+    edp_origin_id_literal = _cypher_string_literal(edp_origin_id)
+    edp_origin_name_literal = _cypher_string_literal(edp_origin_name)
+
+    edp_filters = [
+    f"edp.origin_name = {edp_origin_name_literal}",
+    f"edp.origin_id = {edp_origin_id_literal}",
+    ]
+    if edp_origin_version:
+        edp_filters.append(f"edp.origin_version = {_cypher_string_literal(edp_origin_version)}")
+
+    cde_filters = [
+        "toLower(cde.origin_name) CONTAINS 'cadsr'",
+    ]
+    if cde_version:
+        cde_filters.append(f"cde.origin_version = {_cypher_string_literal(cde_version)}")
+
+    return (
+        f"MATCH (cde:term {{origin_id: {cde_id_literal}}}) "
+        f"WHERE {' AND '.join(cde_filters)} "
+        f"MATCH (edp:term) "
+        f"WHERE {' AND '.join(edp_filters)} "
+        f"MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+        f"MERGE (cde)-[:specifies_value_set]->(vs)"
+    )
+
+
 def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
     changeset_id: int,
@@ -68,8 +103,24 @@ def convert_annotation_to_changesets(
     has_removed_pvs = annotation.get("removed_pvs") and len(annotation.get("removed_pvs", [])) > 0
     has_metadata_changes = annotation.get("CDEFullName") or annotation.get("CDEVersion")
     
+    # Check for EDP reference, then if it exists, emit only the specifies_value_set relationship
+    edp_ref = annotation.get("edp_reference")
+    if edp_ref:
+        cde_attrs = annotation["annotation"]["attrs"]
+        cde_id = cde_attrs.get("origin_id", "")
+        cde_version = cde_attrs.get("origin_version")
+        stmt = _generate_edp_link_cypher(
+            cde_id,
+            cde_version,
+            edp_ref["origin_id"],
+            edp_ref["origin_name"],
+            edp_ref.get("origin_version"),
+        )
+        return [Changeset(id=str(changeset_id), author=author, change_type=CypherChange(text=stmt))]
+    
     if not (has_new_pvs or has_removed_pvs or has_metadata_changes):
         return []
+    
     statements: list[Statement] = []
     changesets = []
     cde_attrs = annotation["annotation"]["attrs"]

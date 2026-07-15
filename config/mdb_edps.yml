@@ -1,0 +1,17 @@
+OBIB:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  mdf_files:
+  - edp-props.yml
+  - terms/obib-terms.yml
+  latest_version: "1"
+  versions:
+  - version: "1"
+    tag: "1"
+  origin: CRDC
+  code: CRDC0002
+  property: obib_terms_valueset
+  by_reference_url_patterns:
+  - bioportal.bioontology.org/ontologies/OBIB
+  - ebi.ac.uk/ols4/ontologies/obib
+  - obib

@@ -1,0 +1,87 @@
+name: Update C1-MDB-DEV EDPs
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+on:
+  workflow_run:
+    workflows: ["Generate EDP Changelog"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      mdb_id:
+        description: "ID of MDB to update"
+        required: false
+        type: string
+        default: "cloud-one-mdb-dev"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+
+jobs:
+  collect-changelogs:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      changelog_files: ${{ steps.find-changelogs.outputs.changelog_files }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read S3 keys from upload log
+        id: find-changelogs
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id || github.run_id }}
+        run: |
+          LOG_LINE=$(git log --format=%s | grep "s3-upload-log run=${RUN_ID}" || true)
+          if [ -n "$LOG_LINE" ]; then
+            CHANGELOGS=$(echo "$LOG_LINE" | grep -oP 'keys=\K\[.*\]')
+          else
+            echo "Warning: No s3-upload-log commit found for run ${RUN_ID}"
+            CHANGELOGS='[]'
+          fi
+          echo "changelog_files=$CHANGELOGS" >> $GITHUB_OUTPUT
+          echo "Found changelogs: $CHANGELOGS"
+
+  update-c1-mdb-dev:
+    needs: collect-changelogs
+    if: ${{ needs.collect-changelogs.outputs.changelog_files != '' && needs.collect-changelogs.outputs.changelog_files != '[]' }}
+    uses: ./.github/workflows/update_mdb.yml
+    secrets:
+      PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+      AWS_CHANGELOG_ROLE_ARN: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_CHANGELOG_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
+    with:
+      mdb_id: ${{ github.event.inputs.mdb_id || 'cloud-one-mdb-dev' }}
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+
+  slack-notification:
+    needs: [collect-changelogs, update-c1-mdb-dev]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08
+        with:
+          status: ${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'failure' || 'success' }}
+          message: |
+            *[Cloud One] EDP Update*
+            Environment: Cloud One / cloud-one-mdb-dev
+            <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (needs.collect-changelogs.result == 'failure' || needs.update-c1-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>
