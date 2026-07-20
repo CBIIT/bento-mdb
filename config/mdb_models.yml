@@ -147,7 +147,7 @@ CDS:
   - version: 11.0.4
     tag: 11.0.4-GC_Release
   latest_version: 11.0.4
-  latest_prerelease_commit: 3cd0ae2ab7d66c435883062fcae8e054813155e1
+  latest_prerelease_commit: 0fea351c3cee88c246b14ab4f69929f12ebd08a1
   latest_prerelease_version: 12.0.0
 CTDC:
   repository: CBIIT/ctdc-model
@@ -213,7 +213,9 @@ CTDC:
     tag: 2.1.0
   - version: 3.0.0
     tag: 3.0.0
-  latest_version: 3.0.0
+  - version: 3.1.0
+    tag: 3.1.0
+  latest_version: 3.1.0
   latest_prerelease_commit: 37ea2af1bfad31d12b48f2335f563f14cf215fb2
   latest_prerelease_version: 3.1.0
 GDC:
