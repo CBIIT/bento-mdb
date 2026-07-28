@@ -315,11 +315,11 @@ PSDC:
   latest_prerelease_version: 1.0.0
 TEST:
   repository: CBIIT/ctos-test-model
+  prerelease_repository: CBIIT/ctos-test-model
   mdf_directory: model-desc
   mdf_files:
   - test-model.yml
   - test-model-props.yml
-  in_data_hub: false
   versions:
     - version: 1.0.0
       tag: 1.0.0
