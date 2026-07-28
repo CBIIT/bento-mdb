@@ -18,7 +18,7 @@ dependencies = [
     "click>=8.1.8",
     "importlib-metadata>=6,<9",
     "liquichange>=0.2.1",
-    "mdb-changelog-runner==1.0.2",
+    "mdb-changelog-runner==1.0.3",
     "minicypher>=0.1.1",
     "neo4j>=4.4,<6.0",
     "packaging>=24.2",
