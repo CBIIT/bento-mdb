@@ -12,6 +12,11 @@ from tests.test_utils import assert_equal, remove_nanoids_from_str
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")
 TEST_MODEL_MDF_TERMS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_terms.yml")
+TEST_MODEL_MDF_SHARED_REL_PROPS = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "test_mdf_shared_relationship_props.yml",
+)
 TEST_MODEL_MDF_USENULLCDE = Path(CURRENT_DIRECTORY, "samples", "test_mdf_useNullCDE_simple.yml")
 TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
 AUTHOR = "Tolkien"
@@ -78,6 +83,29 @@ class TestMakeModelChangelog:
             "desc:'desc of id'}) MERGE (n0)-[r0:has_property]->(n1)",
         ]
         assert_equal(actual, expected)
+
+    def test_shared_relationship_props(self) -> None:
+        """Test that relationships with multiple ends get separate properties."""
+        mdf = MDF(
+            TEST_MODEL_MDF_SHARED_REL_PROPS,
+            handle=MODEL_HDL,
+            _commit=_COMMIT,
+            raise_error=True,
+        )
+        model = mdf.model
+        sample_edge = model.edges[("of_case", "sample", "case")]
+        diagnosis_edge = model.edges[("of_case", "diagnosis", "case")]
+        prop_handle = "days_to_sample"
+        assert sample_edge.props[prop_handle] is diagnosis_edge.props[prop_handle]
+
+        converter = ModelToChangelogConverter(model=model, add_rollback=False)
+        converter.convert_model_to_changelog(author=AUTHOR)
+
+        sample_prop = sample_edge.props[prop_handle]
+        diagnosis_prop = diagnosis_edge.props[prop_handle]
+        assert sample_prop is not diagnosis_prop
+        assert model.props[(*sample_edge.triplet, prop_handle)] is sample_prop
+        assert model.props[(*diagnosis_edge.triplet, prop_handle)] is diagnosis_prop
 
     def test_shared_props_with_value_set(self) -> None:
         """Test for shared properties with value_set."""

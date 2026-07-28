@@ -1,0 +1,21 @@
+Handle: TEST
+Version: 1.0.0
+Nodes:
+  sample:
+    Props: null
+  diagnosis:
+    Props: null
+  case:
+    Props: null
+Relationships:
+  of_case:
+    Props:
+      - days_to_sample
+    Ends:
+      - Src: sample
+        Dst: case
+      - Src: diagnosis
+        Dst: case
+PropDefinitions:
+  days_to_sample:
+    Type: integer

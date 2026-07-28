@@ -56,8 +56,22 @@ def separate_shared_props(model: Model) -> None:
                 new_prop._commit = prop._commit  # noqa: SLF001
             if prop.value_set:
                 new_prop.value_set = prop.value_set.dup()
-            model.nodes[key[0]].props[key[1]] = new_prop
-            model.props[(key[0], key[1])] = new_prop
+
+            # bento-meta keys node properties as (node, prop) and relationship
+            # properties as (relationship, src, dst, prop). Use that key to
+            # replace the shared property on the exact node or relationship.
+            if len(key) == 2 and key[0] in model.nodes:
+                owner = model.nodes[key[0]]
+                prop_handle = key[1]
+            elif len(key) == 4 and key[:3] in model.edges:
+                owner = model.edges[key[:3]]
+                prop_handle = key[3]
+            else:
+                msg = f"Property owner not found for key: {key}"
+                raise ValueError(msg)
+
+            owner.props[prop_handle] = new_prop
+            model.props[key] = new_prop
         else:
             initial_props.add(prop)
 
