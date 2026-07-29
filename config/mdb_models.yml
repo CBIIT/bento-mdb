@@ -321,9 +321,9 @@ TEST:
   - test-model.yml
   - test-model-props.yml
   versions:
-    - version: 1.0.0
-      tag: 1.0.0
-      ignore: true
+  - version: 1.0.0
+    tag: 1.0.0
+    ignore: true
   latest_version: null
   latest_prerelease_commit: 277d1c56e41bdec9e03947804e997ca66656477e
   latest_prerelease_version: 1.0.0
