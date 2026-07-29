@@ -65,7 +65,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-include = ["src","scripts","config"]
+include = ["src", "scripts", "config", "data/queries"]
 
 [tool.pytest.ini_options]
 markers = [

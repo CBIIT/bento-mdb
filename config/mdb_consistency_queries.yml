@@ -1,0 +1,12 @@
+checks:
+  - id: term_dedup_diagnostic
+    description: Detect duplicate term groups after term deduplication.
+    query_file: data/queries/term_dedup_diagnostic.cypher
+    tags:
+      - term-dedup
+      - diagnostic
+    severity: error
+    expect:
+      field: duplicate_groups
+      operator: equals
+      value: 0
