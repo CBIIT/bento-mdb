@@ -62,9 +62,7 @@ checks:
     tags:
       - diagnostic
     severity: error
-    expect:
-      field: problem_count
-      operator: equals
-      value: 0
+    expected:
+        problem_count: 0
 ```
 The query should return a field that can be compared to the expected value. For most diagnostics, the expected compliant result should be 0 problem rows or 0 problem groups.
