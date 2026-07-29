@@ -108,9 +108,16 @@ def get_yaml_files_from_spec(
     is_prerelease = bool(re.search(r"-[a-f0-9]{7}$", version, re.IGNORECASE))
     if is_prerelease:
         logger.info("Is prerelease version: %s", version)
-        repo = "CBIIT/crdc-datahub-models"
-        tag = "dev2"
-        mdf_directory = f"cache/{model}/{model_spec['latest_prerelease_version']}"
+        prerelease_repository = model_spec.get("prerelease_repository")
+        if prerelease_repository:
+            repo = prerelease_repository
+            tag = model_spec.get("latest_prerelease_commit")
+        else:
+            repo = "CBIIT/crdc-datahub-models"
+            tag = "dev2"
+            mdf_directory = (
+                f"cache/{model}/{model_spec['latest_prerelease_version']}"
+            )
     else:
         repo = model_spec.get("repository")
         version_entry = next(
@@ -125,6 +132,9 @@ def get_yaml_files_from_spec(
 
     if not repo:
         msg = "Model spec must have a repository."
+        raise ValueError(msg)
+    if not tag:
+        msg = "Model spec must have a tag or prerelease commit."
         raise ValueError(msg)
     if not mdf_files:
         msg = "Model spec must have file names for MDF files."
