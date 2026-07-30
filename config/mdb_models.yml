@@ -320,6 +320,7 @@ TEST:
   mdf_files:
   - test-model.yml
   - test-model-props.yml
+  in_data_hub: false
   versions:
   - version: 1.0.0
     tag: 1.0.0
