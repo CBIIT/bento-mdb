@@ -12,6 +12,7 @@ class ModelSpec(TypedDict):
     """CRDC model spec. Dict with model repository info and MDF file details."""
 
     repository: str
+    prerelease_repository: NotRequired[str]
     mdf_directory: str
     mdf_files: list[str | Path]
     in_data_hub: bool

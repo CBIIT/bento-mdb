@@ -113,6 +113,70 @@ class TestGetYamlFilesFromSpec:
         ]
         assert_equal(actual, expected)
 
+    def test_get_yaml_files_from_custom_prerelease_repository(self) -> None:
+        """Test that a prerelease repository override uses its commit."""
+        test_model = "TEST"
+        prerelease_commit = "277d1c56e41bdec9e03947804e997ca66656477e"
+        test_spec = ModelSpec(
+            {
+                "repository": "CBIIT/ctos-test-model",
+                "prerelease_repository": "CBIIT/ctos-test-model",
+                "mdf_directory": "model-desc",
+                "mdf_files": ["test-model.yml", "test-model-props.yml"],
+                "in_data_hub": False,
+                "versions": [
+                    {"version": "1.0.0", "tag": "1.0.0", "ignore": True},
+                ],
+                "latest_version": None,
+                "latest_prerelease_version": "1.0.0",
+                "latest_prerelease_commit": prerelease_commit,
+            },
+        )
+
+        actual = get_yaml_files_from_spec(
+            test_spec,
+            test_model,
+            "1.0.0-277d1c5",
+        )
+
+        base_url = (
+            "https://raw.githubusercontent.com/CBIIT/ctos-test-model/"
+            f"{prerelease_commit}/model-desc/"
+        )
+        expected = [base_url + str(f) for f in test_spec["mdf_files"]]
+        assert_equal(actual, expected)
+
+    def test_non_datahub_prerelease_uses_datahub_cache_by_default(self) -> None:
+        """Test that existing non-datahub prereleases keep using the cache."""
+        test_model = "TEST"
+        test_spec = ModelSpec(
+            {
+                "repository": "CBIIT/ctos-test-model",
+                "mdf_directory": "model-desc",
+                "mdf_files": ["test-model.yml", "test-model-props.yml"],
+                "in_data_hub": False,
+                "versions": [{"version": "1.0.0"}],
+                "latest_version": "1.0.0",
+                "latest_prerelease_version": "1.1.0",
+                "latest_prerelease_commit": (
+                    "277d1c56e41bdec9e03947804e997ca66656477e"
+                ),
+            },
+        )
+
+        actual = get_yaml_files_from_spec(
+            test_spec,
+            test_model,
+            "1.1.0-277d1c5",
+        )
+
+        base_url = "https://raw.githubusercontent.com/CBIIT"
+        expected = [
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.1.0/test-model.yml",
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.1.0/test-model-props.yml",
+        ]
+        assert_equal(actual, expected)
+
 
 class TestModelCDESpec:
     """Tests for model CDE spec."""
