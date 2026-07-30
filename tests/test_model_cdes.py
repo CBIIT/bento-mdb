@@ -11,6 +11,7 @@ from bento_mdb.datatypes import ModelSpec
 from bento_mdb.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
+    load_enum_by_reference_for_model,
     load_model_specs_from_yaml,
     make_model_cde_spec,
     process_mdb_cdes,
@@ -48,6 +49,22 @@ class TestLoadModelSpecsFromYaml:
         valid_yaml = Path(tmp_path / "missing.yml")
         with pytest.raises(FileNotFoundError):
             load_model_specs_from_yaml(valid_yaml)
+
+    def test_load_enum_by_reference_for_model(self, tmp_path) -> None:
+        """Only models with load_enum_by_reference: true opt in."""
+        specs = tmp_path / "mdb_models.yml"
+        specs.write_text(
+            """
+CCDI-DCC:
+  load_enum_by_reference: true
+CTDC:
+  repository: CBIIT/ctdc-model
+""",
+            encoding="utf-8",
+        )
+        assert load_enum_by_reference_for_model("CCDI-DCC", specs) is True
+        assert load_enum_by_reference_for_model("CTDC", specs) is False
+        assert load_enum_by_reference_for_model("MISSING", specs) is False
 
 
 class TestGetYamlFilesFromSpec:

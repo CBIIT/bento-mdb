@@ -94,6 +94,22 @@ def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
             raise yaml.YAMLError(msg) from exc
 
 
+_DEFAULT_MDB_MODELS_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "config/mdb_models.yml"
+)
+
+
+def load_enum_by_reference_for_model(
+    model_handle: str,
+    model_specs_yaml: Path = _DEFAULT_MDB_MODELS_PATH,
+) -> bool:
+    """Return True when model spec opts into resolving Enum URL/path references."""
+    if not model_specs_yaml.exists():
+        return False
+    specs = load_model_specs_from_yaml(model_specs_yaml)
+    return bool(specs.get(model_handle, {}).get("load_enum_by_reference", False))
+
+
 def get_yaml_files_from_spec(
     model_spec: ModelSpec,
     model: str,

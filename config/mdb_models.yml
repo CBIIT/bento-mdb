@@ -73,6 +73,7 @@ CCDI-DCC:
   - ccdi-dcc-model-props.yml
   - terms.yml
   in_data_hub: false
+  load_enum_by_reference: true
   versions:
   - version: 0.0.1
   - version: 0.0.2

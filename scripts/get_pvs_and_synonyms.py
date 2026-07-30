@@ -15,6 +15,7 @@ from bento_mdb.model_cdes import (
     add_ncit_synonyms_to_model_cde_spec,
     count_model_cdes,
     dump_to_yaml,
+    load_enum_by_reference_for_model,
     make_model_cde_spec,
 )
 
@@ -53,7 +54,12 @@ def main(model_handle: str, model_version: str, mdf_files: str | list[str]) -> N
 
     # get CDEs from model files
     logger.info("Getting CDEs from %s v%s MDFs...", model_handle, model_version)
-    mdf = MDF(*mdf_files, handle=model_handle, raise_error=True, ignore_enum_by_reference=True)
+    mdf = MDF(
+        *mdf_files,
+        handle=model_handle,
+        raise_error=True,
+        ignore_enum_by_reference=not load_enum_by_reference_for_model(model_handle),
+    )
     model = mdf.model
     (f"{model_handle} v{model_version} has {count_model_cdes(model)} CDEs.")
     model_cde_spec = make_model_cde_spec(model)
