@@ -23,7 +23,7 @@ deployments:
   parameters: {}
   schedule: null
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-queue
     job_variables: {}
 - name: run-cypher-datateam-508
@@ -35,6 +35,6 @@ deployments:
   parameters: {}
   schedule: null
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
