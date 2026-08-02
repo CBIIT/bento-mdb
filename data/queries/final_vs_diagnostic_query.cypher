@@ -1,0 +1,1 @@
+MATCH (vs:value_set) OPTIONAL MATCH (vs)-[:has_term]->(t:term) WITH vs, t ORDER BY t.nanoid WITH vs, collect(DISTINCT t.nanoid) AS term_ids WHERE size(term_ids) > 0 WITH term_ids, count(vs) AS ct WHERE ct > 1 RETURN count(*) AS duplicate_value_set_groups, sum(ct) AS total_value_sets_in_duplicate_groups, sum(ct - 1) AS redundant_value_sets
