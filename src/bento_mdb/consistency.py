@@ -14,9 +14,8 @@ class ExpectationResult:
     check_id: str
     description: str
     passed: bool
-    actual: Any
-    expected: Any
-    operator: str
+    actual: dict[str, Any]
+    expected: dict[str, Any]
     rows: list[dict[str, Any]]
 
 
@@ -66,45 +65,32 @@ def evaluate_expectation(
     check: dict[str, Any],
     rows: list[dict[str, Any]],
 ) -> ExpectationResult:
-    expect = check["expect"]
-    operator = expect["operator"]
+    expected = check["expected"]
 
-    if operator == "row_count_equals":
-        actual = len(rows)
-        expected = expect["value"]
-    else:
-        if not rows:
-            msg = f"Check {check['id']} returned no rows"
-            raise ValueError(msg)
-
-        field = expect["field"]
-        if field not in rows[0]:
-            msg = f"Check {check['id']} expected field {field!r}; got {list(rows[0].keys())}"
-            raise ValueError(msg)
-
-        actual = rows[0][field]
-        expected = expect["value"]
-
-    if operator == "equals":
-        passed = actual == expected
-    elif operator == "not_equals":
-        passed = actual != expected
-    elif operator == "less_than_or_equal":
-        passed = actual <= expected
-    elif operator == "greater_than_or_equal":
-        passed = actual >= expected
-    elif operator == "row_count_equals":
-        passed = actual == expected
-    else:
-        msg = f"Unsupported expectation operator: {operator}"
+    if not rows:
+        msg = f"Check {check['id']} returned no rows"
         raise ValueError(msg)
+
+    actual_row = rows[0]
+    mismatches = {}
+
+    for field, expected_value in expected.items():
+        if field not in actual_row:
+            msg = f"Check {check['id']} expected field {field!r}; got {list(actual_row.keys())}"
+            raise ValueError(msg)
+
+        actual_value = actual_row[field]
+        if actual_value != expected_value:
+            mismatches[field] = {
+                "actual": actual_value,
+                "expected": expected_value,
+            }
 
     return ExpectationResult(
         check_id=check["id"],
         description=check.get("description", ""),
-        passed=passed,
-        actual=actual,
+        passed=not mismatches,
+        actual={field: actual_row[field] for field in expected},
         expected=expected,
-        operator=operator,
         rows=rows,
     )

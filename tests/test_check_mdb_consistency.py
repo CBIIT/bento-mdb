@@ -3,14 +3,12 @@ import pytest
 from bento_mdb.consistency import evaluate_expectation, load_query
 
 
-def test_evaluate_expectation_equals_passes():
+def test_evaluate_expectation_expected_mapping_passes():
     check = {
         "id": "term_dedup_diagnostic",
         "description": "Detect duplicate term groups.",
-        "expect": {
-            "field": "duplicate_groups",
-            "operator": "equals",
-            "value": 0,
+        "expected": {
+            "duplicate_groups": 0,
         },
     }
     rows = [{"duplicate_groups": 0}]
@@ -18,17 +16,16 @@ def test_evaluate_expectation_equals_passes():
     result = evaluate_expectation(check, rows)
 
     assert result.passed is True
-    assert result.actual == 0
+    assert result.actual == {"duplicate_groups": 0}
+    assert result.expected == {"duplicate_groups": 0}
 
 
-def test_evaluate_expectation_equals_fails():
+def test_evaluate_expectation_expected_mapping_fails():
     check = {
         "id": "term_dedup_diagnostic",
         "description": "Detect duplicate term groups.",
-        "expect": {
-            "field": "duplicate_groups",
-            "operator": "equals",
-            "value": 0,
+        "expected": {
+            "duplicate_groups": 0,
         },
     }
     rows = [{"duplicate_groups": 3}]
@@ -36,16 +33,34 @@ def test_evaluate_expectation_equals_fails():
     result = evaluate_expectation(check, rows)
 
     assert result.passed is False
-    assert result.actual == 3
+    assert result.actual == {"duplicate_groups": 3}
+    assert result.expected == {"duplicate_groups": 0}
+
+
+def test_evaluate_expectation_multiple_fields_passes():
+    check = {
+        "id": "summary_check",
+        "expected": {
+            "duplicate_groups": 0,
+            "redundant_terms": 0,
+        },
+    }
+    rows = [{"duplicate_groups": 0, "redundant_terms": 0}]
+
+    result = evaluate_expectation(check, rows)
+
+    assert result.passed is True
+    assert result.actual == {
+        "duplicate_groups": 0,
+        "redundant_terms": 0,
+    }
 
 
 def test_evaluate_expectation_missing_field_raises():
     check = {
         "id": "term_dedup_diagnostic",
-        "expect": {
-            "field": "duplicate_groups",
-            "operator": "equals",
-            "value": 0,
+        "expected": {
+            "duplicate_groups": 0,
         },
     }
 
@@ -53,19 +68,16 @@ def test_evaluate_expectation_missing_field_raises():
         evaluate_expectation(check, [{"other_count": 0}])
 
 
-def test_evaluate_expectation_row_count_equals():
+def test_evaluate_expectation_no_rows_raises():
     check = {
-        "id": "empty_result_check",
-        "expect": {
-            "operator": "row_count_equals",
-            "value": 0,
+        "id": "term_dedup_diagnostic",
+        "expected": {
+            "duplicate_groups": 0,
         },
     }
 
-    result = evaluate_expectation(check, [])
-
-    assert result.passed is True
-    assert result.actual == 0
+    with pytest.raises(ValueError, match="returned no rows"):
+        evaluate_expectation(check, [])
 
 
 def test_load_query_inline():
