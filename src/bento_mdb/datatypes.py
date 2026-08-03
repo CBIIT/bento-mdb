@@ -16,6 +16,7 @@ class ModelSpec(TypedDict):
     mdf_directory: str
     mdf_files: list[str | Path]
     in_data_hub: bool
+    promotion_check: NotRequired[bool]
     versions: list[dict[str, Any]]
     latest_version: str
     latest_prerelease_commit: str | None

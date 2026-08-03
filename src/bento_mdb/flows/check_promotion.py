@@ -284,7 +284,14 @@ def check_promotion_flow(
     """
     logger = get_run_logger()
     model_names = _model_filters_to_names(models_filter)
-    specs = _load_specs(model_names)
+    specs = {
+        model: spec
+        for model, spec in _load_specs(model_names).items()
+        if spec.get("promotion_check", True)
+    }
+    if not specs and stage in ("pre", "post"):
+        logger.info("No promotion-eligible models to check; skipping promotion validation.")
+        return
     use_items = isinstance(models_filter, list) and len(models_filter) > 0 and isinstance(models_filter[0], dict)
 
     if stage == "pre":

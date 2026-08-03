@@ -316,6 +316,7 @@ PSDC:
 TEST:
   repository: CBIIT/ctos-test-model
   prerelease_repository: CBIIT/ctos-test-model
+  promotion_check: false
   mdf_directory: model-desc
   mdf_files:
   - test-model.yml

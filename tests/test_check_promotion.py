@@ -190,6 +190,25 @@ def _diff_result(model: str, version: str, inserts: int = 0, removals: int = 0):
 class TestCheckPromotionFlow:
     """Unit tests for check_promotion_flow (pre/post stage, pass/fail)."""
 
+    @patch.object(flow_module, "check_model_dev")
+    @patch.object(
+        flow_module,
+        "_load_specs",
+        return_value={MODEL: {**SPEC, "promotion_check": False}},
+    )
+    @patch.object(flow_module, "get_run_logger")
+    def test_excluded_models_are_skipped(
+        self, mock_logger, mock_load_specs, mock_check_dev
+    ) -> None:
+        """A filter containing only promotion-disabled models exits successfully."""
+        check_promotion_flow.fn(
+            stage="pre",
+            models_filter=[{"model": MODEL, "has_prerelease_update": True}],
+        )
+
+        mock_load_specs.assert_called_once_with([MODEL])
+        mock_check_dev.assert_not_called()
+
     @patch.object(flow_module, "check_model_sync")
     @patch.object(flow_module, "check_model_qa")
     @patch.object(flow_module, "check_model_dev")
