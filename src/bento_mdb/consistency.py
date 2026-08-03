@@ -10,7 +10,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 @dataclass
-class CheckResult:
+class ExpectationResult:
     check_id: str
     description: str
     passed: bool
@@ -65,7 +65,7 @@ def load_checks_from_yaml(
 def evaluate_expectation(
     check: dict[str, Any],
     rows: list[dict[str, Any]],
-) -> CheckResult:
+) -> ExpectationResult:
     expect = check["expect"]
     operator = expect["operator"]
 
@@ -99,7 +99,7 @@ def evaluate_expectation(
         msg = f"Unsupported expectation operator: {operator}"
         raise ValueError(msg)
 
-    return CheckResult(
+    return ExpectationResult(
         check_id=check["id"],
         description=check.get("description", ""),
         passed=passed,

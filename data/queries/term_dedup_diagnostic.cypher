@@ -1,1 +1,4 @@
-MATCH (t:term) WITH t.origin_name AS origin_name, t.origin_id AS origin_id, t.origin_version AS origin_version, t.value AS value, t ORDER BY CASE WHEN t.origin_definition IS NOT NULL AND trim(toString(t.origin_definition)) <> '' AND toLower(trim(toString(t.origin_definition))) <> 'null' THEN 0 ELSE 1 END, t.nanoid WITH origin_name, origin_id, origin_version, value, collect(t) AS terms WHERE size(terms) > 1 RETURN count(*) AS duplicate_groups, sum(size(terms)) AS total_terms_in_duplicate_groups, sum(size(terms) - 1) AS redundant_terms
+MATCH (t:term)
+WITH t.origin_name as origin_name, t.origin_id as origin_id, t.origin_version as origin_version, t.value as value, count(*) AS n
+WHERE n > 1
+RETURN count(*) AS duplicate_groups

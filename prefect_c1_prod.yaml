@@ -158,15 +158,3 @@ deployments:
     name: mdb-8gb-prefect-prod-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
-- name: check-mdb-consistency-prod
-  version:
-  tags: []
-  concurrency_limit:
-  description: Run configurable read-only MDB consistency checks.
-  entrypoint: src/bento_mdb/flows/check_mdb_consistency.py:check_mdb_consistency_flow
-  parameters: {}
-  schedule: null
-  work_pool:
-    name: mdb-8gb-prefect-prod-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}

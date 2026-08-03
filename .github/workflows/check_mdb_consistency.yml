@@ -1,5 +1,4 @@
-name: Check C1 Prod MDB Consistency
-
+name: Check C1 Dev MDB Consistency
 permissions:
   contents: read
 
@@ -12,10 +11,10 @@ on:
         type: string
         default: config/mdb_consistency_queries.yml
   schedule:
-    - cron: "0 12 * * 1"
+    - cron: "0 12 * * 1" # runs every Monday at 12:00 UTC (8:00 AM Eastern during daylight saving time)
 
 jobs:
-  check-c1-prod-mdb-consistency:
+  check-c1-dev-mdb-consistency:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -48,14 +47,14 @@ jobs:
           set -xeuo pipefail
 
           PARAMS=$(jq -n \
-            --arg mdb_id "cloud-one-mdb-prod" \
+            --arg mdb_id "cloud-one-mdb-dev" \
             --arg checks_yaml "${{ github.event.inputs.checks_yaml || 'config/mdb_consistency_queries.yml' }}" \
             '{
               "mdb_id": $mdb_id,
               "checks_yaml": $checks_yaml
             }')
 
-          uv run prefect deployment run check-mdb-consistency/check-mdb-consistency-prod \
+          uv run prefect deployment run check-mdb-consistency/check-mdb-consistency \
             --params "$PARAMS" \
             --watch \
             --watch-interval 30

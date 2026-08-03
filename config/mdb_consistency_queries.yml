@@ -10,3 +10,14 @@ checks:
       field: duplicate_groups
       operator: equals
       value: 0
+- id: value_set_redundancy_diagnostic
+    description: Detect redundant equivalent terms within the same value set.
+    query_file: data/queries/value_set_redundancy_diagnostic.cypher
+    tags:
+      - value-set-dedup
+      - diagnostic
+    severity: error
+    expect:
+      field: redundant_value_set_term_groups
+      operator: equals
+      value: 0

@@ -35,21 +35,21 @@ pytest tests/test_check_mdb_consistency.py
 
 Live MDB checks are not run directly by local pytest because MDB credentials are stored as Prefect Secret blocks and the production MDB is accessed through the Prefect work pool.
 
-### Run Live Prod Checks
+### Run Live C1 Dev Checks
 
-Use the Check C1 Prod MDB Consistency GitHub Actions workflow. The workflow triggers the check-mdb-consistency-prod Prefect deployment with:
+Use the `Check C1 Dev MDB Consistency` GitHub Actions workflow. The workflow triggers the `check-mdb-consistency` Prefect deployment with:
 
 ```text
-mdb_id: cloud-one-mdb-prod
+mdb_id: cloud-one-mdb-dev
 checks_yaml: config/mdb_consistency_queries.yml
 ```
 
 The Prefect flow loads MDB credentials from the existing Prefect Secret naming convention:
 
 ```text
-cloud-one-mdb-prod-uri
-cloud-one-mdb-prod-usr
-cloud-one-mdb-prod-pwd
+cloud-one-mdb-dev-uri
+cloud-one-mdb-dev-usr
+cloud-one-mdb-dev-pwd
 ```
 
 ### Add A Check
