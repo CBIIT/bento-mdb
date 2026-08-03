@@ -1,0 +1,60 @@
+name: Check C1 Dev MDB Consistency
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      checks_yaml:
+        description: Path to consistency check YAML
+        required: false
+        type: string
+        default: config/mdb_consistency_queries.yml
+  schedule:
+    - cron: "0 12 * * 1" # runs every Monday at 12:00 UTC (8:00 AM Eastern during daylight saving time)
+
+jobs:
+  check-c1-dev-mdb-consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Run Prefect MDB consistency check
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+        run: |
+          set -xeuo pipefail
+
+          PARAMS=$(jq -n \
+            --arg mdb_id "cloud-one-mdb-dev" \
+            --arg checks_yaml "${{ github.event.inputs.checks_yaml || 'config/mdb_consistency_queries.yml' }}" \
+            '{
+              "mdb_id": $mdb_id,
+              "checks_yaml": $checks_yaml
+            }')
+
+          uv run prefect deployment run check-mdb-consistency/check-mdb-consistency \
+            --params "$PARAMS" \
+            --watch \
+            --watch-interval 30
