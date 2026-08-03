@@ -22,6 +22,7 @@ _DEFAULT_SPECS_PATH = Path("config/mdb_models.yml")
 
 # Context line: @@ ... ModelName:
 _CONTEXT_RE = re.compile(r"^@@.*@@\s+([A-Za-z0-9_-]+):")
+_ADDED_MODEL_RE = re.compile(r"^\+([A-Za-z0-9_-]+):\s*$")
 _LINE_LATEST_VERSION = re.compile(r"^\+\s+latest_version:\s*(.+)$")
 _LINE_PRERELEASE_VERSION = re.compile(r"^\+\s+latest_prerelease_version:\s*(.+)$")
 _LINE_PRERELEASE_COMMIT = re.compile(r"^\+\s+latest_prerelease_commit:\s*(.+)$")
@@ -59,11 +60,18 @@ def parse_diff(
         if m:
             current = m.group(1)
             continue
+        m = _ADDED_MODEL_RE.match(line)
+        if m:
+            current = m.group(1)
+            continue
         if not current:
             continue
         if _LINE_LATEST_VERSION.match(line) and "prerelease" not in line:
             _ensure_model(data, current)
             val = _LINE_LATEST_VERSION.match(line).group(1).strip()
+            if val.lower() in {"null", "~"}:
+                data[current]["latest_version"] = None
+                continue
             data[current]["saw_release"] = True
             data[current]["latest_version"] = val
             current = ""
