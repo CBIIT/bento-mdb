@@ -87,8 +87,11 @@ def _query_handles(
         "MATCH (n:node {model:$model, version:$version}) RETURN n.handle AS handle"
     )}
     rels = {(r["handle"], r["src"], r["dst"]) for r in _q(
-        "MATCH (r:relationship {model:$model, version:$version})"
-        "-[:has_src]->(src:node), (r)-[:has_dst]->(dst:node) "
+        "MATCH (r:relationship {model:$model, version:$version}) "
+        "OPTIONAL MATCH (r)-[:has_src]->"
+        "(src:node {model:$model, version:$version}) "
+        "OPTIONAL MATCH (r)-[:has_dst]->"
+        "(dst:node {model:$model, version:$version}) "
         "RETURN r.handle AS handle, src.handle AS src, dst.handle AS dst"
     )}
     node_props = {(r["prop"], r["node"]) for r in _q(
@@ -100,8 +103,11 @@ def _query_handles(
         (r["handle"], r["src"], r["dst"], r["prop"])
         for r in _q(
             "MATCH (r:relationship {model:$model, version:$version})"
-            "-[:has_src]->(src:node), (r)-[:has_dst]->(dst:node), "
-            "(r)-[:has_property]->(p:property {model:$model, version:$version}) "
+            "-[:has_property]->(p:property {model:$model, version:$version}) "
+            "OPTIONAL MATCH (r)-[:has_src]->"
+            "(src:node {model:$model, version:$version}) "
+            "OPTIONAL MATCH (r)-[:has_dst]->"
+            "(dst:node {model:$model, version:$version}) "
             "RETURN r.handle AS handle, src.handle AS src, dst.handle AS dst, "
             "p.handle AS prop"
         )

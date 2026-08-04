@@ -154,10 +154,10 @@ class TestCheckModelDev:
         return_value=[str(SHARED_REL_PROP_MDF_PATH)],
     )
     @patch.object(flow_module, "_connect")
-    def test_missing_relationship_end_fails_validation(
+    def test_missing_relationship_instance_fails_validation(
         self, mock_connect, mock_get_yaml, mock_logger
     ) -> None:
-        """A missing Src/Dst combination is detected even when its handle exists."""
+        """A completely missing relationship instance is detected."""
         mock_connect.return_value = _make_dev_mock(
             nodes=["sample", "diagnosis", "case"],
             rels=[("of_case", "sample", "case")],
@@ -172,6 +172,66 @@ class TestCheckModelDev:
         assert not result.passed
         assert result.inserts == 1
         assert result.removals == 0
+
+    @pytest.mark.parametrize(
+        ("orphan_rel", "orphan_rel_prop"),
+        [
+            (
+                ("of_case", None, "case"),
+                ("of_case", None, "case", "days_to_sample"),
+            ),
+            (
+                ("of_case", "diagnosis", None),
+                ("of_case", "diagnosis", None, "days_to_sample"),
+            ),
+        ],
+        ids=["missing-source", "missing-destination"],
+    )
+    @patch.object(flow_module, "get_run_logger")
+    @patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SHARED_REL_PROP_MDF_PATH)],
+    )
+    @patch.object(flow_module, "_connect")
+    def test_orphaned_relationship_end_fails_validation(
+        self,
+        mock_connect,
+        _mock_get_yaml,
+        _mock_logger,
+        orphan_rel,
+        orphan_rel_prop,
+    ) -> None:
+        """An existing relationship missing either endpoint is detected."""
+        mdb = _make_dev_mock(
+            nodes=["sample", "diagnosis", "case"],
+            rels=[
+                ("of_case", "sample", "case"),
+                orphan_rel,
+            ],
+            rel_props=[
+                ("of_case", "sample", "case", "days_to_sample"),
+                orphan_rel_prop,
+            ],
+        )
+        mock_connect.return_value = mdb
+
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
+
+        assert not result.passed
+        assert result.inserts == 2
+        assert result.removals == 2
+        relationship_queries = [
+            call.args[0]
+            for call in mdb.get_with_statement.call_args_list
+            if "r:relationship" in call.args[0]
+        ]
+        assert len(relationship_queries) == 2
+        assert all(query.count("OPTIONAL MATCH") == 2 for query in relationship_queries)
+        assert all(
+            query.count(":node {model:$model, version:$version}") == 2
+            for query in relationship_queries
+        )
 
     @patch.object(flow_module, "get_run_logger")
     @patch.object(
