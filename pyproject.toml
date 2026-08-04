@@ -12,7 +12,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "bento-mdf>=0.13.3b1",
+    "bento-mdf>=0.13.3b2",
     "bento-meta>=0.3.2",
     "boto3>=1.38.36",
     "click>=8.1.8",
@@ -72,6 +72,3 @@ include = ["src", "scripts", "config", "data/queries"]
 markers = [
     "docker: marks tests that require docker",
 ]
-
-[tool.uv.sources]
-bento-mdf = { git = "https://github.com/CBIIT/bento-mdf.git", branch = "DATATEAM-550/read-edp-mdf", subdirectory = "python" }
