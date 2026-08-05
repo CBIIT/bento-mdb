@@ -72,6 +72,5 @@ jobs:
           status: ${{ needs.check-c1-dev-mdb-consistency.result == 'failure' && 'failure' || 'success' }}
           message: |
             *[Cloud One] MDB Consistency Check*
-            Environment: Cloud One / cloud-one-mdb-dev
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ needs.check-c1-dev-mdb-consistency.result == 'failure' && 'Failure' || 'Success' }}>
             
