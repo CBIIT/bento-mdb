@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from bento_mdf.mdf import MDF
+from bento_mdf.mdf import MDF, MDFReader
 from bento_meta.model import Model
 from bento_meta.objects import Node, Property, Tag
 
@@ -19,6 +19,8 @@ TEST_MODEL_MDF_SHARED_REL_PROPS = Path(
 )
 TEST_MODEL_MDF_USENULLCDE = Path(CURRENT_DIRECTORY, "samples", "test_mdf_useNullCDE_simple.yml")
 TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
+TEST_MODEL_EDP = Path(CURRENT_DIRECTORY, "samples", "test_model_edp.yml")
+TEST_MODEL_EDP_PROPS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_edp.yml")
 AUTHOR = "Tolkien"
 MODEL_HDL = "TEST"
 _COMMIT = "_COMMIT_123"
@@ -298,3 +300,37 @@ class TestMakeModelChangelog:
         ]
 
         assert_equal(actual, expected)
+
+    def test_edp_enum_links_property_to_existing_edp_value_set(self) -> None:
+        """EDP enum references should link the property to the EDP value set."""
+        mdf = MDFReader(
+            TEST_MODEL_EDP,
+            TEST_MODEL_EDP_PROPS,
+            ignore_enum_by_reference=True,
+        )
+        converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
+        changelog = converter.convert_model_to_changelog(
+            author=AUTHOR,
+            model_version="1.2.3",
+        )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
+        ]
+
+        expected = (
+            'MATCH (prop:property {handle: "program_name", model: "TEST", version: "1.2.3"}) '
+            "MATCH (edp:term) "
+            'WHERE edp.origin_name = "CRDC" '
+            'AND edp.origin_id = "CRDC00005" '
+            'AND edp.origin_version = "1" '
+            "MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+            "MERGE (prop)-[:has_value_set]->(vs)"
+        )
+
+        assert expected in actual
+        assert not any(
+            "MATCH (n0:property" in stmt
+            and "handle:'program_name'" in stmt
+            and "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
+            for stmt in actual
+        )

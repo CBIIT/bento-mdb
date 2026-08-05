@@ -528,16 +528,17 @@ class TestMakeModelCdeSpecWithEdp:
     TEST_EDP_MODEL = Path(__file__).parent / "samples" / "test_model_edp.yml"
     TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
 
-    def test_make_model_cde_spec_edp_reference_populated(self) -> None:
-        """Annotation for EDP-backed CDE should have edp_reference set."""
+    def test_make_model_cde_spec_edp_enum_does_not_populate_edp_reference(self) -> None:
+        """EDP enum references should not imply CDE-to-EDP linkage."""
         from bento_mdf.mdf import MDFReader
-        mdf = MDFReader(self.TEST_EDP_MODEL, self.TEST_EDP_PROPS, ignore_enum_by_reference=True)
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+            ignore_enum_by_reference=True,
+        )
         actual = make_model_cde_spec(mdf.model)
         assert len(actual["annotations"]) == 1
-        edp_ref = actual["annotations"][0].get("edp_reference")
-        assert edp_ref is not None
-        assert edp_ref["origin_id"] == "CRDC00005"
-        assert edp_ref["origin_name"] == "CRDC"
+        assert actual["annotations"][0].get("edp_reference") is None
 
     def test_make_model_cde_spec_edp_matches_expected(self) -> None:
         """Full spec output for EDP model matches expected structure."""

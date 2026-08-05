@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from bento_mdb.model_cdes import get_edp_enum_term
 from bento_meta.model import Model, make_nanoid
 from bento_meta.objects import Concept, Tag
 from bento_meta.objects import Model as ModelEnt
+
 from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
 
 from bento_mdb.cypher_utils import (
@@ -21,6 +23,11 @@ if TYPE_CHECKING:
     from bento_meta.entity import Entity
 
 logger = logging.getLogger(__name__)
+
+
+def _cypher_string_literal(value: str) -> str:
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def add_version_to_model_ents(model: Model) -> None:
@@ -178,10 +185,55 @@ class ModelToChangelogConverter:
         self.process_tags(entity.concept)
         self.process_terms(entity.concept)
 
+    def generate_cypher_to_link_edp_value_set(self, entity: Entity) -> None:
+        """Generate cypher to link a model property to an EDP value set."""
+        edp_term = get_edp_enum_term(entity)
+        if not edp_term:
+            return
+
+        prop_attrs = entity.get_attr_dict()
+        prop_filters = [
+            f"handle: {_cypher_string_literal(prop_attrs['handle'])}",
+            f"model: {_cypher_string_literal(prop_attrs['model'])}",
+        ]
+        if prop_attrs.get("version"):
+            prop_filters.append(
+                f"version: {_cypher_string_literal(prop_attrs['version'])}",
+            )
+
+        edp_filters = [
+            f"edp.origin_name = {_cypher_string_literal(edp_term.origin_name)}",
+            f"edp.origin_id = {_cypher_string_literal(edp_term.origin_id)}",
+        ]
+        if getattr(edp_term, "origin_version", None):
+            edp_filters.append(
+                f"edp.origin_version = {_cypher_string_literal(edp_term.origin_version)}",
+            )
+
+        stmt = (
+            f"MATCH (prop:property {{{', '.join(prop_filters)}}}) "
+            f"MATCH (edp:term) "
+            f"WHERE {' AND '.join(edp_filters)} "
+            f"MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+            f"MERGE (prop)-[:has_value_set]->(vs)"
+        )
+        rollback = (
+            f"MATCH (prop:property {{{', '.join(prop_filters)}}})"
+            f"-[r:has_value_set]->(vs:value_set)<-[:specifies_value_set]-(edp:term) "
+            f"WHERE {' AND '.join(edp_filters)} "
+            f"DELETE r"
+        )
+        self.add_statement("add_rels", stmt, rollback)
+        
     def process_value_set(self, entity: Entity) -> None:
         """Generate cypher statements to merge an entity's value_set attribute."""
         if not entity.value_set:
             return
+
+        if get_edp_enum_term(entity):
+            self.generate_cypher_to_link_edp_value_set(entity)
+            return
+
         if not entity.value_set.nanoid:
             entity.value_set.nanoid = make_nanoid()
         self.generate_cypher_to_add_entity(entity.value_set)
