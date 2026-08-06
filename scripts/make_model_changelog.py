@@ -93,7 +93,7 @@ def main(  # noqa: PLR0913
     """Get liquibase changelog from mdf files for a model."""
     logger.info("Script started")
 
-    mdf = MDF(*mdf_files, handle=model_handle, _commit=_commit, raise_error=True, ignore_enum_by_reference=True)
+    mdf = MDF(*mdf_files, handle=model_handle, _commit=_commit, raise_error=True)
     if not mdf.model:
         msg = "Error getting model from MDF"
         raise RuntimeError(msg)
