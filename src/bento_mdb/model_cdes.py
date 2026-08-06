@@ -169,7 +169,6 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                 # if 'caDSR' not in origin name, not a CDE
                 if "cadsr" not in term_key[1].lower():
                     continue
-                _edp_term = get_edp_enum_term(entity)
                 cde_spec["annotations"].append(
                     {
                         "entity": {
@@ -182,12 +181,7 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
                             "attrs": term.get_attr_dict(),
                         },
                         "value_set": [],
-
-                        "edp_reference": {
-                            "origin_id": _edp_term.origin_id,
-                            "origin_name": _edp_term.origin_name,
-                            "origin_version": getattr(_edp_term, "origin_version", None),
-                        } if _edp_term else None
+                        "edp_reference": None,
                     },
                 )
     return cde_spec
