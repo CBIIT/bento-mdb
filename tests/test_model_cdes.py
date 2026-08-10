@@ -504,7 +504,6 @@ class TestGetEdpEnumTerm:
         mdf = MDFReader(
             self.TEST_EDP_MODEL,
             self.TEST_EDP_PROPS,
-            ignore_enum_by_reference=True,
         )
         prop = mdf.model.props[("program", "program_name")]
         result = get_edp_enum_term(prop)
@@ -534,7 +533,6 @@ class TestMakeModelCdeSpecWithEdp:
         mdf = MDFReader(
             self.TEST_EDP_MODEL,
             self.TEST_EDP_PROPS,
-            ignore_enum_by_reference=True,
         )
         actual = make_model_cde_spec(mdf.model)
         assert len(actual["annotations"]) == 1
@@ -547,7 +545,6 @@ class TestMakeModelCdeSpecWithEdp:
         mdf = MDFReader(
             self.TEST_EDP_MODEL,
             self.TEST_EDP_PROPS,
-            ignore_enum_by_reference=True,
         )
         actual = make_model_cde_spec(mdf.model)
         assert_equal(actual, TEST_MAKE_MODEL_CDE_SPEC_EDP)

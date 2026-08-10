@@ -121,7 +121,7 @@ def _load_mdf_handles(
     version: str,
 ) -> tuple[set, set, set, set]:
     urls = get_yaml_files_from_spec(spec, model, version)
-    mdf = MDF(*urls, handle=model, raise_error=True, ignore_enum_by_reference=True)
+    mdf = MDF(*urls, handle=model, raise_error=True)
     m = mdf.model
     nodes = set(m.nodes.keys())
     rels = set(m.edges.keys())
