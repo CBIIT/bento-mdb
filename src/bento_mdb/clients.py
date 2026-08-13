@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import datetime
 import io
@@ -773,3 +774,62 @@ class GitHubClient:  # TODO: replace with GitHub API client
 
         logger.warning("Could not extract version from commit files for %s", model)
         return None
+
+    def get_repository_prerelease_model_info(
+        self,
+        repo: str,
+        mdf_directory: str,
+        mdf_files: list[str],
+    ) -> tuple[str, str] | None:
+        """Get the default-branch HEAD and MDF version from a model repository."""
+        if not mdf_files:
+            logger.warning("No MDF files configured for prerelease repository %s", repo)
+            return None
+
+        commits_url = f"{self.BASE_URL}/repos/{repo}/commits"
+        response = self.session.get(
+            commits_url,
+            params={"per_page": 1},
+            timeout=DEFAULT_TIMEOUT,
+        )
+        if response.status_code != RESPONSE_200:
+            logger.error(
+                "Failed to get latest prerelease commit for %s: %s",
+                repo,
+                response.status_code,
+            )
+            response.raise_for_status()
+        commits = response.json()
+        if not commits:
+            logger.warning("No commits found for prerelease repository %s", repo)
+            return None
+
+        commit_sha = commits[0]["sha"]
+        model_file = "/".join(
+            part.strip("/") for part in (mdf_directory, mdf_files[0]) if part
+        )
+        contents_url = f"{self.BASE_URL}/repos/{repo}/contents/{model_file}"
+        contents_response = self.session.get(
+            contents_url,
+            params={"ref": commit_sha},
+            timeout=DEFAULT_TIMEOUT,
+        )
+        if contents_response.status_code != RESPONSE_200:
+            logger.error(
+                "Failed to read prerelease MDF %s at %s: %s",
+                model_file,
+                commit_sha,
+                contents_response.status_code,
+            )
+            contents_response.raise_for_status()
+
+        encoded_content = contents_response.json().get("content")
+        if not encoded_content:
+            logger.warning("No content returned for %s at %s", model_file, commit_sha)
+            return None
+        model_yaml = yaml.safe_load(base64.b64decode(encoded_content)) or {}
+        version = model_yaml.get("Version")
+        if not version:
+            logger.warning("No Version found in %s at %s", model_file, commit_sha)
+            return None
+        return commit_sha, str(version)

@@ -54,13 +54,20 @@ def update_model_versions(
         raw_tags = github_client.get_repo_tags(repo)
         current_versions = spec.get("versions", [])
 
+        prerelease_repo = spec.get("prerelease_repository")
+        prerelease_only = bool(
+            prerelease_repo
+            and spec.get("latest_version") is None
+            and all(v.get("ignore", False) for v in current_versions)
+        )
+
         nonignored_versions = [
             v for v in current_versions if not v.get("ignore", False)
         ]
         current_latest_version = Version(
             max([v["version"] for v in nonignored_versions], default="0.0.0"),
         )
-        if raw_tags:
+        if raw_tags and not prerelease_only:
             for tag in raw_tags:
                 normalized_tag = normalize_tag_version(tag)
                 tag_version = Version(normalized_tag)
@@ -101,12 +108,26 @@ def update_model_versions(
             if nonignored_sorted:
                 spec["latest_version"] = nonignored_sorted[-1]["version"]
             else:
-                spec["latest_version"] = "0.0.0"
+                spec["latest_version"] = None
 
-        if not spec["in_data_hub"]:
+        if prerelease_repo:
+            logger.info(
+                "Checking %s for new commits in custom prerelease repository %s...",
+                model,
+                prerelease_repo,
+            )
+            new_prerelease_info = (
+                github_client.get_repository_prerelease_model_info(
+                    prerelease_repo,
+                    spec.get("mdf_directory", "model-desc"),
+                    spec.get("mdf_files", []),
+                )
+            )
+        elif spec["in_data_hub"]:
+            logger.info("Checking %s for new prerelease commits...", model)
+            new_prerelease_info = github_client.get_prerelease_model_info(model)
+        else:
             continue
-        logger.info("Checking %s for new prerelease commits...", model)
-        new_prerelease_info = github_client.get_prerelease_model_info(model)
         if not new_prerelease_info:
             logger.info("No prerelease commits found for %s", model)
             continue
