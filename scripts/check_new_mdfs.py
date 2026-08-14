@@ -101,7 +101,7 @@ def update_model_versions(
             if nonignored_sorted:
                 spec["latest_version"] = nonignored_sorted[-1]["version"]
             else:
-                spec["latest_version"] = "0.0.0"
+                spec["latest_version"] = None
 
         if not spec["in_data_hub"]:
             continue
