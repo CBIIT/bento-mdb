@@ -102,6 +102,7 @@ def main(  # noqa: PLR0913
     converter = ModelToChangelogConverter(
         model=mdf.model,
         add_rollback=add_rollback,
+        _commit=_commit,
     )
     changelog = converter.convert_model_to_changelog(
         author,
