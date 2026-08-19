@@ -37,7 +37,7 @@ class TestMakeModelChangelog:
             author=AUTHOR,
         )
         actual = len(changelog.subelements)
-        expected = 52
+        expected = 48
         assert_equal(actual, expected)
 
     def test_make_model_changelog_shared_props(self) -> None:
@@ -86,6 +86,48 @@ class TestMakeModelChangelog:
         ]
         assert_equal(actual, expected)
 
+    def test_duplicate_model_value_sets_are_reused(self) -> None:
+        """Properties with identical enum term sets should reuse one value set."""
+        mdf = MDF(
+            TEST_MODEL_MDF_TERMS,
+            handle=MODEL_HDL,
+            _commit=_COMMIT,
+            raise_error=True,
+        )
+        converter = ModelToChangelogConverter(
+            model=mdf.model,
+            add_rollback=False,
+            _commit=_COMMIT,
+        )
+        changelog = converter.convert_model_to_changelog(author=AUTHOR)
+
+        actual = [
+            remove_nanoids_from_str(x.change_type.text)
+            for x in changelog.subelements
+        ]
+
+        value_set_creates = [
+            stmt
+            for stmt in actual
+            if stmt.startswith("MERGE (n0:value_set")
+        ]
+        value_set_links = [
+            stmt
+            for stmt in actual
+            if "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
+        ]
+        value_set_term_links = [
+            stmt
+            for stmt in actual
+            if "MERGE (n0)-[r0:has_term]->(n1)" in stmt
+        ]
+
+        assert len(value_set_creates) == 1
+        assert len(value_set_links) == 2
+        assert len(value_set_term_links) == 3
+        assert "_commit = '_COMMIT_123'" in value_set_creates[0]
+        assert "dummy" not in value_set_creates[0]
+
     def test_shared_relationship_props(self) -> None:
         """Test that relationships with multiple ends get separate properties."""
         mdf = MDF(
@@ -117,7 +159,11 @@ class TestMakeModelChangelog:
             _commit=_COMMIT,
             raise_error=True,
         )
-        converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
+        converter = ModelToChangelogConverter(
+            model=mdf.model,
+            add_rollback=False,
+            _commit=_COMMIT,
+        )
         changelog = converter.convert_model_to_changelog(
             author=AUTHOR,
         )
@@ -137,7 +183,7 @@ class TestMakeModelChangelog:
             "CREATE (n0:tag {key:'mapping_source',value:'TEST',nanoid:''})",
             "MERGE (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
             " ON CREATE SET n0._commit = '_COMMIT_123'",
-            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
+            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
             "MERGE (n0:term {handle:'bam',value:'bam',origin_name:'TEST'})",
             "MERGE (n0:term {handle:'cram',value:'cram',origin_name:'TEST'})",
             "MERGE (n0:term {handle:'dict',value:'dict',origin_name:'TEST'})",
@@ -147,7 +193,6 @@ class TestMakeModelChangelog:
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
             "is_extended:False,_commit:'_COMMIT_123'})",
-            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
             "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
             ",_commit:'_COMMIT_123'}), "
             "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
@@ -202,12 +247,6 @@ class TestMakeModelChangelog:
             "is_key:False,is_nullable:False,is_strict:True,"
             "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'cram',value:'cram',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
         assert_equal(actual, expected)
 

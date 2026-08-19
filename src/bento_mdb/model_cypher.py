@@ -92,10 +92,13 @@ class ModelToChangelogConverter:
         *,
         add_rollback: bool = True,
         terms_only: bool = False,
+        _commit: str | None = None,
     ) -> None:
         """Initialize converter and structures to hold cypher stmts & added entities."""
         self.add_rollback = add_rollback
         self.terms_only = terms_only
+        self._commit = _commit
+        self.value_sets_by_term_key = {}
         self.model = model
         self.cypher_stmts: dict[str, dict[str, list[Statement]]] = {
             "add_ents": {"statements": [], "rollbacks": []},
@@ -224,7 +227,33 @@ class ModelToChangelogConverter:
             f"DELETE r"
         )
         self.add_statement("add_rels", stmt, rollback)
-        
+
+    def get_value_set_term_key(self, value_set: Entity) -> tuple:
+        """Return a stable identity key for a value set's attached terms."""
+        terms = getattr(value_set, "terms", None)
+        if not terms:
+            return ()
+
+        return tuple(
+            sorted(
+                (
+                    getattr(term, "origin_name", None) or "",
+                    getattr(term, "origin_id", None) or "",
+                    getattr(term, "origin_version", None) or "",
+                    getattr(term, "value", None) or "",
+                )
+                for term in terms.values()
+            ),
+        )
+
+    def set_value_set_commit(self, value_set: Entity) -> None:
+        """Replace missing/dummy value_set commit with the changelog commit."""
+        if self._commit and (
+            not getattr(value_set, "_commit", None)
+            or getattr(value_set, "_commit", None) == "dummy"
+        ):
+            value_set._commit = self._commit  # noqa: SLF001
+
     def process_value_set(self, entity: Entity) -> None:
         """Generate cypher statements to merge an entity's value_set attribute."""
         if not entity.value_set:
@@ -234,8 +263,27 @@ class ModelToChangelogConverter:
             self.generate_cypher_to_link_edp_value_set(entity)
             return
 
+        term_key = self.get_value_set_term_key(entity.value_set)
+        canonical_value_set = (
+            self.value_sets_by_term_key.get(term_key) if term_key else None
+        )
+
+        if canonical_value_set:
+            self.generate_cypher_to_add_relationship(
+                entity,
+                "has_value_set",
+                canonical_value_set,
+            )
+            return
+
+        self.set_value_set_commit(entity.value_set)
+
         if not entity.value_set.nanoid:
             entity.value_set.nanoid = make_nanoid()
+
+        if term_key:
+            self.value_sets_by_term_key[term_key] = entity.value_set
+
         self.generate_cypher_to_add_entity(entity.value_set)
         self.generate_cypher_to_add_relationship(
             entity,
