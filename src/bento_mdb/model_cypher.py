@@ -230,17 +230,17 @@ class ModelToChangelogConverter:
 
     def get_value_set_term_key(self, value_set: Entity) -> tuple:
         """Return a stable identity key for a value set's attached terms."""
-        terms = getattr(value_set, "terms", None)
+        terms = value_set.terms
         if not terms:
             return ()
 
         return tuple(
             sorted(
                 (
-                    getattr(term, "origin_name", None) or "",
-                    getattr(term, "origin_id", None) or "",
-                    getattr(term, "origin_version", None) or "",
-                    getattr(term, "value", None) or "",
+                    term.origin_name or "",
+                    term.origin_id or "",
+                    term.origin_version or "",
+                    term.value or "",
                 )
                 for term in terms.values()
             ),
@@ -249,8 +249,8 @@ class ModelToChangelogConverter:
     def set_value_set_commit(self, value_set: Entity) -> None:
         """Replace missing/dummy value_set commit with the changelog commit."""
         if self._commit and (
-            not getattr(value_set, "_commit", None)
-            or getattr(value_set, "_commit", None) == "dummy"
+            value_set._commit is not None
+            or value_set._commit == "dummy"
         ):
             value_set._commit = self._commit  # noqa: SLF001
 
