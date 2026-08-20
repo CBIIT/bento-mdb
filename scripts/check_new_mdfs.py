@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 load_dotenv(Path("config/.env"))
 logger = logging.getLogger(__name__)
 
-
+logger.level(logging.INFO)
 def normalize_tag_version(tag: str) -> str:
     """
     Extract a semantic version string (e.g., "2.1.0") from a tag.
