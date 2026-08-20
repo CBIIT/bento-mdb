@@ -325,8 +325,7 @@ TEST:
   - version: 1.0.0
     tag: 1.0.0
     ignore: true
-  - version: 1.1.0
-    tag: 1.1.0
   latest_version: null
-  latest_prerelease_commit: 52dd24b7852023272b617cbff46c01f1f7760e6a
-  latest_prerelease_version: 1.1.0
+  latest_prerelease_commit: 277d1c56e41bdec9e03947804e997ca66656477e
+  latest_prerelease_version: 1.0.0
+# 52dd24b7852023272b617cbff46c01f1f7760e6a
