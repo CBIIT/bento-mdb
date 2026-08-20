@@ -327,7 +327,6 @@ TEST:
     ignore: true
   - version: 1.1.0
     tag: 1.1.0
-    ignore: true
   latest_version: null
   latest_prerelease_commit: 52dd24b7852023272b617cbff46c01f1f7760e6a
   latest_prerelease_version: 1.1.0

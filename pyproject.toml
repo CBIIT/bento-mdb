@@ -12,7 +12,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "bento-mdf>=0.13.3b2",
+    "bento-mdf @ git+https://github.com/CBIIT/bento-mdf.git@DATATEAM-692-better-fix#subdirectory=python",
     "bento-meta>=0.3.2",
     "boto3>=1.38.36",
     "click>=8.1.8",
@@ -43,6 +43,8 @@ make_model_changelog = "scripts.make_model_changelog:main"
 renumber_changelog = "scripts.renumber_changelog:main"
 make_edp_changelog = "scripts.make_edp_changelog:main"
 
+[tool.hatch.metadata]
+allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/bento_mdb", "scripts"]
 

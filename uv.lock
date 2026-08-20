@@ -183,7 +183,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bento-mdf", specifier = ">=0.13.3b2" },
+    { name = "bento-mdf", git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&rev=DATATEAM-692-better-fix" },
     { name = "bento-meta", specifier = ">=0.3.2" },
     { name = "boto3", specifier = ">=1.38.36" },
     { name = "click", specifier = ">=8.1.8" },
@@ -212,7 +212,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "bento-mdf"
 version = "0.13.3"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/CBIIT/bento-mdf.git?subdirectory=python&rev=DATATEAM-692-better-fix#02c4c93a0a2b4e9b2f58a20d6c5164a270477bb2" }
 dependencies = [
     { name = "annotated-types" },
     { name = "bento-meta" },
@@ -230,10 +230,6 @@ dependencies = [
     { name = "tornado" },
     { name = "tqdm" },
     { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/de/91/1a10ef24ce68322c68b66adc73d3abcab800e0a18f1fa6a35f2b55b5d078/bento_mdf-0.13.3.tar.gz", hash = "sha256:4bacc5ee5d34bd0246200529f29a18183cd75dd66ca275e70c7d937138aadf3c", size = 32310, upload-time = "2026-08-14T16:48:49.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/72/fa325648714b2dc021a4832813c96f3c1be0d05a3719001269d7f4354284/bento_mdf-0.13.3-py3-none-any.whl", hash = "sha256:8d7d42739ef3d9acb73bbe9e506fe4ac3f9b8babdb0f7cad908519894a3e4a28", size = 37898, upload-time = "2026-08-14T16:48:48.188Z" },
 ]
 
 [[package]]
