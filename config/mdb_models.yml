@@ -219,7 +219,9 @@ CTDC:
     tag: 3.1.0
   - version: 3.2.0
     tag: 3.2.0
-  latest_version: 3.2.0
+  - version: 3.3.0
+    tag: 3.3.0
+  latest_version: 3.3.0
   latest_prerelease_commit: 14f4a6bf6efc4ab199eb44ddf81029b0496dea68
   latest_prerelease_version: 3.3.0
 GDC:
