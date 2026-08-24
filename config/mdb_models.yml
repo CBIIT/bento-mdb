@@ -148,7 +148,9 @@ CDS:
     tag: 11.0.3-GC_Release
   - version: 11.0.4
     tag: 11.0.4-GC_Release
-  latest_version: 11.0.4
+  - version: 12.0.0
+    tag: 12.0.0-GC_Release
+  latest_version: 12.0.0
   latest_prerelease_commit: 0fea351c3cee88c246b14ab4f69929f12ebd08a1
   latest_prerelease_version: 12.0.0
 CTDC:
