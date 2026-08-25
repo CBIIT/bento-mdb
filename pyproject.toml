@@ -12,7 +12,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "bento-mdf>=0.13.3b2",
+    "bento-mdf>=0.13.4",
     "bento-meta>=0.3.2",
     "boto3>=1.38.36",
     "click>=8.1.8",
