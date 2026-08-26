@@ -63,6 +63,7 @@ jobs:
 
       - name: Run EDP Check Script
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           EDP_SPECS_YAML: "${{ github.event.inputs.edp_specs_path || 'config/mdb_edps.yml' }}"
           NO_COMMIT: "${{ github.event.inputs.no_commit || 'false' }}"
           NEW_ONLY: "${{ github.event.inputs.new_only || 'true' }}"
