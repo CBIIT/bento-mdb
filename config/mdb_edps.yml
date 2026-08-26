@@ -4,10 +4,10 @@ OBIB:
   mdf_files:
   - edp-props.yml
   - terms/obib-terms.yml
-  latest_version: "1"
+  latest_version: '1'
   versions:
-  - version: "1"
-    tag: "1"
+  - version: '1'
+    tag: '1'
   origin: CRDC
   code: CRDC0002
   property: obib_terms_valueset
@@ -21,8 +21,10 @@ QA_TEST:
   mdf_files:
   - edp-props.yml
   - terms/qa-test-terms.yml
-  latest_version: "0"
-  versions: []
+  latest_version: '1'
+  versions:
+  - version: '1'
+    tag: '1'
   origin: CRDC
   code: CRDC0005
   property: qa_test_valueset
