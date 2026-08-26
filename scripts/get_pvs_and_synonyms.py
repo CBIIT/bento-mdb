@@ -53,7 +53,7 @@ def main(model_handle: str, model_version: str, mdf_files: str | list[str]) -> N
 
     # get CDEs from model files
     logger.info("Getting CDEs from %s v%s MDFs...", model_handle, model_version)
-    mdf = MDF(*mdf_files, handle=model_handle, raise_error=True, ignore_enum_by_reference=True)
+    mdf = MDF(*mdf_files, handle=model_handle, raise_error=True)
     model = mdf.model
     (f"{model_handle} v{model_version} has {count_model_cdes(model)} CDEs.")
     model_cde_spec = make_model_cde_spec(model)

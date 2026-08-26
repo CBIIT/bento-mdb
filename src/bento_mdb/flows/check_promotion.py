@@ -61,7 +61,11 @@ def _load_specs(models_filter: list[str] | None) -> dict:
     return {k: all_specs[k] for k in models_filter}
 
 
-def _query_handles(mdb: MDB, model: str, version: str) -> tuple[set, set, set]:
+def _query_handles(
+    mdb: MDB,
+    model: str,
+    version: str,
+) -> tuple[set, set, set, set]:
     logger = get_run_logger()
     p = {"model": model, "version": version}
 
@@ -82,25 +86,48 @@ def _query_handles(mdb: MDB, model: str, version: str) -> tuple[set, set, set]:
     nodes = {r["handle"] for r in _q(
         "MATCH (n:node {model:$model, version:$version}) RETURN n.handle AS handle"
     )}
-    rels = {r["handle"] for r in _q(
-        "MATCH (r:relationship {model:$model, version:$version}) RETURN r.handle AS handle"
+    rels = {(r["handle"], r["src"], r["dst"]) for r in _q(
+        "MATCH (r:relationship {model:$model, version:$version}) "
+        "OPTIONAL MATCH (r)-[:has_src]->"
+        "(src:node {model:$model, version:$version}) "
+        "OPTIONAL MATCH (r)-[:has_dst]->"
+        "(dst:node {model:$model, version:$version}) "
+        "RETURN r.handle AS handle, src.handle AS src, dst.handle AS dst"
     )}
-    props = {(r["prop"], r["node"]) for r in _q(
+    node_props = {(r["prop"], r["node"]) for r in _q(
         "MATCH (n:node {model:$model, version:$version})-[:has_property]->"
         "(p:property {model:$model, version:$version}) "
         "RETURN p.handle AS prop, n.handle AS node"
     )}
-    return nodes, rels, props
+    rel_props = {
+        (r["handle"], r["src"], r["dst"], r["prop"])
+        for r in _q(
+            "MATCH (r:relationship {model:$model, version:$version})"
+            "-[:has_property]->(p:property {model:$model, version:$version}) "
+            "OPTIONAL MATCH (r)-[:has_src]->"
+            "(src:node {model:$model, version:$version}) "
+            "OPTIONAL MATCH (r)-[:has_dst]->"
+            "(dst:node {model:$model, version:$version}) "
+            "RETURN r.handle AS handle, src.handle AS src, dst.handle AS dst, "
+            "p.handle AS prop"
+        )
+    }
+    return nodes, rels, node_props, rel_props
 
 
-def _load_mdf_handles(spec: dict, model: str, version: str) -> tuple[set, set, set]:
+def _load_mdf_handles(
+    spec: dict,
+    model: str,
+    version: str,
+) -> tuple[set, set, set, set]:
     urls = get_yaml_files_from_spec(spec, model, version)
-    mdf = MDF(*urls, handle=model, raise_error=True, ignore_enum_by_reference=True)
+    mdf = MDF(*urls, handle=model, raise_error=True)
     m = mdf.model
     nodes = set(m.nodes.keys())
-    rels = {k[0] for k in m.edges.keys()}
-    props = {(k[1], k[0]) for k in m.props.keys()}
-    return nodes, rels, props
+    rels = set(m.edges.keys())
+    node_props = {(k[1], k[0]) for k in m.props.keys() if len(k) == 2}
+    rel_props = {k for k in m.props.keys() if len(k) == 4}
+    return nodes, rels, node_props, rel_props
 
 
 def _log_diff(logger, label: str, a_set: set, b_set: set, a_lbl: str, b_lbl: str) -> None:
@@ -159,17 +186,31 @@ def check_model_dev(model: str, spec: dict, mdb_id: str, version: str) -> _DiffR
 
     mdb = _connect(mdb_id)
     try:
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
-        mdb_nodes, mdb_rels, mdb_props = _query_handles(mdb, model, mdb_version)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            spec, model, version
+        )
+        mdb_nodes, mdb_rels, mdb_props, mdb_rel_props = _query_handles(
+            mdb, model, mdb_version
+        )
 
         _log_diff(logger, "NODES",         mdf_nodes, mdb_nodes, "MDF", "MDB-DEV")
         _log_diff(logger, "RELATIONSHIPS", mdf_rels,  mdb_rels,  "MDF", "MDB-DEV")
-        _log_diff(logger, "PROPERTIES",    mdf_props, mdb_props, "MDF", "MDB-DEV")
+        _log_diff(logger, "NODE PROPERTIES", mdf_props, mdb_props, "MDF", "MDB-DEV")
+        _log_diff(
+            logger,
+            "RELATIONSHIP PROPERTIES",
+            mdf_rel_props,
+            mdb_rel_props,
+            "MDF",
+            "MDB-DEV",
+        )
 
         inserts  = (len(mdf_nodes - mdb_nodes) + len(mdf_rels - mdb_rels)
-                    + len(mdf_props - mdb_props))
+                    + len(mdf_props - mdb_props)
+                    + len(mdf_rel_props - mdb_rel_props))
         removals = (len(mdb_nodes - mdf_nodes) + len(mdb_rels - mdf_rels)
-                    + len(mdb_props - mdf_props))
+                    + len(mdb_props - mdf_props)
+                    + len(mdb_rel_props - mdf_rel_props))
         logger.info("Expected inserts=%d  removals=%d", inserts, removals)
         if inserts == 0 and removals == 0:
             logger.info("DEV is up to date with MDF.")
@@ -189,17 +230,31 @@ def check_model_qa(model: str, spec: dict, mdb_id: str) -> _DiffResult:
 
     mdb = _connect(mdb_id)
     try:
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(spec, model, version)
-        qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb, model, mdb_version)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            spec, model, version
+        )
+        qa_nodes, qa_rels, qa_props, qa_rel_props = _query_handles(
+            mdb, model, mdb_version
+        )
 
         _log_diff(logger, "NODES",         mdf_nodes, qa_nodes, "MDF", f"MDB-{target_label}")
         _log_diff(logger, "RELATIONSHIPS", mdf_rels,  qa_rels,  "MDF", f"MDB-{target_label}")
-        _log_diff(logger, "PROPERTIES",    mdf_props, qa_props, "MDF", f"MDB-{target_label}")
+        _log_diff(logger, "NODE PROPERTIES", mdf_props, qa_props, "MDF", f"MDB-{target_label}")
+        _log_diff(
+            logger,
+            "RELATIONSHIP PROPERTIES",
+            mdf_rel_props,
+            qa_rel_props,
+            "MDF",
+            f"MDB-{target_label}",
+        )
 
         inserts  = (len(mdf_nodes - qa_nodes) + len(mdf_rels - qa_rels)
-                    + len(mdf_props - qa_props))
+                    + len(mdf_props - qa_props)
+                    + len(mdf_rel_props - qa_rel_props))
         removals = (len(qa_nodes - mdf_nodes) + len(qa_rels - mdf_rels)
-                    + len(qa_props - mdf_props))
+                    + len(qa_props - mdf_props)
+                    + len(qa_rel_props - mdf_rel_props))
         logger.info("Expected inserts=%d  removals=%d", inserts, removals)
         if inserts == 0 and removals == 0:
             logger.info("Expected inserts: 0; %s is fully in sync with MDF.", target_label)
@@ -221,17 +276,31 @@ def check_model_sync(model: str, spec: dict, dev_mdb_id: str, qa_mdb_id: str) ->
     mdb_dev = _connect(dev_mdb_id)
     mdb_qa  = _connect(qa_mdb_id)
     try:
-        dev_nodes, dev_rels, dev_props = _query_handles(mdb_dev, model, mdb_version)
-        qa_nodes,  qa_rels,  qa_props  = _query_handles(mdb_qa,  model, mdb_version)
+        dev_nodes, dev_rels, dev_props, dev_rel_props = _query_handles(
+            mdb_dev, model, mdb_version
+        )
+        qa_nodes, qa_rels, qa_props, qa_rel_props = _query_handles(
+            mdb_qa, model, mdb_version
+        )
 
         _log_diff(logger, "NODES",         dev_nodes, qa_nodes, source_label, target_label)
         _log_diff(logger, "RELATIONSHIPS", dev_rels,  qa_rels,  source_label, target_label)
-        _log_diff(logger, "PROPERTIES",    dev_props, qa_props, source_label, target_label)
+        _log_diff(logger, "NODE PROPERTIES", dev_props, qa_props, source_label, target_label)
+        _log_diff(
+            logger,
+            "RELATIONSHIP PROPERTIES",
+            dev_rel_props,
+            qa_rel_props,
+            source_label,
+            target_label,
+        )
 
         inserts  = (len(dev_nodes - qa_nodes) + len(dev_rels - qa_rels)
-                    + len(dev_props - qa_props))
+                    + len(dev_props - qa_props)
+                    + len(dev_rel_props - qa_rel_props))
         removals = (len(qa_nodes - dev_nodes) + len(qa_rels - dev_rels)
-                    + len(qa_props - dev_props))
+                    + len(qa_props - dev_props)
+                    + len(qa_rel_props - dev_rel_props))
         logger.info("Expected inserts=%d  removals=%d", inserts, removals)
         if inserts == 0 and removals == 0:
             logger.info("Expected inserts: 0; %s and %s are fully in sync.", source_label, target_label)

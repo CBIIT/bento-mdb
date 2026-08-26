@@ -19,6 +19,9 @@ import bento_mdb.flows.check_promotion as flow_module
 
 TEST_DIR = Path(__file__).resolve().parent
 SAMPLE_MDF_PATH = TEST_DIR / "samples" / "test_mdf.yml"
+SHARED_REL_PROP_MDF_PATH = (
+    TEST_DIR / "samples" / "test_mdf_shared_relationship_props.yml"
+)
 
 # test_mdf.yml: Handle TEST, Version 1.2.3, Nodes node_1..3, Relationships edge_1..2, Props prop_1..6
 SPEC = {"latest_version": "1.2.3"}
@@ -40,18 +43,47 @@ def test_load_specs_returns_subset_when_all_known() -> None:
     assert list(specs.keys()) == ["C3DC"]
 
 
+def test_load_mdf_handles_separates_relationship_properties() -> None:
+    """MDF relationship properties retain their relationship and endpoints."""
+    with patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SAMPLE_MDF_PATH)],
+    ):
+        _, _, props, rel_props = _load_mdf_handles(SPEC, MODEL, VERSION)
+
+    assert ("prop_6", "edge_1") not in props
+    assert props == {
+        ("prop_1", "node_1"),
+        ("prop_2", "node_1"),
+        ("prop_3", "node_2"),
+        ("prop_4", "node_2"),
+        ("prop_5", "node_3"),
+    }
+    assert rel_props == {("edge_1", "node_1", "node_2", "prop_6")}
+
+
 # ── Check 0: MDF vs DEV ──────────────────────────────────────────────────────
 
-def _make_dev_mock(nodes=None, rels=None, props=None) -> MagicMock:
-    """Mock MDB for DEV side. get_with_statement returns nodes/rels/props for diff."""
+def _make_dev_mock(nodes=None, rels=None, props=None, rel_props=None) -> MagicMock:
+    """Mock MDB query results for all structural comparison categories."""
     mock = MagicMock()
     node_rows = [{"handle": h} for h in (nodes or [])]
-    rel_rows = [{"handle": h} for h in (rels or [])]
+    rel_rows = [
+        {"handle": h, "src": src, "dst": dst}
+        for h, src, dst in (rels or [])
+    ]
     prop_rows = [{"prop": p, "node": n} for p, n in (props or [])]
+    rel_prop_rows = [
+        {"handle": h, "src": src, "dst": dst, "prop": prop}
+        for h, src, dst, prop in (rel_props or [])
+    ]
 
     def side(cypher, params):
         if "n:node" in cypher and "has_property" not in cypher:
             return node_rows
+        if "r:relationship" in cypher and "has_property" in cypher:
+            return rel_prop_rows
         if "r:relationship" in cypher:
             return rel_rows
         return prop_rows
@@ -70,17 +102,164 @@ class TestCheckModelDev:
         self, mock_connect, mock_get_yaml, mock_logger
     ) -> None:
         """MDF (real file) and DEV have same handles -> passed."""
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(SPEC, MODEL, VERSION)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            SPEC, MODEL, VERSION
+        )
         mock_connect.return_value = _make_dev_mock(
             nodes=sorted(mdf_nodes),
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
+            rel_props=sorted(mdf_rel_props),
         )
         result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
         assert result.passed
         assert result.model == MODEL
         assert result.version == VERSION
         assert result.inserts == 0 and result.removals == 0
+
+    @patch.object(flow_module, "get_run_logger")
+    @patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SHARED_REL_PROP_MDF_PATH)],
+    )
+    @patch.object(flow_module, "_connect")
+    def test_shared_relationship_props_do_not_fail_validation(
+        self, mock_connect, mock_get_yaml, mock_logger
+    ) -> None:
+        """TEST-style shared relationship properties do not cause false inserts."""
+        mock_connect.return_value = _make_dev_mock(
+            nodes=["sample", "diagnosis", "case"],
+            rels=[
+                ("of_case", "sample", "case"),
+                ("of_case", "diagnosis", "case"),
+            ],
+            props=[],
+            rel_props=[
+                ("of_case", "sample", "case", "days_to_sample"),
+                ("of_case", "diagnosis", "case", "days_to_sample"),
+            ],
+        )
+
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
+
+        assert result.passed
+        assert result.inserts == 0
+        assert result.removals == 0
+
+    @patch.object(flow_module, "get_run_logger")
+    @patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SHARED_REL_PROP_MDF_PATH)],
+    )
+    @patch.object(flow_module, "_connect")
+    def test_missing_relationship_instance_fails_validation(
+        self, mock_connect, mock_get_yaml, mock_logger
+    ) -> None:
+        """A completely missing relationship instance is detected."""
+        mock_connect.return_value = _make_dev_mock(
+            nodes=["sample", "diagnosis", "case"],
+            rels=[("of_case", "sample", "case")],
+            rel_props=[
+                ("of_case", "sample", "case", "days_to_sample"),
+                ("of_case", "diagnosis", "case", "days_to_sample"),
+            ],
+        )
+
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
+
+        assert not result.passed
+        assert result.inserts == 1
+        assert result.removals == 0
+
+    @pytest.mark.parametrize(
+        ("orphan_rel", "orphan_rel_prop"),
+        [
+            (
+                ("of_case", None, "case"),
+                ("of_case", None, "case", "days_to_sample"),
+            ),
+            (
+                ("of_case", "diagnosis", None),
+                ("of_case", "diagnosis", None, "days_to_sample"),
+            ),
+        ],
+        ids=["missing-source", "missing-destination"],
+    )
+    @patch.object(flow_module, "get_run_logger")
+    @patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SHARED_REL_PROP_MDF_PATH)],
+    )
+    @patch.object(flow_module, "_connect")
+    def test_orphaned_relationship_end_fails_validation(
+        self,
+        mock_connect,
+        _mock_get_yaml,
+        _mock_logger,
+        orphan_rel,
+        orphan_rel_prop,
+    ) -> None:
+        """An existing relationship missing either endpoint is detected."""
+        mdb = _make_dev_mock(
+            nodes=["sample", "diagnosis", "case"],
+            rels=[
+                ("of_case", "sample", "case"),
+                orphan_rel,
+            ],
+            rel_props=[
+                ("of_case", "sample", "case", "days_to_sample"),
+                orphan_rel_prop,
+            ],
+        )
+        mock_connect.return_value = mdb
+
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
+
+        assert not result.passed
+        assert result.inserts == 2
+        assert result.removals == 2
+        relationship_queries = [
+            call.args[0]
+            for call in mdb.get_with_statement.call_args_list
+            if "r:relationship" in call.args[0]
+        ]
+        assert len(relationship_queries) == 2
+        assert all(query.count("OPTIONAL MATCH") == 2 for query in relationship_queries)
+        assert all(
+            query.count(":node {model:$model, version:$version}") == 2
+            for query in relationship_queries
+        )
+
+    @patch.object(flow_module, "get_run_logger")
+    @patch.object(
+        flow_module,
+        "get_yaml_files_from_spec",
+        return_value=[str(SHARED_REL_PROP_MDF_PATH)],
+    )
+    @patch.object(flow_module, "_connect")
+    def test_missing_relationship_property_fails_validation(
+        self, mock_connect, mock_get_yaml, mock_logger
+    ) -> None:
+        """A property missing from one relationship instance is detected."""
+        mock_connect.return_value = _make_dev_mock(
+            nodes=["sample", "diagnosis", "case"],
+            rels=[
+                ("of_case", "sample", "case"),
+                ("of_case", "diagnosis", "case"),
+            ],
+            rel_props=[
+                ("of_case", "sample", "case", "days_to_sample"),
+            ],
+        )
+
+        result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
+
+        assert not result.passed
+        assert result.inserts == 1
+        assert result.removals == 0
 
     @patch.object(flow_module, "get_run_logger")
     @patch.object(flow_module, "get_yaml_files_from_spec", return_value=[str(SAMPLE_MDF_PATH)])
@@ -106,12 +285,15 @@ class TestCheckModelDev:
         self, mock_connect, mock_get_yaml, mock_logger
     ) -> None:
         """DEV has more than MDF (real file) -> not passed, removals>0."""
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(SPEC, MODEL, VERSION)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            SPEC, MODEL, VERSION
+        )
         extra_node = "_extra_node"
         mock_connect.return_value = _make_dev_mock(
             nodes=sorted(mdf_nodes) + [extra_node],
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
+            rel_props=sorted(mdf_rel_props),
         )
         result = check_model_dev.fn(MODEL, SPEC, "dev-mdb", VERSION)
         assert not result.passed
@@ -131,11 +313,14 @@ class TestCheckModelQa:
         self, mock_connect, mock_get_yaml, mock_logger
     ) -> None:
         """MDF (real file) and QA have same handles -> passed."""
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(SPEC, MODEL, VERSION)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            SPEC, MODEL, VERSION
+        )
         mock_connect.return_value = _make_dev_mock(
             nodes=sorted(mdf_nodes),
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
+            rel_props=sorted(mdf_rel_props),
         )
         result = check_model_qa.fn(MODEL, SPEC, "qa-mdb")
         assert result.passed
@@ -167,12 +352,15 @@ class TestCheckModelQa:
         self, mock_connect, mock_get_yaml, mock_logger
     ) -> None:
         """QA has more than MDF (real file) -> not passed, removals>0."""
-        mdf_nodes, mdf_rels, mdf_props = _load_mdf_handles(SPEC, MODEL, VERSION)
+        mdf_nodes, mdf_rels, mdf_props, mdf_rel_props = _load_mdf_handles(
+            SPEC, MODEL, VERSION
+        )
         extra_node = "_extra_node"
         mock_connect.return_value = _make_dev_mock(
             nodes=sorted(mdf_nodes) + [extra_node],
             rels=sorted(mdf_rels),
             props=sorted(mdf_props),
+            rel_props=sorted(mdf_rel_props),
         )
         result = check_model_qa.fn(MODEL, SPEC, "qa-mdb")
         assert not result.passed

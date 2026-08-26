@@ -15,3 +15,14 @@ OBIB:
   - bioportal.bioontology.org/ontologies/OBIB
   - ebi.ac.uk/ols4/ontologies/obib
   - obib
+QA_TEST:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  mdf_files:
+  - edp-props.yml
+  - terms/qa-test-terms.yml
+  latest_version: "0"
+  versions: []
+  origin: CRDC
+  code: CRDC0005
+  property: qa_test_valueset

@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from bento_mdb.model_cdes import get_edp_enum_term
 from bento_meta.model import Model, make_nanoid
 from bento_meta.objects import Concept, Tag
 from bento_meta.objects import Model as ModelEnt
+
 from liquichange.changelog import Changelog, Changeset, CypherChange, Rollback
 
 from bento_mdb.cypher_utils import (
@@ -21,6 +23,11 @@ if TYPE_CHECKING:
     from bento_meta.entity import Entity
 
 logger = logging.getLogger(__name__)
+
+
+def _cypher_string_literal(value: str) -> str:
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def add_version_to_model_ents(model: Model) -> None:
@@ -56,8 +63,22 @@ def separate_shared_props(model: Model) -> None:
                 new_prop._commit = prop._commit  # noqa: SLF001
             if prop.value_set:
                 new_prop.value_set = prop.value_set.dup()
-            model.nodes[key[0]].props[key[1]] = new_prop
-            model.props[(key[0], key[1])] = new_prop
+
+            # bento-meta keys node properties as (node, prop) and relationship
+            # properties as (relationship, src, dst, prop). Use that key to
+            # replace the shared property on the exact node or relationship.
+            if len(key) == 2 and key[0] in model.nodes:
+                owner = model.nodes[key[0]]
+                prop_handle = key[1]
+            elif len(key) == 4 and key[:3] in model.edges:
+                owner = model.edges[key[:3]]
+                prop_handle = key[3]
+            else:
+                msg = f"Property owner not found for key: {key}"
+                raise ValueError(msg)
+
+            owner.props[prop_handle] = new_prop
+            model.props[key] = new_prop
         else:
             initial_props.add(prop)
 
@@ -71,10 +92,13 @@ class ModelToChangelogConverter:
         *,
         add_rollback: bool = True,
         terms_only: bool = False,
+        _commit: str | None = None,
     ) -> None:
         """Initialize converter and structures to hold cypher stmts & added entities."""
         self.add_rollback = add_rollback
         self.terms_only = terms_only
+        self._commit = _commit
+        self.value_sets_by_term_key = {}
         self.model = model
         self.cypher_stmts: dict[str, dict[str, list[Statement]]] = {
             "add_ents": {"statements": [], "rollbacks": []},
@@ -164,12 +188,102 @@ class ModelToChangelogConverter:
         self.process_tags(entity.concept)
         self.process_terms(entity.concept)
 
+    def generate_cypher_to_link_edp_value_set(self, entity: Entity) -> None:
+        """Generate cypher to link a model property to an EDP value set."""
+        edp_term = get_edp_enum_term(entity)
+        if not edp_term:
+            return
+
+        prop_attrs = entity.get_attr_dict()
+        prop_filters = [
+            f"handle: {_cypher_string_literal(prop_attrs['handle'])}",
+            f"model: {_cypher_string_literal(prop_attrs['model'])}",
+        ]
+        if prop_attrs.get("version"):
+            prop_filters.append(
+                f"version: {_cypher_string_literal(prop_attrs['version'])}",
+            )
+
+        edp_filters = [
+            f"edp.origin_name = {_cypher_string_literal(edp_term.origin_name)}",
+            f"edp.origin_id = {_cypher_string_literal(edp_term.origin_id)}",
+        ]
+        if getattr(edp_term, "origin_version", None):
+            edp_filters.append(
+                f"edp.origin_version = {_cypher_string_literal(edp_term.origin_version)}",
+            )
+
+        stmt = (
+            f"MATCH (prop:property {{{', '.join(prop_filters)}}}) "
+            f"MATCH (edp:term) "
+            f"WHERE {' AND '.join(edp_filters)} "
+            f"MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+            f"MERGE (prop)-[:has_value_set]->(vs)"
+        )
+        rollback = (
+            f"MATCH (prop:property {{{', '.join(prop_filters)}}})"
+            f"-[r:has_value_set]->(vs:value_set)<-[:specifies_value_set]-(edp:term) "
+            f"WHERE {' AND '.join(edp_filters)} "
+            f"DELETE r"
+        )
+        self.add_statement("add_rels", stmt, rollback)
+
+    def get_value_set_term_key(self, value_set: Entity) -> tuple:
+        """Return a stable identity key for a value set's attached terms."""
+        terms = value_set.terms
+        if not terms:
+            return ()
+
+        return tuple(
+            sorted(
+                (
+                    term.origin_name or "",
+                    term.origin_id or "",
+                    term.origin_version or "",
+                    term.value or "",
+                )
+                for term in terms.values()
+            ),
+        )
+
+    def set_value_set_commit(self, value_set: Entity) -> None:
+        """Replace missing/dummy value_set commit with the changelog commit."""
+        if self._commit and (
+            value_set._commit is not None
+            or value_set._commit == "dummy"
+        ):
+            value_set._commit = self._commit  # noqa: SLF001
+
     def process_value_set(self, entity: Entity) -> None:
         """Generate cypher statements to merge an entity's value_set attribute."""
         if not entity.value_set:
             return
+
+        if get_edp_enum_term(entity):
+            self.generate_cypher_to_link_edp_value_set(entity)
+            return
+
+        term_key = self.get_value_set_term_key(entity.value_set)
+        canonical_value_set = (
+            self.value_sets_by_term_key.get(term_key) if term_key else None
+        )
+
+        if canonical_value_set:
+            self.generate_cypher_to_add_relationship(
+                entity,
+                "has_value_set",
+                canonical_value_set,
+            )
+            return
+
+        self.set_value_set_commit(entity.value_set)
+
         if not entity.value_set.nanoid:
             entity.value_set.nanoid = make_nanoid()
+
+        if term_key:
+            self.value_sets_by_term_key[term_key] = entity.value_set
+
         self.generate_cypher_to_add_entity(entity.value_set)
         self.generate_cypher_to_add_relationship(
             entity,

@@ -79,7 +79,9 @@ CCDI-DCC:
     tag: 0.0.2
   - version: 1.0.0
     tag: 1.0.0
-  latest_version: 1.0.0
+  - version: 2.0.0
+    tag: 2.0.0
+  latest_version: 2.0.0
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CDS:
@@ -146,8 +148,10 @@ CDS:
     tag: 11.0.3-GC_Release
   - version: 11.0.4
     tag: 11.0.4-GC_Release
-  latest_version: 11.0.4
-  latest_prerelease_commit: 3cd0ae2ab7d66c435883062fcae8e054813155e1
+  - version: 12.0.0
+    tag: 12.0.0-GC_Release
+  latest_version: 12.0.0
+  latest_prerelease_commit: 0fea351c3cee88c246b14ab4f69929f12ebd08a1
   latest_prerelease_version: 12.0.0
 CTDC:
   repository: CBIIT/ctdc-model
@@ -213,9 +217,15 @@ CTDC:
     tag: 2.1.0
   - version: 3.0.0
     tag: 3.0.0
-  latest_version: 3.0.0
-  latest_prerelease_commit: fc4cd9c98b79151ae7a6e9a710c82d9eb55b497e
-  latest_prerelease_version: 3.0.0
+  - version: 3.1.0
+    tag: 3.1.0
+  - version: 3.2.0
+    tag: 3.2.0
+  - version: 3.3.0
+    tag: 3.3.0
+  latest_version: 3.3.0
+  latest_prerelease_commit: 14f4a6bf6efc4ab199eb44ddf81029b0496dea68
+  latest_prerelease_version: 3.3.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
@@ -305,5 +315,23 @@ PSDC:
   - version: 1.0.0
     tag: 1.0.0
   latest_version: 1.0.0
-  latest_prerelease_commit: 0d4ca14e2e95ce436049a62ac48afc2432902665
+  latest_prerelease_commit: db3690cb7399e7aa740bbea0a7c0ef73f9c4e8e2
   latest_prerelease_version: 1.0.0
+TEST:
+  repository: CBIIT/ctos-test-model
+  prerelease_repository: CBIIT/ctos-test-model
+  mdf_directory: model-desc
+  mdf_files:
+  - test-model.yml
+  - test-model-props.yml
+  in_data_hub: false
+  versions:
+  - version: 1.0.0
+    tag: 1.0.0
+    ignore: true
+  - version: 1.1.0
+    tag: 1.1.0
+    ignore: true
+  latest_version: null
+  latest_prerelease_commit: 52dd24b7852023272b617cbff46c01f1f7760e6a
+  latest_prerelease_version: 1.1.0

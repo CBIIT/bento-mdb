@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from bento_mdf.mdf import MDF
+from bento_mdf.mdf import MDF, MDFReader
 from bento_meta.model import Model
 from bento_meta.objects import Node, Property, Tag
 
@@ -12,8 +12,15 @@ from tests.test_utils import assert_equal, remove_nanoids_from_str
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")
 TEST_MODEL_MDF_TERMS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_terms.yml")
+TEST_MODEL_MDF_SHARED_REL_PROPS = Path(
+    CURRENT_DIRECTORY,
+    "samples",
+    "test_mdf_shared_relationship_props.yml",
+)
 TEST_MODEL_MDF_USENULLCDE = Path(CURRENT_DIRECTORY, "samples", "test_mdf_useNullCDE_simple.yml")
 TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
+TEST_MODEL_EDP = Path(CURRENT_DIRECTORY, "samples", "test_model_edp.yml")
+TEST_MODEL_EDP_PROPS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_edp.yml")
 AUTHOR = "Tolkien"
 MODEL_HDL = "TEST"
 _COMMIT = "_COMMIT_123"
@@ -30,7 +37,7 @@ class TestMakeModelChangelog:
             author=AUTHOR,
         )
         actual = len(changelog.subelements)
-        expected = 52
+        expected = 48
         assert_equal(actual, expected)
 
     def test_make_model_changelog_shared_props(self) -> None:
@@ -79,6 +86,71 @@ class TestMakeModelChangelog:
         ]
         assert_equal(actual, expected)
 
+    def test_duplicate_model_value_sets_are_reused(self) -> None:
+        """Properties with identical enum term sets should reuse one value set."""
+        mdf = MDF(
+            TEST_MODEL_MDF_TERMS,
+            handle=MODEL_HDL,
+            _commit=_COMMIT,
+            raise_error=True,
+        )
+        converter = ModelToChangelogConverter(
+            model=mdf.model,
+            add_rollback=False,
+            _commit=_COMMIT,
+        )
+        changelog = converter.convert_model_to_changelog(author=AUTHOR)
+
+        actual = [
+            remove_nanoids_from_str(x.change_type.text)
+            for x in changelog.subelements
+        ]
+
+        value_set_creates = [
+            stmt
+            for stmt in actual
+            if stmt.startswith("MERGE (n0:value_set")
+        ]
+        value_set_links = [
+            stmt
+            for stmt in actual
+            if "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
+        ]
+        value_set_term_links = [
+            stmt
+            for stmt in actual
+            if "MERGE (n0)-[r0:has_term]->(n1)" in stmt
+        ]
+
+        assert len(value_set_creates) == 1
+        assert len(value_set_links) == 2
+        assert len(value_set_term_links) == 3
+        assert "_commit = '_COMMIT_123'" in value_set_creates[0]
+        assert "dummy" not in value_set_creates[0]
+
+    def test_shared_relationship_props(self) -> None:
+        """Test that relationships with multiple ends get separate properties."""
+        mdf = MDF(
+            TEST_MODEL_MDF_SHARED_REL_PROPS,
+            handle=MODEL_HDL,
+            _commit=_COMMIT,
+            raise_error=True,
+        )
+        model = mdf.model
+        sample_edge = model.edges[("of_case", "sample", "case")]
+        diagnosis_edge = model.edges[("of_case", "diagnosis", "case")]
+        prop_handle = "days_to_sample"
+        assert sample_edge.props[prop_handle] is diagnosis_edge.props[prop_handle]
+
+        converter = ModelToChangelogConverter(model=model, add_rollback=False)
+        converter.convert_model_to_changelog(author=AUTHOR)
+
+        sample_prop = sample_edge.props[prop_handle]
+        diagnosis_prop = diagnosis_edge.props[prop_handle]
+        assert sample_prop is not diagnosis_prop
+        assert model.props[(*sample_edge.triplet, prop_handle)] is sample_prop
+        assert model.props[(*diagnosis_edge.triplet, prop_handle)] is diagnosis_prop
+
     def test_shared_props_with_value_set(self) -> None:
         """Test for shared properties with value_set."""
         mdf = MDF(
@@ -87,7 +159,11 @@ class TestMakeModelChangelog:
             _commit=_COMMIT,
             raise_error=True,
         )
-        converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
+        converter = ModelToChangelogConverter(
+            model=mdf.model,
+            add_rollback=False,
+            _commit=_COMMIT,
+        )
         changelog = converter.convert_model_to_changelog(
             author=AUTHOR,
         )
@@ -107,7 +183,7 @@ class TestMakeModelChangelog:
             "CREATE (n0:tag {key:'mapping_source',value:'TEST',nanoid:''})",
             "MERGE (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
             " ON CREATE SET n0._commit = '_COMMIT_123'",
-            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
+            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
             "MERGE (n0:term {handle:'bam',value:'bam',origin_name:'TEST'})",
             "MERGE (n0:term {handle:'cram',value:'cram',origin_name:'TEST'})",
             "MERGE (n0:term {handle:'dict',value:'dict',origin_name:'TEST'})",
@@ -117,7 +193,6 @@ class TestMakeModelChangelog:
             "version:'1.2.3',value_domain:'value_set',is_required:False,"
             "is_key:False,is_nullable:False,is_strict:True,"
             "is_extended:False,_commit:'_COMMIT_123'})",
-            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = 'dummy'",
             "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
             ",_commit:'_COMMIT_123'}), "
             "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
@@ -172,12 +247,6 @@ class TestMakeModelChangelog:
             "is_key:False,is_nullable:False,is_strict:True,"
             "is_extended:False,_commit:'_COMMIT_123'}), "
             "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'cram',value:'cram',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
         assert_equal(actual, expected)
 
@@ -270,3 +339,37 @@ class TestMakeModelChangelog:
         ]
 
         assert_equal(actual, expected)
+
+    def test_edp_enum_links_property_to_existing_edp_value_set(self) -> None:
+        """EDP enum references should link the property to the EDP value set."""
+        mdf = MDFReader(
+            TEST_MODEL_EDP,
+            TEST_MODEL_EDP_PROPS,
+            ignore_enum_by_reference=True,
+        )
+        converter = ModelToChangelogConverter(model=mdf.model, add_rollback=False)
+        changelog = converter.convert_model_to_changelog(
+            author=AUTHOR,
+            model_version="1.2.3",
+        )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
+        ]
+
+        expected = (
+            'MATCH (prop:property {handle: "program_name", model: "TEST", version: "1.2.3"}) '
+            "MATCH (edp:term) "
+            'WHERE edp.origin_name = "CRDC" '
+            'AND edp.origin_id = "CRDC00005" '
+            'AND edp.origin_version = "1" '
+            "MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
+            "MERGE (prop)-[:has_value_set]->(vs)"
+        )
+
+        assert expected in actual
+        assert not any(
+            "MATCH (n0:property" in stmt
+            and "handle:'program_name'" in stmt
+            and "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
+            for stmt in actual
+        )

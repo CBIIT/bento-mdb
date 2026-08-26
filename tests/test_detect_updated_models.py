@@ -94,6 +94,25 @@ def test_parse_diff_context_sets_current_model() -> None:
     assert parse_diff(diff) == []
 
 
+def test_parse_diff_new_prerelease_only_model() -> None:
+    diff = _diff(
+        "@@ -313,3 +313,18 @@ PSDC:",
+        "TEST:",
+        "  latest_version: null",
+        "  latest_prerelease_commit: 277d1c56e41bdec9",
+        "  latest_prerelease_version: 1.0.0",
+    )
+    assert parse_diff(diff) == [
+        {
+            "model": "TEST",
+            "latest_version": None,
+            "prerelease_version": "1.0.0-277d1c5",
+            "prerelease_commit": "277d1c5",
+            "has_prerelease_update": True,
+        },
+    ]
+
+
 def test_parse_diff_prerelease_commit_only_with_specs_file(tmp_path: Path) -> None:
     """When only prerelease_commit is in diff, specs loaded from config fill prerelease_version."""
     import bento_mdb.promotion_detect as pd

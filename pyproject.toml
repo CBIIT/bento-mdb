@@ -12,12 +12,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "bento-mdf>=0.13.3b1",
+    "bento-mdf>=0.13.4",
     "bento-meta>=0.3.2",
     "boto3>=1.38.36",
     "click>=8.1.8",
+    "importlib-metadata>=6,<9",
     "liquichange>=0.2.1",
-    "mdb-changelog-runner==1.0.2",
+    "mdb-changelog-runner==1.0.3",
     "minicypher>=0.1.1",
     "neo4j>=4.4,<6.0",
     "packaging>=24.2",
@@ -65,12 +66,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-include = ["src","scripts","config"]
+include = ["src", "scripts", "config", "data/queries"]
 
 [tool.pytest.ini_options]
 markers = [
     "docker: marks tests that require docker",
 ]
-
-[tool.uv.sources]
-bento-mdf = { git = "https://github.com/CBIIT/bento-mdf.git", branch = "DATATEAM-550/read-edp-mdf", subdirectory = "python" }

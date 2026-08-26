@@ -1,0 +1,20 @@
+checks:
+  - id: term_dedup_diagnostic
+    description: Detect duplicate term groups after term deduplication.
+    query_file: data/queries/term_dedup_diagnostic.cypher
+    tags:
+      - term-dedup
+      - diagnostic
+    severity: error
+    expected:
+      duplicate_groups: 0
+
+  - id: value_set_redundancy_diagnostic
+    description: Detect redundant equivalent terms within the same value set.
+    query_file: data/queries/valueset_dedup_diagnostic.cypher
+    tags:
+      - value-set-dedup
+      - diagnostic
+    severity: error
+    expected:
+      redundant_value_set_term_groups: 0

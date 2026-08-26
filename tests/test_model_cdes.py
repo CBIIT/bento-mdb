@@ -113,6 +113,70 @@ class TestGetYamlFilesFromSpec:
         ]
         assert_equal(actual, expected)
 
+    def test_get_yaml_files_from_custom_prerelease_repository(self) -> None:
+        """Test that a prerelease repository override uses its commit."""
+        test_model = "TEST"
+        prerelease_commit = "277d1c56e41bdec9e03947804e997ca66656477e"
+        test_spec = ModelSpec(
+            {
+                "repository": "CBIIT/ctos-test-model",
+                "prerelease_repository": "CBIIT/ctos-test-model",
+                "mdf_directory": "model-desc",
+                "mdf_files": ["test-model.yml", "test-model-props.yml"],
+                "in_data_hub": False,
+                "versions": [
+                    {"version": "1.0.0", "tag": "1.0.0", "ignore": True},
+                ],
+                "latest_version": None,
+                "latest_prerelease_version": "1.0.0",
+                "latest_prerelease_commit": prerelease_commit,
+            },
+        )
+
+        actual = get_yaml_files_from_spec(
+            test_spec,
+            test_model,
+            "1.0.0-277d1c5",
+        )
+
+        base_url = (
+            "https://raw.githubusercontent.com/CBIIT/ctos-test-model/"
+            f"{prerelease_commit}/model-desc/"
+        )
+        expected = [base_url + str(f) for f in test_spec["mdf_files"]]
+        assert_equal(actual, expected)
+
+    def test_non_datahub_prerelease_uses_datahub_cache_by_default(self) -> None:
+        """Test that existing non-datahub prereleases keep using the cache."""
+        test_model = "TEST"
+        test_spec = ModelSpec(
+            {
+                "repository": "CBIIT/ctos-test-model",
+                "mdf_directory": "model-desc",
+                "mdf_files": ["test-model.yml", "test-model-props.yml"],
+                "in_data_hub": False,
+                "versions": [{"version": "1.0.0"}],
+                "latest_version": "1.0.0",
+                "latest_prerelease_version": "1.1.0",
+                "latest_prerelease_commit": (
+                    "277d1c56e41bdec9e03947804e997ca66656477e"
+                ),
+            },
+        )
+
+        actual = get_yaml_files_from_spec(
+            test_spec,
+            test_model,
+            "1.1.0-277d1c5",
+        )
+
+        base_url = "https://raw.githubusercontent.com/CBIIT"
+        expected = [
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.1.0/test-model.yml",
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.1.0/test-model-props.yml",
+        ]
+        assert_equal(actual, expected)
+
 
 class TestModelCDESpec:
     """Tests for model CDE spec."""
@@ -440,7 +504,6 @@ class TestGetEdpEnumTerm:
         mdf = MDFReader(
             self.TEST_EDP_MODEL,
             self.TEST_EDP_PROPS,
-            ignore_enum_by_reference=True,
         )
         prop = mdf.model.props[("program", "program_name")]
         result = get_edp_enum_term(prop)
@@ -464,16 +527,16 @@ class TestMakeModelCdeSpecWithEdp:
     TEST_EDP_MODEL = Path(__file__).parent / "samples" / "test_model_edp.yml"
     TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
 
-    def test_make_model_cde_spec_edp_reference_populated(self) -> None:
-        """Annotation for EDP-backed CDE should have edp_reference set."""
+    def test_make_model_cde_spec_edp_enum_does_not_populate_edp_reference(self) -> None:
+        """EDP enum references should not imply CDE-to-EDP linkage."""
         from bento_mdf.mdf import MDFReader
-        mdf = MDFReader(self.TEST_EDP_MODEL, self.TEST_EDP_PROPS, ignore_enum_by_reference=True)
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+        )
         actual = make_model_cde_spec(mdf.model)
         assert len(actual["annotations"]) == 1
-        edp_ref = actual["annotations"][0].get("edp_reference")
-        assert edp_ref is not None
-        assert edp_ref["origin_id"] == "CRDC00005"
-        assert edp_ref["origin_name"] == "CRDC"
+        assert actual["annotations"][0].get("edp_reference") is None
 
     def test_make_model_cde_spec_edp_matches_expected(self) -> None:
         """Full spec output for EDP model matches expected structure."""
@@ -482,7 +545,6 @@ class TestMakeModelCdeSpecWithEdp:
         mdf = MDFReader(
             self.TEST_EDP_MODEL,
             self.TEST_EDP_PROPS,
-            ignore_enum_by_reference=True,
         )
         actual = make_model_cde_spec(mdf.model)
         assert_equal(actual, TEST_MAKE_MODEL_CDE_SPEC_EDP)

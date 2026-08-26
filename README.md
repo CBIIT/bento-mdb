@@ -15,3 +15,54 @@ The [bento-meta](https://github.com/CBIIT/bento-meta) repository contains APIS f
 ## Documentation
 
 [View MDB documentation on GitHub Pages](https://cbiit.github.io/bento-mdb/)
+
+
+## MDB Consistency Checks
+
+MDB consistency checks are configurable read-only Cypher diagnostics for validating MDB graph contents. The checker logic lives in `bento_mdb.consistency`, and the live MDB execution is handled by the `check_mdb_consistency_flow` Prefect flow.
+
+Checks are configured in `config/mdb_consistency_queries.yml`. Each check defines a description, a Cypher query or query file, tags, severity, and the expected result when MDB is consistent.
+
+The initial term deduplication diagnostic query is stored in `data/queries/term_dedup_diagnostic.cypher`.
+
+### Run Unit Tests
+
+The pytest tests validate the query-harness logic without connecting to MDB:
+
+```bash
+pytest tests/test_check_mdb_consistency.py
+```
+
+Live MDB checks are not run directly by local pytest because MDB credentials are stored as Prefect Secret blocks and the production MDB is accessed through the Prefect work pool.
+
+### Run Live C1 Dev Checks
+
+Use the `Check C1 Dev MDB Consistency` GitHub Actions workflow. The workflow triggers the `check-mdb-consistency` Prefect deployment with:
+
+```text
+mdb_id: cloud-one-mdb-dev
+checks_yaml: config/mdb_consistency_queries.yml
+```
+
+The Prefect flow loads MDB credentials from the existing Prefect Secret naming convention:
+
+```text
+cloud-one-mdb-dev-uri
+cloud-one-mdb-dev-usr
+cloud-one-mdb-dev-pwd
+```
+
+### Add A Check
+Add a new entry to config/mdb_consistency_queries.yml:
+```yaml
+checks:
+  - id: my_check
+    description: Description of the consistency rule.
+    query_file: data/queries/my_check.cypher
+    tags:
+      - diagnostic
+    severity: error
+    expected:
+        problem_count: 0
+```
+The query should return a field that can be compared to the expected value. For most diagnostics, the expected compliant result should be 0 problem rows or 0 problem groups.
