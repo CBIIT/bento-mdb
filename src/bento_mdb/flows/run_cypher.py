@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+import boto3
 from bento_meta.mdb import MDB
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import INPUTS
@@ -68,12 +68,13 @@ def execute_cypher(
 @flow(name="run-cypher", log_prints=True)
 def run_cypher_flow(
     mdb_id: str,
-    query: list,
+    query: list[str],
     params: dict | None = None,
+    bucket: str | None = None,
     *,
     allow_empty: bool | None = True,
 ) -> None:
-    """Run arbitrary Cypher queries on MDB."""
+    """Run inline Cypher queries or query files fetched from S3 on MDB."""
     if params is None:
         params = {}
     logger = get_run_logger()
@@ -84,15 +85,17 @@ def run_cypher_flow(
     if params:
         logger.info(" with params:\n%s", params)
 
-    if len(query) == 1:
-        qpath = Path(query[0])
-        if qpath.exists():
-            query = list(qpath.open())
+    if bucket:
+        s3 = boto3.client("s3")
+        query = [
+            s3.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
+            for key in query
+        ]
 
     for q in query:
         try:
-            q = q.strip() 
-            result = execute_cypher(mdb, q, params)  
+            q = q.strip()
+            result = execute_cypher(mdb, q, params)
             results.append(result)
         except Exception:
             logger.exception("Query '%s' failed", q)
