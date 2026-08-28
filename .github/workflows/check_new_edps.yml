@@ -2,7 +2,7 @@ name: Check New EDPs
 
 on:
   schedule:
-    - cron: "30 22 * * 0"  # weekly Sunday 22:30 UTC
+    - cron: "30 22 * * *"  # daily 22:30 UTC
   workflow_dispatch:
     inputs:
       edp_specs_path:
