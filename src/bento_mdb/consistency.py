@@ -35,6 +35,14 @@ def load_query(check: dict[str, Any], repo_root: Path = _REPO_ROOT) -> str:
     msg = f"Check {check.get('id')} must define query or query_file"
     raise ValueError(msg)
 
+def prepare_read_query(query: str) -> str:
+    query = query.strip()
+
+    if not query:
+        raise ValueError("Cypher query cannot be empty")
+
+    return f"// RETURN guard for bento_meta get_with_statement validation\n{query}"
+
 
 def load_checks_from_yaml(
     checks_yaml: str | Path,

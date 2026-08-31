@@ -1,6 +1,33 @@
 import pytest
 
-from bento_mdb.consistency import evaluate_expectation, load_checks_from_yaml, load_query
+from bento_mdb.consistency import evaluate_expectation, load_checks_from_yaml, load_query, prepare_read_query
+
+def test_prepare_read_query_adds_return_guard_without_rewriting_query():
+    query = """MATCH (t:term)
+WITH t.value AS value, count(*) AS n
+WHERE n > 1
+RETURN count(*) AS duplicate_groups"""
+
+    prepared = prepare_read_query(query)
+
+    assert prepared.splitlines()[0].startswith("// RETURN guard")
+    assert query in prepared
+
+
+def test_prepare_read_query_satisfies_bento_meta_return_check():
+    query = """MATCH (t:term)
+WITH t.value AS value, count(*) AS n
+WHERE n > 1
+RETURN count(*) AS duplicate_groups"""
+
+    prepared = prepare_read_query(query)
+
+    assert prepared.lower().splitlines()[0].find("return") != -1
+
+
+def test_prepare_read_query_rejects_empty_query():
+    with pytest.raises(ValueError, match="Cypher query cannot be empty"):
+        prepare_read_query("   ")
 
 def test_load_checks_from_yaml_uses_supplied_repo_root(tmp_path):
     config_dir = tmp_path / "config"

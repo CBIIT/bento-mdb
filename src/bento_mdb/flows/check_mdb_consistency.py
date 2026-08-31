@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from prefect import flow, get_run_logger, task
 
@@ -12,7 +12,9 @@ from bento_mdb.consistency import (
     evaluate_expectation,
     load_checks_from_yaml,
     load_query,
+    prepare_read_query,
 )
+
 from bento_mdb.mdb_utils import init_mdb_connection
 
 
@@ -27,7 +29,7 @@ def load_checks(checks_yaml: str, tags: list[str] | None = None) -> list[dict[st
 @task
 def run_check(mdb_id: str, check: dict[str, Any]) -> ExpectationResult:
     logger = get_run_logger()
-    query = load_query(check, repo_root=_REPO_ROOT)
+    query = prepare_read_query(load_query(check, repo_root=_REPO_ROOT))
     params = check.get("params", {})
 
     logger.info("Running MDB consistency check: %s", check["id"])
