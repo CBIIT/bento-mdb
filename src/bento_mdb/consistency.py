@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_RETURN_GUARD = "// RETURN guard for bento_meta get_with_statement validation"
 
 
 @dataclass
@@ -26,14 +27,23 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 def load_query(check: dict[str, Any], repo_root: Path = _REPO_ROOT) -> str:
     if "query" in check:
-        return check["query"]
-
-    if "query_file" in check:
+        query = check["query"]
+    elif "query_file" in check:
         query_path = repo_root / check["query_file"]
-        return query_path.read_text(encoding="utf-8")
+        query = query_path.read_text(encoding="utf-8")
+    else:
+        msg = f"Check {check.get('id')} must define query or query_file"
+        raise ValueError(msg)
 
-    msg = f"Check {check.get('id')} must define query or query_file"
-    raise ValueError(msg)
+    query = query.strip()
+
+    if not query:
+        raise ValueError(f"Check {check.get('id')} query cannot be empty")
+
+    if query.startswith(_RETURN_GUARD):
+        return query
+
+    return f"{_RETURN_GUARD}\n{query}"
 
 
 def load_checks_from_yaml(

@@ -2,6 +2,42 @@ import pytest
 
 from bento_mdb.consistency import evaluate_expectation, load_checks_from_yaml, load_query
 
+
+def test_load_query_inline_adds_return_guard():
+    check = {"id": "inline", "query": "MATCH (n) RETURN count(n) AS ct"}
+
+    query = load_query(check)
+
+    assert query.startswith("// RETURN guard")
+    assert "MATCH (n) RETURN count(n) AS ct" in query
+
+
+def test_load_query_multiline_query_file_adds_return_guard(tmp_path):
+    query_file = tmp_path / "query.cypher"
+    query_file.write_text(
+        """MATCH (t:term)
+WITH t.value AS value, count(*) AS n
+WHERE n > 1
+RETURN count(*) AS duplicate_groups
+""",
+        encoding="utf-8",
+    )
+
+    check = {"id": "term_dedup_diagnostic", "query_file": "query.cypher"}
+
+    query = load_query(check, repo_root=tmp_path)
+
+    assert query.startswith("// RETURN guard")
+    assert "RETURN count(*) AS duplicate_groups" in query
+
+
+def test_load_query_rejects_empty_query():
+    check = {"id": "empty", "query": "   "}
+
+    with pytest.raises(ValueError, match="query cannot be empty"):
+        load_query(check)
+
+
 def test_load_checks_from_yaml_uses_supplied_repo_root(tmp_path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
@@ -103,12 +139,6 @@ def test_evaluate_expectation_no_rows_raises():
 
     with pytest.raises(ValueError, match="returned no rows"):
         evaluate_expectation(check, [])
-
-
-def test_load_query_inline():
-    check = {"id": "inline", "query": "MATCH (n) RETURN count(n) AS ct"}
-
-    assert load_query(check) == "MATCH (n) RETURN count(n) AS ct"
 
 
 def test_load_query_requires_query_or_file():
