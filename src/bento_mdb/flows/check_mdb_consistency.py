@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
 
 from prefect import flow, get_run_logger, task
 
@@ -15,15 +16,18 @@ from bento_mdb.consistency import (
 from bento_mdb.mdb_utils import init_mdb_connection
 
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
 @task
 def load_checks(checks_yaml: str, tags: list[str] | None = None) -> list[dict[str, Any]]:
-    return load_checks_from_yaml(checks_yaml, tags)
+    return load_checks_from_yaml(checks_yaml, tags, repo_root=_REPO_ROOT)
 
 
 @task
 def run_check(mdb_id: str, check: dict[str, Any]) -> ExpectationResult:
     logger = get_run_logger()
-    query = load_query(check)
+    query = load_query(check, repo_root=_REPO_ROOT)
     params = check.get("params", {})
 
     logger.info("Running MDB consistency check: %s", check["id"])

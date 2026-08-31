@@ -1,8 +1,33 @@
 import pytest
 
-from bento_mdb.consistency import evaluate_expectation, load_query
+from bento_mdb.consistency import evaluate_expectation, load_checks_from_yaml, load_query
 
+def test_load_checks_from_yaml_uses_supplied_repo_root(tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    checks_yaml = config_dir / "mdb_consistency_queries.yml"
+    checks_yaml.write_text(
+        """
+checks:
+  - id: test_check
+    description: Test check
+    query: RETURN 0 AS problem_count
+    tags:
+      - diagnostic
+    severity: error
+    expected:
+      problem_count: 0
+""",
+        encoding="utf-8",
+    )
 
+    checks = load_checks_from_yaml(
+        "config/mdb_consistency_queries.yml",
+        repo_root=tmp_path,
+    )
+
+    assert checks[0]["id"] == "test_check"
+    
 def test_evaluate_expectation_expected_mapping_passes():
     check = {
         "id": "term_dedup_diagnostic",
