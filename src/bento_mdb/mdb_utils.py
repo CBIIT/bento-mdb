@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
-from bento_meta.mdb import MDB
+from typing import Any
+
+from bento_meta.mdb import MDB, read_txn_data
 from bento_meta.mdb.writeable import WriteableMDB
 from prefect.blocks.system import Secret
 
 from bento_mdb.constants import VALID_MDB_IDS
+
+
+@read_txn_data
+def execute_read_query(
+    mdb: MDB,
+    query: str,
+    params: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any] | None]:
+    """Execute arbitrary Cypher in a managed read transaction."""
+    return query, params
 
 
 def init_mdb_connection(

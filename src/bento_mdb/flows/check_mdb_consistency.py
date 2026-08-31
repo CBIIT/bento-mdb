@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from prefect import flow, get_run_logger, task
 
@@ -13,7 +13,8 @@ from bento_mdb.consistency import (
     load_checks_from_yaml,
     load_query,
 )
-from bento_mdb.mdb_utils import init_mdb_connection
+
+from bento_mdb.mdb_utils import execute_read_query, init_mdb_connection
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -35,7 +36,7 @@ def run_check(mdb_id: str, check: dict[str, Any]) -> ExpectationResult:
     mdb = init_mdb_connection(mdb_id, writeable=False, allow_empty=True)
     try:
         # Consistency checks must be safe against prod; use read-only query execution.
-        rows = mdb.get_with_statement(query, params) or []
+        rows = execute_read_query(mdb, query, params) or []
     finally:
         mdb.close()
 
