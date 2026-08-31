@@ -1,52 +1,55 @@
+from unittest.mock import MagicMock
+
 import pytest
 
-from bento_mdb.consistency import evaluate_expectation, load_checks_from_yaml, load_query, prepare_read_query
+from bento_mdb.consistency import (
+    evaluate_expectation,
+    load_checks_from_yaml,
+    load_query,
+)
+from bento_mdb.mdb_utils import execute_read_query
 
-def test_prepare_read_query_adds_return_guard_without_rewriting_query():
+
+def test_execute_read_query_preserves_multiline_query():
     query = """MATCH (t:term)
 WITH t.value AS value, count(*) AS n
 WHERE n > 1
 RETURN count(*) AS duplicate_groups"""
+    params = {"model": "TEST"}
+    expected_rows = [{"duplicate_groups": 0}]
 
-    prepared = prepare_read_query(query)
+    transaction = MagicMock()
+    transaction.run.return_value.data.return_value = expected_rows
+    session = MagicMock()
+    session.execute_read.side_effect = lambda transaction_work: transaction_work(
+        transaction
+    )
+    mdb = MagicMock()
+    mdb.driver.session.return_value.__enter__.return_value = session
 
-    assert prepared.splitlines()[0].startswith("// RETURN guard")
-    assert query in prepared
+    rows = execute_read_query(mdb, query, params)
 
-
-def test_prepare_read_query_satisfies_bento_meta_return_check():
-    query = """MATCH (t:term)
-WITH t.value AS value, count(*) AS n
-WHERE n > 1
-RETURN count(*) AS duplicate_groups"""
-
-    prepared = prepare_read_query(query)
-
-    assert prepared.lower().splitlines()[0].find("return") != -1
-
-
-def test_prepare_read_query_rejects_empty_query():
-    with pytest.raises(ValueError, match="Cypher query cannot be empty"):
-        prepare_read_query("   ")
+    assert rows == expected_rows
+    transaction.run.assert_called_once_with(query, parameters=params)
 
 
-def test_load_query_inline_adds_return_guard():
-    check = {"id": "inline", "query": "MATCH (n) RETURN count(n) AS ct"}
+def test_load_query_inline_preserves_query():
+    expected_query = "MATCH (n) RETURN count(n) AS ct"
+    check = {"id": "inline", "query": expected_query}
 
     query = load_query(check)
 
-    assert query.startswith("// RETURN guard")
-    assert "MATCH (n) RETURN count(n) AS ct" in query
+    assert query == expected_query
 
 
-def test_load_query_multiline_query_file_adds_return_guard(tmp_path):
+def test_load_query_multiline_query_file_preserves_query(tmp_path):
     query_file = tmp_path / "query.cypher"
-    query_file.write_text(
-        """MATCH (t:term)
+    expected_query = """MATCH (t:term)
 WITH t.value AS value, count(*) AS n
 WHERE n > 1
-RETURN count(*) AS duplicate_groups
-""",
+RETURN count(*) AS duplicate_groups"""
+    query_file.write_text(
+        f"{expected_query}\n",
         encoding="utf-8",
     )
 
@@ -54,8 +57,7 @@ RETURN count(*) AS duplicate_groups
 
     query = load_query(check, repo_root=tmp_path)
 
-    assert query.startswith("// RETURN guard")
-    assert "RETURN count(*) AS duplicate_groups" in query
+    assert query == expected_query
 
 
 def test_load_query_rejects_empty_query():

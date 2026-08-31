@@ -7,7 +7,6 @@ from typing import Any
 import yaml
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_RETURN_GUARD = "// RETURN guard for bento_meta get_with_statement validation"
 
 
 @dataclass
@@ -40,18 +39,7 @@ def load_query(check: dict[str, Any], repo_root: Path = _REPO_ROOT) -> str:
     if not query:
         raise ValueError(f"Check {check.get('id')} query cannot be empty")
 
-    if query.startswith(_RETURN_GUARD):
-        return query
-
-    return f"{_RETURN_GUARD}\n{query}"
-
-def prepare_read_query(query: str) -> str:
-    query = query.strip()
-
-    if not query:
-        raise ValueError("Cypher query cannot be empty")
-
-    return f"// RETURN guard for bento_meta get_with_statement validation\n{query}"
+    return query
 
 
 def load_checks_from_yaml(

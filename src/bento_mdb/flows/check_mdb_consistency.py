@@ -12,10 +12,9 @@ from bento_mdb.consistency import (
     evaluate_expectation,
     load_checks_from_yaml,
     load_query,
-    prepare_read_query,
 )
 
-from bento_mdb.mdb_utils import init_mdb_connection
+from bento_mdb.mdb_utils import execute_read_query, init_mdb_connection
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -29,7 +28,7 @@ def load_checks(checks_yaml: str, tags: list[str] | None = None) -> list[dict[st
 @task
 def run_check(mdb_id: str, check: dict[str, Any]) -> ExpectationResult:
     logger = get_run_logger()
-    query = prepare_read_query(load_query(check, repo_root=_REPO_ROOT))
+    query = load_query(check, repo_root=_REPO_ROOT)
     params = check.get("params", {})
 
     logger.info("Running MDB consistency check: %s", check["id"])
@@ -37,7 +36,7 @@ def run_check(mdb_id: str, check: dict[str, Any]) -> ExpectationResult:
     mdb = init_mdb_connection(mdb_id, writeable=False, allow_empty=True)
     try:
         # Consistency checks must be safe against prod; use read-only query execution.
-        rows = mdb.get_with_statement(query, params) or []
+        rows = execute_read_query(mdb, query, params) or []
     finally:
         mdb.close()
 
