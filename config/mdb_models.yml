@@ -230,7 +230,7 @@ CTDC:
   - version: 3.4.1
     tag: 3.4.1
   latest_version: 3.4.1
-  latest_prerelease_commit: abb475e476b1efd99ad5e5d55e06c1d8e4616679
+  latest_prerelease_commit: f3d64987fbf05a01cf05ce3979b80ef4c486b280
   latest_prerelease_version: 3.5.0
 GDC:
   repository: CBIIT/gdc-model
