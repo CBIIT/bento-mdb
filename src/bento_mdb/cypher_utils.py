@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from string import Template
 from typing import TYPE_CHECKING
@@ -25,6 +28,199 @@ if TYPE_CHECKING:
 
 DEFAULT_COMMIT = f"CDEPV-{datetime.now(tz=UTC).strftime('%Y%m%d')}"
 DEFAULT_AUTHOR = "DEFAULT"
+
+def normalize_identity_text(value: object | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def normalize_optional_version(value: object | None) -> str:
+    normalized = normalize_identity_text(value)
+    if normalized.lower() in {"null", "none"}:
+        return ""
+    return normalized
+
+
+def cypher_string_literal(value: object | None) -> str:
+    """Return a safe double-quoted Cypher string literal."""
+    return json.dumps(
+        normalize_identity_text(value),
+        ensure_ascii=False,
+    )
+
+
+def hash_identity(value: object) -> str:
+    """Return a deterministic SHA-256 hash for an identity structure."""
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def get_term_identity(term: Entity) -> tuple[str, str, str, str]:
+    """Return the semantic identity of an ordinary MDB term."""
+    return (
+        normalize_identity_text(getattr(term, "origin_name", None)),
+        normalize_identity_text(getattr(term, "origin_id", None)),
+        normalize_optional_version(
+            getattr(term, "origin_version", None),
+        ),
+        normalize_identity_text(getattr(term, "value", None)),
+    )
+
+
+def get_term_identity_props(term: Entity) -> dict[str, str]:
+    """
+    Return properties used to match an ordinary term.
+
+    Empty optional properties are omitted so an incoming empty value matches
+    legacy nodes where that property is absent.
+    """
+    origin_name, origin_id, origin_version, value = get_term_identity(term)
+
+    if not value:
+        msg = "Cannot generate stable term identity without a term value."
+        raise ValueError(msg)
+
+    props = {"value": value}
+
+    if origin_name:
+        props["origin_name"] = origin_name
+    if origin_id:
+        props["origin_id"] = origin_id
+    if origin_version:
+        props["origin_version"] = origin_version
+
+    return props
+
+
+def get_term_set_hash(terms: Iterable[Entity]) -> str | None:
+    """Return a stable membership hash for a non-empty term collection."""
+    identities = sorted(get_term_identity(term) for term in terms)
+
+    if not identities:
+        return None
+
+    return hash_identity(identities)
+
+
+def get_mapping_source(concept: Concept) -> str:
+    """Return the concept's mapping-source tag value."""
+    mapping_source = concept.tags.get("mapping_source")
+    if not mapping_source:
+        return ""
+
+    return normalize_identity_text(mapping_source.value)
+
+
+def get_concept_identity_hash(concept: Concept) -> str | None:
+    """Return mapping-source plus term-set identity for a model concept."""
+    mapping_source = get_mapping_source(concept)
+    terms = list(concept.terms.values())
+
+    if not mapping_source or not terms:
+        return None
+
+    return hash_identity(
+        {
+            "mapping_source": mapping_source,
+            "terms": sorted(get_term_identity(term) for term in terms),
+        },
+    )
+
+
+def get_value_set_identity_props(value_set: ValueSet) -> dict[str, str]:
+    """Return explicit value-set identity properties."""
+    handle = normalize_identity_text(value_set.handle)
+    if handle:
+        return {"handle": handle}
+
+    set_hash = get_term_set_hash(value_set.terms.values())
+    if set_hash:
+        return {"set_hash": set_hash}
+
+    # Empty value sets must not all merge into one node.
+    nanoid = normalize_identity_text(value_set.nanoid)
+    if not nanoid:
+        msg = "Empty value sets require a nanoid."
+        raise ValueError(msg)
+
+    return {"nanoid": nanoid}
+
+
+def get_entity_identity_props(entity: Entity) -> dict[str, str | bool]:
+    """Return the properties that determine an entity's database identity."""
+    if isinstance(entity, Term):
+        return get_term_identity_props(entity)
+
+    if isinstance(entity, ValueSet):
+        return get_value_set_identity_props(entity)
+
+    if isinstance(entity, Concept):
+        concept_hash = get_concept_identity_hash(entity)
+        if concept_hash:
+            return {"concept_hash": concept_hash}
+
+        nanoid = normalize_identity_text(entity.nanoid)
+        if not nanoid:
+            msg = "A concept without stable term identity requires a nanoid."
+            raise ValueError(msg)
+
+        return {"nanoid": nanoid}
+
+    return {
+        key: (
+            value
+            if isinstance(value, bool)
+            else normalize_identity_text(value)
+        )
+        for key, kind in entity.attspec.items()
+        if kind == "simple"
+        and (value := getattr(entity, key, None)) is not None
+    }
+
+
+def cypherize_entity_identity(entity: Entity) -> N:
+    """Represent an entity using only its stable identity properties."""
+    return N(
+        label=entity.get_label(),
+        props=get_entity_identity_props(entity),
+    )
+
+
+def _cypher_set_assignments(
+    variable: str,
+    attrs: dict[str, object],
+) -> str:
+    """Create comma-separated Cypher property assignments."""
+    assignments = []
+
+    for key, value in attrs.items():
+        if value is None:
+            continue
+
+        if isinstance(value, bool):
+            rendered = "true" if value else "false"
+        elif isinstance(value, int | float):
+            rendered = str(value)
+        else:
+            rendered = cypher_string_literal(value)
+
+        assignments.append(f"{variable}.{key} = {rendered}")
+
+    return ", ".join(assignments)
+
+
+def _simple_entity_attrs(entity: Entity) -> dict[str, object]:
+    """Return declared, non-null, simple attributes."""
+    return {
+        key: getattr(entity, key)
+        for key, kind in entity.attspec.items()
+        if kind == "simple" and getattr(entity, key, None) is not None
+    }
 
 
 def cypherize_entity(entity: Entity) -> N:
@@ -91,7 +287,7 @@ def generate_match_clause(entity: Entity, ent_c: N) -> Match:
 def match_edge(edge: Edge, ent_c: N) -> Match:
     """Add MATCH statement for edge."""
     src_c = N(label="node", props=edge.src.get_attr_dict())
-    dst_c = N(label="node", props=edge.dst.get_attr_dict())  # type:
+    dst_c = N(label="node", props=edge.dst.get_attr_dict())
     src_trip = T(ent_c, R(Type="has_src"), src_c)
     dst_trip = T(ent_c, R(Type="has_dst"), dst_c)
     path = G(src_trip, dst_trip)
@@ -114,7 +310,11 @@ def match_tag(tag: Tag, ent_c: N) -> Match:
         msg = f"Tag missing parent {tag.get_attr_dict()}"
         raise AttributeError(msg)
     parent = tag._parent  # noqa: SLF001
-    par_c = N(label=parent.get_label(), props=parent.get_attr_dict())
+    par_c = (
+    cypherize_entity_identity(parent)
+    if isinstance(parent, Term | ValueSet | Concept)
+    else cypherize_entity(parent)
+    )
     par_c.props.pop("_parent_handle", None)
     # temp workaround for long matches
     par_match_clause = generate_match_clause(entity=parent, ent_c=par_c)
@@ -201,29 +401,94 @@ class When(Clause):
 
 
 def create_entity_cypher_stmt(
-    entity: Entity,
+entity: Entity,
 ) -> tuple[Statement, Statement]:
-    """Generate cypher statement to create or merge Entity."""
-    escape_quotes_in_attr(entity)
+    """
+    Generate Cypher for an MDB entity.
+
+    Terms, value sets, and concepts are merged using their stable semantic
+    identities. Generated identifiers and creation metadata are assigned only
+    when a node is first created. Other entity types preserve their existing
+    CREATE behavior.
+    """
     reset_pg_ent_counter()
-    cypher_ent = cypherize_entity(entity)
-    if isinstance(entity, Property) and "_parent_handle" in cypher_ent.props:
-        cypher_ent.props.pop("_parent_handle")
+
     if isinstance(entity, Term | ValueSet | Concept):
-        if "_commit" not in cypher_ent.props:
-            stmt = Statement(Merge(cypher_ent))
-        # remove _commit prop of Term/VS cypher_ent for Merge
-        else:
-            commit = cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
-            stmt = Statement(Merge(cypher_ent), OnCreateSet(commit))
-        rollback = Statement("empty")
-    else:
-        stmt = Statement(Create(cypher_ent))
-        rollback = Statement(
+        identity_props = get_entity_identity_props(entity)
+        identity_node = cypherize_entity_identity(entity)
+        variable = identity_node.plain_var().pattern().strip("()")
+        attrs = _simple_entity_attrs(entity)
+
+        # Identity fields already appear in the MERGE pattern and must not
+        # also be emitted as metadata assignments.
+        for identity_key in identity_props:
+            attrs.pop(identity_key, None)
+
+        # These properties describe the initially created physical node.
+        # Finding the same semantic identity later must not overwrite them.
+        on_create_keys = {
+            "handle",
+            "nanoid",
+            "_commit",
+        }
+
+        on_create_attrs = {
+            key: attrs.pop(key)
+            for key in tuple(attrs)
+            if key in on_create_keys
+            and attrs[key] not in (None, "")
+        }
+
+        # Remaining nonempty attributes are descriptive source metadata.
+        # They may be refreshed when the source supplies updated metadata,
+        # but they are not part of node identity.
+        mutable_metadata_attrs = {
+            key: value
+            for key, value in attrs.items()
+            if value not in (None, "")
+        }
+
+        query_parts = [f"MERGE {identity_node.pattern()}"]
+
+        if on_create_attrs:
+            query_parts.append(
+                "ON CREATE SET "
+                + _cypher_set_assignments(
+                    variable,
+                    on_create_attrs,
+                ),
+            )
+
+        if mutable_metadata_attrs:
+            query_parts.append(
+                "SET "
+                + _cypher_set_assignments(
+                    variable,
+                    mutable_metadata_attrs,
+                ),
+            )
+
+        return (
+            Statement(" ".join(query_parts)),
+            Statement("empty"),
+        )
+
+    # Preserve the previous behavior for model, node, relationship,
+    # property, tag, and other non-deduplicated entity types.
+    cypher_ent = cypherize_entity(entity)
+
+    if isinstance(entity, Property):
+        cypher_ent.props.pop("_parent_handle", None)
+
+    return (
+        Statement(
+            Create(cypher_ent),
+        ),
+        Statement(
             Match(cypher_ent),
             DetachDelete(cypher_ent.plain_var()),
-        )
-    return stmt, rollback
+        ),
+    )
 
 
 def create_relationship_cypher_stmt(
@@ -231,22 +496,41 @@ def create_relationship_cypher_stmt(
     rel: str,
     dst: Entity,
 ) -> tuple[Statement, Statement]:
-    """Generate cypher statement to create relationship from src to dst entity."""
+    """Create a relationship using the same identities as node creation."""
     reset_pg_ent_counter()
-    cypher_src = cypherize_entity(src)
-    cypher_dst = cypherize_entity(dst)
-    cypher_rel = R(Type=rel)
-    # remove _commit attr from Term and VS ents
+
+    cypher_src = (
+        cypherize_entity_identity(src)
+        if isinstance(src, Term | ValueSet | Concept)
+        else cypherize_entity(src)
+    )
+    cypher_dst = (
+        cypherize_entity_identity(dst)
+        if isinstance(dst, Term | ValueSet | Concept)
+        else cypherize_entity(dst)
+    )
+
     for cypher_ent in (cypher_src, cypher_dst):
-        if cypher_ent.label in ("term", "value_set") and "_commit" in cypher_ent.props:
-            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
-        if cypher_ent.label == "property" and "_parent_handle" in cypher_ent.props:
-            cypher_ent.props.pop("_parent_handle")
-    stmt_merge_trip = T(cypher_src.plain_var(), cypher_rel, cypher_dst.plain_var())
-    rlbk_match_trip = T(cypher_src, cypher_rel, cypher_dst)
+        if cypher_ent.label == "property":
+            cypher_ent.props.pop("_parent_handle", None)
+
+    cypher_rel = R(Type=rel)
+    merge_triplet = T(
+        cypher_src.plain_var(),
+        cypher_rel,
+        cypher_dst.plain_var(),
+    )
+    rollback_triplet = T(cypher_src, cypher_rel, cypher_dst)
+
     return (
-        Statement(Match(cypher_src, cypher_dst), Merge(stmt_merge_trip)),
-        Statement(Match(rlbk_match_trip), Delete(cypher_rel.plain_var())),
+        Statement(
+            Match(cypher_src, cypher_dst),
+            Merge(merge_triplet),
+        ),
+        Statement(
+            Match(rollback_triplet),
+            Delete(cypher_rel.plain_var()),
+        ),
     )
 
 
@@ -256,87 +540,72 @@ def generate_cypher_to_link_term_synonyms(
     mapping_source: str,
     _commit: str | None = DEFAULT_COMMIT,
 ) -> Statement:
-    """
-    Generate cypher statement to link two terms via a Concept node.
+    """Reuse or create one source-specific concept for two synonymous terms."""
+    if not isinstance(entity_1, Term) or not isinstance(entity_2, Term):
+        msg = "Synonym linking requires two Term entities."
+        raise TypeError(msg)
 
-    Finds or creates one Concept node and ensures both Terms connected to it via the
-    'represents' relationship. If either Term is already connected to a Concept tagged
-    by the given mapping source, that concept is used instead.
-    """
     reset_pg_ent_counter()
-    cypher_ent_1 = cypherize_entity(entity_1)
-    cypher_ent_2 = cypherize_entity(entity_2)
-    cypher_concept_1 = N(label="concept")
-    cypher_concept_2 = N(label="concept")
-    ent_1_trip = T(cypher_ent_1.plain_var(), R(Type="represents"), cypher_concept_1)
-    ent_2_trip = T(cypher_ent_2.plain_var(), R(Type="represents"), cypher_concept_2)
-    concept_tag_trip_1 = T(
-        cypher_concept_1,
-        R(Type="has_tag"),
-        N(
-            label="tag",
-            props={"key": "mapping_source", "value": mapping_source},
-        ),
+
+    left_node = N(
+        label="term",
+        props=get_term_identity_props(entity_1),
     )
-    concept_tag_trip_2 = T(
-        cypher_concept_2,
-        R(Type="has_tag"),
-        N(
-            label="tag",
-            props={"key": "mapping_source", "value": mapping_source},
-        ),
+    right_node = N(
+        label="term",
+        props=get_term_identity_props(entity_2),
     )
-    ent_1_concept_path = G(ent_1_trip, concept_tag_trip_1)
-    ent_2_concept_path = G(ent_2_trip, concept_tag_trip_2)
-    cypher_ent_1_var = cypher_ent_1.plain_var().pattern()
-    cypher_ent_2_var = cypher_ent_2.plain_var().pattern()
-    cypher_concept_1_var = cypher_concept_1.plain_var().pattern()
-    cypher_concept_2_var = cypher_concept_2.plain_var().pattern()
-    new_concept = N(label="concept", props={"_commit": _commit})
-    for cypher_ent in (cypher_ent_1, cypher_ent_2):
-        if "_commit" in cypher_ent.props:
-            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+
+    left_var = left_node.plain_var().pattern()
+    right_var = right_node.plain_var().pattern()
+    source_literal = cypher_string_literal(mapping_source)
+    commit_literal = cypher_string_literal(_commit)
+
     return Statement(
-        Match(cypher_ent_1, cypher_ent_2),
-        Where(cypher_ent_1_var, "<>", cypher_ent_2_var, op=""),
-        With(cypher_ent_1_var, cypher_ent_2_var),
-        OptionalMatch(ent_1_concept_path),
-        With(cypher_ent_1_var, cypher_ent_2_var, cypher_concept_1_var),
-        "LIMIT 1",
-        OptionalMatch(ent_2_concept_path),
-        With(
-            cypher_ent_1_var,
-            cypher_ent_2_var,
-            cypher_concept_1_var,
-            cypher_concept_2_var,
-        ),
-        "LIMIT 1",
-        With(cypher_ent_1_var, cypher_ent_2_var),
-        ",",
-        f"{Case()}{When(cypher_concept_1_var)} IS NOT NULL THEN {cypher_concept_1_var}",
-        f"{When(cypher_concept_2_var)} IS NOT NULL THEN {cypher_concept_2_var}",
-        "ELSE NULL END AS existing_concept ",
-        ForEach(),
-        f"(_ IN {Case()}{When('existing_concept')} IS NOT NULL THEN [1] ELSE [] END |",
-        Merge(f"{cypher_ent_1_var}-[:represents]->(existing_concept)"),
-        Merge(f"{cypher_ent_2_var}-[:represents]->(existing_concept)"),
-        ")",
-        ForEach(),
-        f"(_ IN {Case()}{When('existing_concept')} IS NULL THEN [1] ELSE [] END |",
-        Create(new_concept),
-        Create(
-            T(
-                new_concept.plain_var(),
-                R("has_tag"),
-                N(
-                    label="tag",
-                    props={"key": "mapping_source", "value": mapping_source},
-                ),
-            ),
-        ),
-        Create(T(cypher_ent_1.plain_var(), R("represents"), new_concept.plain_var())),
-        Create(T(cypher_ent_2.plain_var(), R("represents"), new_concept.plain_var())),
-        ")",
+        f"""
+        MATCH {left_node.pattern()}
+        MATCH {right_node.pattern()}
+        WHERE {left_var} <> {right_var}
+        WITH {left_var} AS left, {right_var} AS right
+
+        OPTIONAL MATCH
+          (candidate:concept)-[:has_tag]->(:tag {{
+            key: "mapping_source",
+            value: {source_literal}
+          }})
+        WHERE
+          (left)-[:represents]->(candidate)
+          OR (right)-[:represents]->(candidate)
+
+        WITH left, right, candidate
+        ORDER BY id(candidate)
+        WITH left, right, head(collect(candidate)) AS existing
+
+        FOREACH (
+          _ IN CASE
+            WHEN existing IS NOT NULL THEN [1]
+            ELSE []
+          END |
+          MERGE (left)-[:represents]->(existing)
+          MERGE (right)-[:represents]->(existing)
+        )
+
+        FOREACH (
+          _ IN CASE
+            WHEN existing IS NULL THEN [1]
+            ELSE []
+          END |
+          CREATE (created:concept {{
+            _commit: {commit_literal}
+          }})
+          CREATE (created)-[:has_tag]->(:tag {{
+            key: "mapping_source",
+            value: {source_literal}
+          }})
+          CREATE (left)-[:represents]->(created)
+          CREATE (right)-[:represents]->(created)
+        )
+        """.strip(),
     )
 
 
@@ -359,67 +628,10 @@ def generate_cypher_to_link_term_alternates(
     alt_term: Entity,
     _commit: str | None = DEFAULT_COMMIT,
 ) -> Statement:
-    """
-    Generate cypher statement to link PV term to alternate name term via shared Concept node.
-    
-    Both terms are linked to the same concept node using the mapping_source tag alternate_name.
-    """
-    reset_pg_ent_counter()
-    cypher_pv = cypherize_entity(pv_term)
-    cypher_alt = cypherize_entity(alt_term)
-    cypher_concept = N(label="concept")
-    
-    pv_represents_concept = T(cypher_pv.plain_var(), R(Type="represents"), cypher_concept)
-    
-    concept_tag_trip = T(
-        cypher_concept,
-        R(Type="has_tag"),
-        N(
-            label="tag",
-            props={"key": "mapping_source", "value": "alternate_name"},
-        )
-    )
-    
-    pv_concept_path = G(pv_represents_concept, concept_tag_trip)
-    
-    cypher_pv_var = cypher_pv.plain_var().pattern()
-    cypher_alt_var = cypher_alt.plain_var().pattern()
-    cypher_concept_var = cypher_concept.plain_var().pattern()
-    
-    new_concept = N(label="concept", props={"_commit": _commit})
-    for cypher_ent in (cypher_pv, cypher_alt):
-        if "_commit" in cypher_ent.props:
-            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
-    
-    return Statement(
-        Match(cypher_pv, cypher_alt),
-        Where(cypher_pv_var, "<>", cypher_alt_var, op=""),
-        With(cypher_pv_var, cypher_alt_var),
-        OptionalMatch(pv_concept_path),
-        With(cypher_pv_var, cypher_alt_var, cypher_concept_var),
-        "LIMIT 1",
-        With(cypher_pv_var, cypher_alt_var),
-        ",",
-        f"{Case()}{When(cypher_concept_var)} IS NOT NULL THEN {cypher_concept_var} ELSE NULL END AS existing_concept ",
-        ForEach(),
-        f"(_ IN {Case()}{When('existing_concept')} IS NOT NULL THEN [1] ELSE [] END |",
-        Merge(f"{cypher_pv_var}-[:represents]->(existing_concept)"),
-        Merge(f"{cypher_alt_var}-[:represents]->(existing_concept)"),
-        ")",
-        ForEach(),
-        f"(_ IN {Case()}{When('existing_concept')} IS NULL THEN [1] ELSE [] END |",
-        Create(new_concept),
-        Create(
-            T(
-                new_concept.plain_var(),
-                R("has_tag"),
-                N(
-                    label="tag",
-                    props={"key": "mapping_source", "value": "alternate_name"},
-                ),
-            ),
-        ),
-        Create(T(cypher_pv.plain_var(), R("represents"), new_concept.plain_var())),
-        Create(T(cypher_alt.plain_var(), R("represents"), new_concept.plain_var())),
-        ")"
+    """Link a PV and alternate through one alternate-name concept."""
+    return generate_cypher_to_link_term_synonyms(
+        pv_term,
+        alt_term,
+        "alternate_name",
+        _commit,
     )

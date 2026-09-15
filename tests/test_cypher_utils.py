@@ -43,7 +43,7 @@ class TestCreateEntityCypherStmt:
         actual = str(create_entity_cypher_stmt(termc)[0])
         expected = (
             "MERGE (n0:term {value:'test_term'}) "
-            "ON CREATE SET n0._commit = 'TEST_COMMIT'"
+            'ON CREATE SET n0._commit = "TEST_COMMIT"'
         )
         assert_equal(actual, expected)
 
@@ -85,20 +85,29 @@ class TestGenerateCypherToLinkTermSynonyms:
                 "CDEPV-TEST",
             ),
         )
-        expected = (
-            "MATCH (n0:term {value:'test_term1'}), (n1:term {value:'test_term2'}) "
-            "WHERE (n0)  <>  (n1) WITH (n0), (n1) OPTIONAL MATCH (n0)-[r0:represents]->"
-            "(n2:concept)-[r2:has_tag]->(n4:tag {key:'mapping_source',value:'NCIt'}) "
-            "WITH (n0), (n1), (n2) LIMIT 1 OPTIONAL MATCH (n1)-[r1:represents]->"
-            "(n3:concept)-[r3:has_tag]->(n5:tag {key:'mapping_source',value:'NCIt'}) "
-            "WITH (n0), (n1), (n2), (n3) LIMIT 1 WITH (n0), (n1) , "
-            "CASE WHEN (n2) IS NOT NULL THEN (n2) WHEN (n3) IS NOT NULL THEN (n3) "
-            "ELSE NULL END AS existing_concept  FOREACH  "
-            "(_ IN CASE WHEN existing_concept IS NOT NULL THEN [1] ELSE [] END | "
-            "MERGE (n0)-[:represents]->(existing_concept) MERGE (n1)-[:represents]->"
-            "(existing_concept) ) FOREACH  (_ IN CASE WHEN existing_concept IS NULL "
-            "THEN [1] ELSE [] END | CREATE (n6:concept {_commit:'CDEPV-TEST'}) "
-            "CREATE (n6)-[r4:has_tag]->(n7:tag {key:'mapping_source',value:'NCIt'}) "
-            "CREATE (n0)-[r5:represents]->(n6) CREATE (n1)-[r6:represents]->(n6) )"
-        )
-        assert_equal(actual, expected)
+
+        # Both exact term identities must be matched.
+        assert "MATCH (n0:term {value:'test_term1'})" in actual
+        assert "MATCH (n1:term {value:'test_term2'})" in actual
+        assert "WHERE (n0) <> (n1)" in actual
+
+        # An existing concept is eligible only for this mapping source.
+        assert "OPTIONAL MATCH" in actual
+        assert "(candidate:concept)-[:has_tag]->(:tag {" in actual
+        assert 'key: "mapping_source"' in actual
+        assert 'value: "NCIt"' in actual
+
+        # Either term may locate the existing source-specific concept.
+        assert "(left)-[:represents]->(candidate)" in actual
+        assert "(right)-[:represents]->(candidate)" in actual
+
+        # If found, both terms reuse it.
+        assert "MERGE (left)-[:represents]->(existing)" in actual
+        assert "MERGE (right)-[:represents]->(existing)" in actual
+
+        # A new concept is created only when no matching concept exists.
+        assert "WHEN existing IS NULL THEN [1]" in actual
+        assert "CREATE (created:concept {" in actual
+        assert '_commit: "CDEPV-TEST"' in actual
+        assert "CREATE (left)-[:represents]->(created)" in actual
+        assert "CREATE (right)-[:represents]->(created)" in actual
