@@ -238,8 +238,8 @@ CTDC:
   - version: 3.8.0
     tag: 3.8.0
   latest_version: 3.8.0
-  latest_prerelease_commit: 6062304dcf6003e6836e631e95652e534ad3a958
-  latest_prerelease_version: 3.8.0
+  latest_prerelease_commit: c4771023cbc560e35243248099eb3d8157582811
+  latest_prerelease_version: 3.9.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
