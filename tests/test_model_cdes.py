@@ -10,6 +10,7 @@ from bento_mdf.mdf import MDFReader
 from bento_mdb.datatypes import ModelSpec
 from bento_mdb.model_cdes import (
     compare_model_specs_to_mdb,
+    find_missing_edp_references,
     get_yaml_files_from_spec,
     load_model_specs_from_yaml,
     make_model_cde_spec,
@@ -519,6 +520,144 @@ class TestGetEdpEnumTerm:
         prop = mdf.model.props[("study", "organism_species")]
         result = get_edp_enum_term(prop)
         assert result is None
+
+class TestFindMissingEdpReferences:
+    """Tests for validation of model EDP enum references."""
+
+    TEST_EDP_MODEL = Path(__file__).parent / "samples" / "test_model_edp.yml"
+    TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_mdf_edp.yml"
+    TEST_PLAIN_MDF = Path(__file__).parent / "samples" / "test_mdf_cdes.yml"
+
+    @staticmethod
+    def write_edp_config(
+        tmp_path: Path,
+        *,
+        code: str = "CRDC00005",
+        latest_version: str = "1",
+        versions: list[str] | None = None,
+    ) -> Path:
+        config_path = tmp_path / "mdb_edps.yml"
+        configured_versions = versions or [latest_version]
+
+        config_path.write_text(
+            yaml.safe_dump(
+                {
+                    "TEST_EDP": {
+                        "origin": "CRDC",
+                        "code": code,
+                        "latest_version": latest_version,
+                        "versions": [
+                            {
+                                "version": version,
+                                "tag": version,
+                            }
+                            for version in configured_versions
+                        ],
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        return config_path
+
+    def test_configured_edp_returns_no_warnings(self, tmp_path: Path) -> None:
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+        )
+        config_path = self.write_edp_config(tmp_path)
+
+        warnings = find_missing_edp_references(
+            mdf.model,
+            config_path,
+        )
+
+        assert warnings == []
+
+    @pytest.mark.parametrize(
+        ("configured_code", "configured_version"),
+        [
+            ("CRDC0002", "1"),
+            ("CRDC00005", "2"),
+        ],
+    )
+    def test_unknown_edp_identity_returns_warning(
+        self,
+        tmp_path: Path,
+        configured_code: str,
+        configured_version: str,
+    ) -> None:
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+        )
+        config_path = self.write_edp_config(
+            tmp_path,
+            code=configured_code,
+            latest_version=configured_version,
+        )
+
+        warnings = find_missing_edp_references(
+            mdf.model,
+            config_path,
+        )
+
+        assert len(warnings) == 1
+        assert "CRDC/CRDC00005/1" in warnings[0]
+        assert "TEST/program/program_name" in warnings[0]
+        assert "without an EDP value-set link" in warnings[0]
+
+    def test_historical_configured_version_is_accepted(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+        )
+        config_path = self.write_edp_config(
+            tmp_path,
+            latest_version="2",
+            versions=["1", "2"],
+        )
+
+        warnings = find_missing_edp_references(
+            mdf.model,
+            config_path,
+        )
+
+        assert warnings == []
+
+    def test_non_edp_property_returns_no_warnings(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        mdf = MDFReader(self.TEST_PLAIN_MDF)
+        config_path = self.write_edp_config(tmp_path)
+
+        warnings = find_missing_edp_references(
+            mdf.model,
+            config_path,
+        )
+
+        assert warnings == []
+
+    def test_missing_config_returns_warning(self, tmp_path: Path) -> None:
+        mdf = MDFReader(
+            self.TEST_EDP_MODEL,
+            self.TEST_EDP_PROPS,
+        )
+        missing_config = tmp_path / "missing.yml"
+
+        warnings = find_missing_edp_references(
+            mdf.model,
+            missing_config,
+        )
+
+        assert warnings == [
+            f"EDP config file not found: {missing_config}",
+        ]
 
 
 class TestMakeModelCdeSpecWithEdp:
