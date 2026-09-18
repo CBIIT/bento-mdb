@@ -153,8 +153,8 @@ CDS:
   - version: 12.0.0
     tag: 12.0.0-GC_Release
   latest_version: 12.0.0
-  latest_prerelease_commit: 0fea351c3cee88c246b14ab4f69929f12ebd08a1
-  latest_prerelease_version: 12.0.0
+  latest_prerelease_commit: 885bc2aeb6cfa32093fc5db9ee99a7d621c39e4a
+  latest_prerelease_version: 13.0.0
 CTDC:
   repository: CBIIT/ctdc-model
   mdf_directory: model-desc
@@ -237,8 +237,10 @@ CTDC:
     tag: 3.7.0
   - version: 3.8.0
     tag: 3.8.0
-  latest_version: 3.8.0
-  latest_prerelease_commit: c4771023cbc560e35243248099eb3d8157582811
+  - version: 3.9.0
+    tag: 3.9.0
+  latest_version: 3.9.0
+  latest_prerelease_commit: ce1da51b7635ccd5a43f52bf4a997e2f8850f04e
   latest_prerelease_version: 3.9.0
 GDC:
   repository: CBIIT/gdc-model
