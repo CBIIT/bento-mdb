@@ -17,6 +17,8 @@ from bento_mdb.cypher_utils import (
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
     deprecate_old_model_nodes_cypher_stmt,
+    get_concept_identity_hash,
+    get_term_set_hash,
 )
 
 if TYPE_CHECKING:
@@ -141,17 +143,65 @@ class ModelToChangelogConverter:
         stmt, rollback = create_relationship_cypher_stmt(src, rel, dst)
         self.add_statement(stmt_type, stmt, rollback)
 
-    def process_tags(self, entity: Entity) -> None:
-        """Generate cypher statements to create/merge an entity's tag attributes."""
+    def process_tags(
+        self,
+        entity: Entity,
+        *,
+        excluded_keys: set[str] | None = None,
+    ) -> None:
+        """Generate Cypher statements for an entity's tag attributes."""
         if not entity.tags:
             return
-        for tag in entity.tags.values():
+
+        excluded_keys = excluded_keys or set()
+
+        for tag_key, tag in entity.tags.items():
+            if tag_key in excluded_keys:
+                continue
+
             if not tag.nanoid:
                 tag.nanoid = make_nanoid()
             if not tag._parent:  # noqa: SLF001
                 tag._parent = entity  # noqa: SLF001
+
             self.generate_cypher_to_add_entity(tag)
-            self.generate_cypher_to_add_relationship(entity, "has_tag", tag)
+            self.generate_cypher_to_add_relationship(
+                entity,
+                "has_tag",
+                tag,
+            )
+
+    def generate_cypher_to_merge_mapping_source_tag(
+        self,
+        concept_hash: str,
+        mapping_source: str,
+    ) -> None:
+        """
+        Ensure a concept has one mapping-source tag.
+
+        The tag is scoped to the matched concept. It is not shared globally
+        between unrelated concepts.
+        """
+        concept_hash_literal = _cypher_string_literal(concept_hash)
+        mapping_source_literal = _cypher_string_literal(mapping_source)
+
+        statement = Statement(
+            f"""
+            MATCH (concept:concept {{
+            concept_hash: {concept_hash_literal}
+            }})
+            MERGE (concept)-[:has_tag]->(:tag {{
+            key: "mapping_source",
+            value: {mapping_source_literal}
+            }})
+            """.strip(),
+        )
+
+        self.add_statement(
+            "add_rels",
+            statement,
+            Statement("empty"),
+        )
 
     def process_origin(self, entity: Entity) -> None:
         """Generate cypher statements to create/merge an entity's origin attribute."""
@@ -176,16 +226,49 @@ class ModelToChangelogConverter:
             self.process_concept(term)
 
     def process_concept(self, entity: Entity) -> None:
-        """Generate cypher statements to create/merge an entity's concept attribute."""
+        """
+        Reuse model annotation concepts by mapping source and exact term set.
+
+        This allows new versions of the same model to point to an existing
+        annotation concept while preserving separate concepts for separate
+        mapping sources.
+        """
         if not entity.concept:
             return
+
         if not entity.concept.tags.get("mapping_source"):
             entity.concept.tags["mapping_source"] = Tag(
-                {"key": "mapping_source", "value": self.model.handle},
+                {
+                    "key": "mapping_source",
+                    "value": self.model.handle,
+                },
             )
+
+        concept_hash = get_concept_identity_hash(entity.concept)
+        if not concept_hash:
+            msg = (
+                "Cannot create a stable model annotation concept without both "
+                "a mapping source and at least one term."
+            )
+            raise ValueError(msg)
+
+        mapping_source_tag = entity.concept.tags["mapping_source"]
+        mapping_source = str(mapping_source_tag.value)
+
         self.generate_cypher_to_add_entity(entity.concept)
-        self.generate_cypher_to_add_relationship(entity, "has_concept", entity.concept)
-        self.process_tags(entity.concept)
+        self.generate_cypher_to_add_relationship(
+            entity,
+            "has_concept",
+            entity.concept,
+        )
+        self.generate_cypher_to_merge_mapping_source_tag(
+            concept_hash,
+            mapping_source,
+        )
+        self.process_tags(
+            entity.concept,
+            excluded_keys={"mapping_source"},
+        )
         self.process_terms(entity.concept)
 
     def generate_cypher_to_link_edp_value_set(self, entity: Entity) -> None:
@@ -208,10 +291,12 @@ class ModelToChangelogConverter:
             f"edp.origin_name = {_cypher_string_literal(edp_term.origin_name)}",
             f"edp.origin_id = {_cypher_string_literal(edp_term.origin_id)}",
         ]
-        if getattr(edp_term, "origin_version", None):
-            edp_filters.append(
-                f"edp.origin_version = {_cypher_string_literal(edp_term.origin_version)}",
-            )
+        edp_filters.append(
+            "coalesce(edp.origin_version, '') = "
+            + _cypher_string_literal(
+                getattr(edp_term, "origin_version", None) or "",
+            ),
+        )
 
         stmt = (
             f"MATCH (prop:property {{{', '.join(prop_filters)}}}) "
@@ -228,29 +313,15 @@ class ModelToChangelogConverter:
         )
         self.add_statement("add_rels", stmt, rollback)
 
-    def get_value_set_term_key(self, value_set: Entity) -> tuple:
-        """Return a stable identity key for a value set's attached terms."""
-        terms = value_set.terms
-        if not terms:
-            return ()
-
-        return tuple(
-            sorted(
-                (
-                    term.origin_name or "",
-                    term.origin_id or "",
-                    term.origin_version or "",
-                    term.value or "",
-                )
-                for term in terms.values()
-            ),
-        )
+    def get_value_set_term_key(self, value_set: Entity) -> str | None:
+        """Return the persisted membership identity for a local enum value set."""
+        return get_term_set_hash(value_set.terms.values())
 
     def set_value_set_commit(self, value_set: Entity) -> None:
-        """Replace missing/dummy value_set commit with the changelog commit."""
+        """Replace a missing or dummy commit with the changelog commit."""
         if self._commit and (
-            value_set._commit is not None
-            or value_set._commit == "dummy"
+            not value_set._commit  # noqa: SLF001
+            or value_set._commit == "dummy"  # noqa: SLF001
         ):
             value_set._commit = self._commit  # noqa: SLF001
 
