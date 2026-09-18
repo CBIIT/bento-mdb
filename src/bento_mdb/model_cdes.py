@@ -23,6 +23,68 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def find_missing_edp_references(
+    model: Model,
+    edp_config_file: Path = Path("config/mdb_edps.yml"),
+) -> list[str]:
+    """Return warnings for model properties referencing unconfigured EDPs."""
+    if not edp_config_file.exists():
+        return [f"EDP config file not found: {edp_config_file}"]
+
+    with edp_config_file.open(mode="r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+
+    configured_edps: set[tuple[str, str, str]] = set()
+
+    for spec in config.values():
+        origin = str(spec.get("origin", ""))
+        code = str(spec.get("code", ""))
+
+        versions = {
+            str(version["version"])
+            for version in spec.get("versions", [])
+            if version.get("version") is not None
+        }
+
+        latest_version = spec.get("latest_version")
+        if latest_version is not None:
+            versions.add(str(latest_version))
+
+        configured_edps.update(
+            (origin, code, version)
+            for version in versions
+        )
+
+    warnings = []
+
+    for prop_key, prop in model.props.items():
+        edp_term = get_edp_enum_term(prop)
+        if not edp_term:
+            continue
+
+        identity = (
+            str(getattr(edp_term, "origin_name", "") or ""),
+            str(getattr(edp_term, "origin_id", "") or ""),
+            str(getattr(edp_term, "origin_version", "") or ""),
+        )
+
+        if identity in configured_edps:
+            continue
+
+        property_path = "/".join(str(part) for part in prop_key)
+
+        warnings.append(
+            "EDP "
+            f"{identity[0]}/{identity[1]}/{identity[2]} "
+            f"referenced by {model.handle}/{property_path} "
+            f"is not registered in {edp_config_file}. "
+            "The property may be created without an EDP value-set link."
+        )
+
+    return warnings
+
+
 def get_edp_enum_term(entity):
     """Return the single EDP term referenced by entity.value_set, or None."""
     value_set = getattr(entity, "value_set", None)

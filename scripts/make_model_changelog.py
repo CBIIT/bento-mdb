@@ -8,12 +8,14 @@ This contains the necessary cypher statements to add the model to an MDB.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import click
 from bento_mdf.mdf import MDF
 
 from bento_mdb.model_cypher import ModelToChangelogConverter
+from bento_mdb.model_cdes import find_missing_edp_references
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,16 @@ logger = logging.getLogger(__name__)
     type=bool,
     help="Is this the latest data model version?",
 )
+@click.option(
+    "--edp_config_file",
+    type=click.Path(
+        dir_okay=False,
+        path_type=Path,
+    ),
+    default=Path("config/mdb_edps.yml"),
+    show_default=True,
+    help="EDP configuration used to validate model EDP references.",
+)
 def main(  # noqa: PLR0913
     model_handle: str,
     mdf_files: str | list[str],
@@ -86,6 +98,7 @@ def main(  # noqa: PLR0913
     author: str,
     _commit: str | None,
     model_version: str | None,
+    edp_config_file: Path,
     *,
     add_rollback: bool,
     latest_version: bool,
@@ -98,6 +111,18 @@ def main(  # noqa: PLR0913
         msg = "Error getting model from MDF"
         raise RuntimeError(msg)
     logger.info("Model MDF loaded successfully")
+
+    for warning in find_missing_edp_references(
+        mdf.model,
+        edp_config_file,
+    ):
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            click.echo(
+                f"::warning title=Missing EDP reference::{warning}",
+                err=True,
+            )
+        else:
+            click.echo(f"WARNING: {warning}", err=True)
 
     converter = ModelToChangelogConverter(
         model=mdf.model,
