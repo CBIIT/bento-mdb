@@ -352,5 +352,5 @@ TEST:
     tag: 1.2.0
     ignore: true
   latest_version: null
-  latest_prerelease_commit: 197a6b51d486f462b87189e91f7e129b27079b84
-  latest_prerelease_version: 1.2.0
+  latest_prerelease_commit: c2a00ef676be8dc0688229021b968a881a3bfe0d
+  latest_prerelease_version: 1.3.0
