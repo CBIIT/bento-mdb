@@ -14,10 +14,14 @@ from tqdm import tqdm
 from bento_mdb.cypher_utils import (
     DEFAULT_AUTHOR,
     DEFAULT_COMMIT,
+    Statement,
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
+    cypher_string_literal,
+    generate_cypher_to_link_term_alternates,
     generate_cypher_to_link_term_synonyms,
-    generate_cypher_to_link_term_alternates
+    normalize_identity_text,
+    normalize_optional_version,
 )
 
 if TYPE_CHECKING:
@@ -26,11 +30,64 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+CDE_BASE_URL = (
+    "https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/"
+)
 
-def _cypher_string_literal(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+def get_cde_value_set_handle(
+    cde_id: object | None,
+    cde_version: object | None,
+) -> str:
+    """Return the canonical CDE value-set handle."""
+    normalized_id = normalize_identity_text(cde_id)
+    normalized_version = normalize_optional_version(cde_version)
 
+    if not normalized_id:
+        msg = "Cannot create a CDE value set without a CDE ID."
+        raise ValueError(msg)
+
+    return f"{normalized_id}|{normalized_version}"
+
+
+def get_cde_value_set_url(
+    cde_id: object | None,
+    cde_version: object | None,
+) -> str:
+    """Return a caDSR URL without null-like version parameters."""
+    normalized_id = normalize_identity_text(cde_id)
+    normalized_version = normalize_optional_version(cde_version)
+
+    if not normalized_id:
+        msg = "Cannot create a CDE value-set URL without a CDE ID."
+        raise ValueError(msg)
+
+    url = f"{CDE_BASE_URL}{normalized_id}"
+    if normalized_version:
+        url += f"?version={normalized_version}"
+
+    return url
+
+def create_cde_value_set_cypher(
+    cde_id: object | None,
+    cde_version: object | None,
+    _commit: str | None,
+) -> Statement:
+    """Merge a CDE value set using only CDE ID and version identity."""
+    handle = get_cde_value_set_handle(cde_id, cde_version)
+    url = get_cde_value_set_url(cde_id, cde_version)
+
+    return Statement(
+        " ".join(
+            [
+                "MERGE (vs:value_set "
+                f"{{handle: {cypher_string_literal(handle)}}})",
+                "ON CREATE SET "
+                f"vs.nanoid = {cypher_string_literal(make_nanoid())}, "
+                f"vs._commit = {cypher_string_literal(_commit)}",
+                f"SET vs.url = {cypher_string_literal(url)}",
+            ],
+        ),
+    )
 
 def create_delete_pv_cypher(
     pv_value: str,
@@ -39,20 +96,20 @@ def create_delete_pv_cypher(
     cde_id: str,
     cde_ver: str,
 ) -> str:
-    """Create Cypher DELETE statement for a removed PV.
-    
-    Deletes only the relationship between PV and ValueSet, not the PV node itself.
-    This is safer in case the PV is used by other ValueSets.
-    """
-    pv_value_literal = _cypher_string_literal(pv_value)
-    origin_version_literal = _cypher_string_literal(pv_origin_version or "")
+    """Delete only the CDE value-set-to-PV relationship."""
+    handle = get_cde_value_set_handle(cde_id, cde_ver)
+
     return (
-        f"MATCH (vs:value_set {{handle: '{cde_id}|{cde_ver}'}})-[r:has_term]->(pv:term) "
-        f"WHERE toLower(pv.origin_name) CONTAINS 'cadsr' "
-        f"AND pv.origin_id = '{pv_origin_id}' "
-        f"AND pv.value = {pv_value_literal} "
-        f"AND pv.origin_version = {origin_version_literal} "
-        f"DELETE r"
+        f"MATCH (vs:value_set {{handle: {cypher_string_literal(handle)}}})"
+        "-[r:has_term]->(pv:term) "
+        "WHERE toLower(coalesce(pv.origin_name, '')) CONTAINS 'cadsr' "
+        f"AND coalesce(pv.origin_id, '') = "
+        f"{cypher_string_literal(pv_origin_id)} "
+        f"AND coalesce(pv.value, '') = "
+        f"{cypher_string_literal(pv_value)} "
+        f"AND coalesce(pv.origin_version, '') = "
+        f"{cypher_string_literal(pv_origin_version)} "
+        "DELETE r"
     )
 
 
@@ -64,22 +121,22 @@ def _generate_edp_link_cypher(
     edp_origin_version: str | None = None,
 ) -> str:
     """Cypher to link a CDE term to its EDP value_set via specifies_value_set."""
-    cde_id_literal = _cypher_string_literal(cde_id)
-    edp_origin_id_literal = _cypher_string_literal(edp_origin_id)
-    edp_origin_name_literal = _cypher_string_literal(edp_origin_name)
+    cde_id_literal = cypher_string_literal(cde_id)
+    edp_origin_id_literal = cypher_string_literal(edp_origin_id)
+    edp_origin_name_literal = cypher_string_literal(edp_origin_name)
 
     edp_filters = [
     f"edp.origin_name = {edp_origin_name_literal}",
     f"edp.origin_id = {edp_origin_id_literal}",
     ]
     if edp_origin_version:
-        edp_filters.append(f"edp.origin_version = {_cypher_string_literal(edp_origin_version)}")
+        edp_filters.append(f"edp.origin_version = {cypher_string_literal(edp_origin_version)}")
 
     cde_filters = [
         "toLower(cde.origin_name) CONTAINS 'cadsr'",
     ]
     if cde_version:
-        cde_filters.append(f"cde.origin_version = {_cypher_string_literal(cde_version)}")
+        cde_filters.append(f"cde.origin_version = {cypher_string_literal(cde_version)}")
 
     return (
         f"MATCH (cde:term {{origin_id: {cde_id_literal}}}) "
@@ -124,27 +181,34 @@ def convert_annotation_to_changesets(
     statements: list[Statement] = []
     changesets = []
     cde_attrs = annotation["annotation"]["attrs"]
-    base_url = "https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/"
-    cde_id = cde_attrs.get("origin_id", "")
+    cde_id = normalize_identity_text(cde_attrs.get("origin_id"))
+    if not cde_id:
+        raise ValueError("Cannot process a CDE annotation without a CDE ID.")
     
     # Get old and new versions
-    old_ver = cde_attrs.get("origin_version", "")
-    if old_ver is None:
-        old_ver = ""
-    new_ver = annotation.get("CDEVersion")  # New version if changed, None otherwise
-    
-    # Use new version for ValueSet if version changed, otherwise use old version
-    target_ver = new_ver if new_ver else old_ver
+    old_ver = normalize_optional_version(
+        cde_attrs.get("origin_version"),
+    )
+    new_ver = normalize_optional_version(
+        annotation.get("CDEVersion"),
+    )
+    target_ver = new_ver or old_ver
     
     # MERGE ValueSet node with target version (new if changed, old if not)
     cde_vs = ValueSet(
-        {
-            "url": f"{base_url}{cde_id}{f'?version={target_ver}' if target_ver else ''}",
-            "handle": f"{cde_id}|{target_ver}",
-            "_commit": _commit,
-        },
+    {
+        "handle": get_cde_value_set_handle(cde_id, target_ver),
+        "url": get_cde_value_set_url(cde_id, target_ver),
+        "_commit": _commit,
+    },
     )
-    statements.append(create_entity_cypher_stmt(cde_vs)[0])
+    statements.append(
+        create_cde_value_set_cypher(
+            cde_id,
+            target_ver,
+            _commit,
+        ),
+    )
     
     # Handle removed PVs (delete relationship from the OLD value set)
     removed_pvs = annotation.get("removed_pvs", [])
@@ -193,7 +257,7 @@ def convert_annotation_to_changesets(
         set_clauses = []
 
         logger.info("Updating CDE name for %s to: %s", cde_id, cde_full_name)
-        escaped_name = _cypher_string_literal(cde_full_name)
+        escaped_name = cypher_string_literal(cde_full_name)
         set_clauses.append(f"t.value = {escaped_name}")
 
         # Note: The CADsr CDE version is not updated; it should be determined by the data model.

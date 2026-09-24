@@ -8,7 +8,13 @@ from pathlib import Path
 import yaml
 import click
 from liquichange.changelog import Changelog, Changeset, CypherChange
-from bento_mdb.cypher_utils import DEFAULT_AUTHOR, DEFAULT_COMMIT
+from bento_mdb.cypher_utils import (
+    DEFAULT_AUTHOR,
+    DEFAULT_COMMIT,
+    normalize_identity_text,
+    normalize_optional_version,
+
+)
 from bento_mdf import MDF
 
 logger = logging.getLogger(__name__)
@@ -27,15 +33,25 @@ def _escape(value: str) -> str:
     return value.replace("'", "\\'")
 
 
-def _term_attrs(term) -> dict:
-    """Return normalized term attrs from a bento-meta Term."""
+def _term_attrs(term) -> dict[str, str]:
+    """Return normalized term attributes from a bento-meta Term."""
     attrs = term.get_attr_dict()
     return {
-        "origin_name": attrs.get("origin_name") or "",
-        "origin_id": str(attrs.get("origin_id") or ""),
-        "origin_version": str(attrs.get("origin_version") or ""),
-        "value": str(attrs.get("value") or ""),
-        "origin_definition": attrs.get("origin_definition") or "",
+        "origin_name": normalize_identity_text(
+            attrs.get("origin_name"),
+        ),
+        "origin_id": normalize_identity_text(
+            attrs.get("origin_id"),
+        ),
+        "origin_version": normalize_optional_version(
+            attrs.get("origin_version"),
+        ),
+        "value": normalize_identity_text(
+            attrs.get("value"),
+        ),
+        "origin_definition": normalize_identity_text(
+            attrs.get("origin_definition"),
+        ),
     }
 
 
@@ -103,7 +119,7 @@ def _generate_edp_changesets(
     _commit: str,
     start_id: int,
 ) -> list[Changeset]:
-    """Generate changesets for one parsed EDP definition."""
+    """Generate idempotent changesets for one EDP definition."""
     edp_term = _get_edp_term(prop_handle, prop)
     edp = _term_attrs(edp_term)
 
@@ -112,18 +128,35 @@ def _generate_edp_changesets(
     origin_version = edp["origin_version"]
     value = edp["value"]
     definition = edp["origin_definition"]
-    handle = _to_snake_case(value) if value else _to_snake_case(prop_handle)
 
-    changesets = []
+    if not origin_name or not origin_id:
+        msg = (
+            f"EDP '{prop_handle}' must define both origin_name "
+            "and origin_id."
+        )
+        raise ValueError(msg)
+
+    handle = (
+        _to_snake_case(value)
+        if value
+        else _to_snake_case(prop_handle)
+    )
+
+    changesets: list[Changeset] = []
     cs_id = start_id
 
+    edp_match = (
+        f"origin_name: '{_escape(origin_name)}', "
+        f"origin_id: '{_escape(origin_id)}', "
+        f"origin_version: '{_escape(origin_version)}'"
+    )
+
     edp_term_stmt = (
-        f"MERGE (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
+        f"MERGE (edp:term {{{edp_match}}}) "
+        f"ON CREATE SET edp._commit = '{_escape(_commit)}' "
         f"SET edp.handle = '{_escape(handle)}', "
         f"edp.value = '{_escape(value)}', "
-        f"edp.origin_version = '{_escape(origin_version)}', "
-        f"edp.origin_definition = '{_escape(definition)}', "
-        f"edp._commit = '{_escape(_commit)}'"
+        f"edp.origin_definition = '{_escape(definition)}'"
     )
     changesets.append(
         Changeset(
@@ -134,12 +167,24 @@ def _generate_edp_changesets(
     )
     cs_id += 1
 
+    # Keep the legacy handle format for compatibility. The authoritative
+    # ownership identity is the exact EDP term plus specifies_value_set.
     vs_handle = f"{origin_id}|{origin_version}"
+
     vs_stmt = (
-        f"MATCH (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
-        f"MERGE (vs:value_set {{handle: '{_escape(vs_handle)}'}}) "
-        f"SET vs._commit = '{_escape(_commit)}' "
-        f"MERGE (edp)-[:specifies_value_set]->(vs)"
+        f"MATCH (edp:term {{{edp_match}}}) "
+        "OPTIONAL MATCH "
+        "(edp)-[:specifies_value_set]->(existing:value_set) "
+        "WITH edp, existing "
+        "ORDER BY id(existing) "
+        "WITH edp, head(collect(existing)) AS existing "
+        "FOREACH (_ IN CASE WHEN existing IS NULL THEN [1] ELSE [] END | "
+        f"CREATE (created:value_set {{"
+        f"handle: '{_escape(vs_handle)}', "
+        f"_commit: '{_escape(_commit)}'"
+        "}) "
+        "CREATE (edp)-[:specifies_value_set]->(created)"
+        ")"
     )
     changesets.append(
         Changeset(
@@ -158,15 +203,42 @@ def _generate_edp_changesets(
         pv_value = pv["value"]
         pv_version = pv["origin_version"]
         pv_definition = pv["origin_definition"]
-        pv_handle = _to_snake_case(pv_value) if pv_value else pv_code
+        pv_handle = (
+            _to_snake_case(pv_value)
+            if pv_value
+            else pv_code
+        )
+
+        if not pv_value:
+            msg = (
+                f"EDP '{prop_handle}' contains a permissible-value "
+                "term without a value."
+            )
+            raise ValueError(msg)
+
+        pv_identity_parts = [
+            f"value: '{_escape(pv_value)}'",
+        ]
+        if pv_origin:
+            pv_identity_parts.append(
+                f"origin_name: '{_escape(pv_origin)}'",
+            )
+        if pv_code:
+            pv_identity_parts.append(
+                f"origin_id: '{_escape(pv_code)}'",
+            )
+        if pv_version:
+            pv_identity_parts.append(
+                f"origin_version: '{_escape(pv_version)}'",
+            )
+
+        pv_identity = ", ".join(pv_identity_parts)
 
         pv_stmt = (
-            f"MERGE (pv:term {{origin_name: '{_escape(pv_origin)}', origin_id: '{_escape(pv_code)}'}}) "
+            f"MERGE (pv:term {{{pv_identity}}}) "
+            f"ON CREATE SET pv._commit = '{_escape(_commit)}' "
             f"SET pv.handle = '{_escape(pv_handle)}', "
-            f"pv.value = '{_escape(pv_value)}', "
-            f"pv.origin_version = '{_escape(pv_version)}', "
-            f"pv.origin_definition = '{_escape(pv_definition)}', "
-            f"pv._commit = '{_escape(_commit)}'"
+            f"pv.origin_definition = '{_escape(pv_definition)}'"
         )
         changesets.append(
             Changeset(
@@ -178,9 +250,14 @@ def _generate_edp_changesets(
         cs_id += 1
 
         link_stmt = (
-            f"MATCH (vs:value_set {{handle: '{_escape(vs_handle)}'}}) "
-            f"MATCH (pv:term {{origin_name: '{_escape(pv_origin)}', origin_id: '{_escape(pv_code)}'}}) "
-            f"MERGE (vs)-[:has_term]->(pv)"
+            f"MATCH (edp:term {{{edp_match}}}) "
+            "MATCH "
+            "(edp)-[:specifies_value_set]->(candidate:value_set) "
+            "WITH candidate "
+            "ORDER BY id(candidate) "
+            "WITH head(collect(candidate)) AS vs "
+            f"MATCH (pv:term {{{pv_identity}}}) "
+            "MERGE (vs)-[:has_term]->(pv)"
         )
         changesets.append(
             Changeset(

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from bento_mdf.mdf import MDF, MDFReader
 from bento_meta.model import Model
-from bento_meta.objects import Node, Property, Tag
+from bento_meta.objects import Node, Property, Tag, ValueSet
 
 from bento_mdb.model_cypher import ModelToChangelogConverter
 from tests.test_utils import assert_equal, remove_nanoids_from_str
@@ -17,7 +17,9 @@ TEST_MODEL_MDF_SHARED_REL_PROPS = Path(
     "samples",
     "test_mdf_shared_relationship_props.yml",
 )
-TEST_MODEL_MDF_USENULLCDE = Path(CURRENT_DIRECTORY, "samples", "test_mdf_useNullCDE_simple.yml")
+TEST_MODEL_MDF_USENULLCDE = Path(
+    CURRENT_DIRECTORY, "samples", "test_mdf_useNullCDE_simple.yml"
+)
 TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
 TEST_MODEL_EDP = Path(CURRENT_DIRECTORY, "samples", "test_model_edp.yml")
 TEST_MODEL_EDP_PROPS = Path(CURRENT_DIRECTORY, "samples", "test_mdf_edp.yml")
@@ -37,7 +39,7 @@ class TestMakeModelChangelog:
             author=AUTHOR,
         )
         actual = len(changelog.subelements)
-        expected = 48
+        expected = 47
         assert_equal(actual, expected)
 
     def test_make_model_changelog_shared_props(self) -> None:
@@ -102,30 +104,26 @@ class TestMakeModelChangelog:
         changelog = converter.convert_model_to_changelog(author=AUTHOR)
 
         actual = [
-            remove_nanoids_from_str(x.change_type.text)
-            for x in changelog.subelements
+            remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
         ]
 
         value_set_creates = [
-            stmt
-            for stmt in actual
-            if stmt.startswith("MERGE (n0:value_set")
+            stmt for stmt in actual if stmt.startswith("MERGE (n0:value_set")
         ]
         value_set_links = [
-            stmt
-            for stmt in actual
-            if "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
+            stmt for stmt in actual if "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
         ]
         value_set_term_links = [
-            stmt
-            for stmt in actual
-            if "MERGE (n0)-[r0:has_term]->(n1)" in stmt
+            stmt for stmt in actual if "MERGE (n0)-[r0:has_term]->(n1)" in stmt
         ]
 
         assert len(value_set_creates) == 1
         assert len(value_set_links) == 2
         assert len(value_set_term_links) == 3
-        assert "_commit = '_COMMIT_123'" in value_set_creates[0]
+        assert "set_hash:" in value_set_creates[0]
+        assert "ON CREATE SET" in value_set_creates[0]
+        assert "_commit" in value_set_creates[0]
+        assert _COMMIT in value_set_creates[0]
         assert "dummy" not in value_set_creates[0]
 
     def test_shared_relationship_props(self) -> None:
@@ -152,7 +150,7 @@ class TestMakeModelChangelog:
         assert model.props[(*diagnosis_edge.triplet, prop_handle)] is diagnosis_prop
 
     def test_shared_props_with_value_set(self) -> None:
-        """Test for shared properties with value_set."""
+        """Shared properties should reuse concepts and local enum value sets."""
         mdf = MDF(
             TEST_MODEL_MDF_TERMS,
             handle=MODEL_HDL,
@@ -170,85 +168,53 @@ class TestMakeModelChangelog:
         actual = [
             remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
         ]
-        expected = [
-            "CREATE (n0:model {handle:'TEST',name:'TEST',version:'1.2.3',"
-            "is_latest_version:False})",
-            "CREATE (n0:node {handle:'file',model:'TEST',version:'1.2.3',"
-            "_commit:'_COMMIT_123'})",
-            "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'})",
-            "MERGE (n0:concept {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
-            "CREATE (n0:tag {key:'mapping_source',value:'TEST',nanoid:''})",
-            "MERGE (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
-            " ON CREATE SET n0._commit = '_COMMIT_123'",
-            "MERGE (n0:value_set {nanoid:''}) ON CREATE SET n0._commit = '_COMMIT_123'",
-            "MERGE (n0:term {handle:'bam',value:'bam',origin_name:'TEST'})",
-            "MERGE (n0:term {handle:'cram',value:'cram',origin_name:'TEST'})",
-            "MERGE (n0:term {handle:'dict',value:'dict',origin_name:'TEST'})",
-            "CREATE (n0:node {handle:'other_file',model:'TEST',version:'1.2.3',"
-            "_commit:'_COMMIT_123'})",
-            "CREATE (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'})",
-            "MATCH (n0:node {handle:'file',model:'TEST',version:'1.2.3'"
-            ",_commit:'_COMMIT_123'}), "
-            "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:has_property]->(n1)",
-            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}), "
-            "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:has_concept]->(n1)",
-            "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
-            "(n1:tag {key:'mapping_source',value:'TEST',nanoid:''}) "
-            "MERGE (n0)-[r0:has_tag]->(n1)",
-            "MATCH (n0:term {handle:'file_type',value:'File Type',origin_name:'caDSR'})"
-            ", (n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:represents]->(n1)",
-            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}), "
-            "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'bam',value:'bam',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'cram',value:'cram',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
-            "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
-            "MATCH (n0:node {handle:'other_file',model:'TEST',version:'1.2.3'"
-            ",_commit:'_COMMIT_123'}), "
-            "(n1:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:has_property]->(n1)",
-            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}), "
-            "(n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:has_concept]->(n1)",
-            "MATCH (n0:concept {nanoid:'',_commit:'_COMMIT_123'}), "
-            "(n1:tag {key:'mapping_source',value:'TEST',nanoid:''}) "
-            "MERGE (n0)-[r0:has_tag]->(n1)",
-            "MATCH (n0:term {handle:'file_type',value:'File Type',"
-            "origin_name:'caDSR'}), (n1:concept {nanoid:'',_commit:'_COMMIT_123'}) "
-            "MERGE (n0)-[r0:represents]->(n1)",
-            "MATCH (n0:property {handle:'file_type',model:'TEST',nanoid:'',"
-            "version:'1.2.3',value_domain:'value_set',is_required:False,"
-            "is_key:False,is_nullable:False,is_strict:True,"
-            "is_extended:False,_commit:'_COMMIT_123'}), "
-            "(n1:value_set {nanoid:''}) MERGE (n0)-[r0:has_value_set]->(n1)",
+
+        model_creates = [stmt for stmt in actual if stmt.startswith("CREATE (n0:model")]
+        node_creates = [stmt for stmt in actual if stmt.startswith("CREATE (n0:node")]
+        property_creates = [
+            stmt for stmt in actual if stmt.startswith("CREATE (n0:property")
         ]
-        assert_equal(actual, expected)
+        concept_merges = [
+            stmt for stmt in actual if stmt.startswith("MERGE (n0:concept")
+        ]
+        value_set_merges = [
+            stmt for stmt in actual if stmt.startswith("MERGE (n0:value_set")
+        ]
+        has_property_links = [stmt for stmt in actual if ":has_property" in stmt]
+        has_concept_links = [stmt for stmt in actual if ":has_concept" in stmt]
+        has_value_set_links = [stmt for stmt in actual if ":has_value_set" in stmt]
+        value_set_term_links = [stmt for stmt in actual if ":has_term" in stmt]
+
+        assert len(model_creates) == 1
+        assert len(node_creates) == 2
+        assert len(property_creates) == 2
+
+        # Both properties have the same source and annotation terms.
+        assert len(concept_merges) == 1
+        assert "concept_hash:" in concept_merges[0]
+        assert (
+            "nanoid:"
+            not in concept_merges[0].split(
+                "ON CREATE SET",
+                maxsplit=1,
+            )[0]
+        )
+
+        # Both properties have the same local enum membership.
+        assert len(value_set_merges) == 1
+        assert "set_hash:" in value_set_merges[0]
+        assert (
+            "nanoid:"
+            not in value_set_merges[0].split(
+                "ON CREATE SET",
+                maxsplit=1,
+            )[0]
+        )
+
+        assert len(has_property_links) == 2
+        assert len(has_concept_links) == 2
+        assert len(has_value_set_links) == 2
+        assert len(value_set_term_links) == 3
 
     def test_use_null_cde_tag(self) -> None:
         """Test for useNullCDE tag creation and property tag relationship."""
@@ -270,31 +236,49 @@ class TestMakeModelChangelog:
         model_stmts = [s for s in actual if s.startswith("CREATE (n0:model")]
         assert len(model_stmts) == 1, "Model should be created"
         expected_model = "CREATE (n0:model {handle:'TEST_NULLCDE',name:'TEST_NULLCDE',version:'1.0.0',is_latest_version:False})"
-        assert expected_model in actual, f"Model should have correct handle 'TEST_NULLCDE' and version '1.0.0', got: {model_stmts[0]}"
+        assert expected_model in actual, (
+            f"Model should have correct handle 'TEST_NULLCDE' and version '1.0.0', got: {model_stmts[0]}"
+        )
 
         # Verify node is created with correct handle
         node_stmts = [s for s in actual if s.startswith("CREATE (n0:node")]
         assert len(node_stmts) == 1, "Node should be created"
-        assert "handle:'clinical_measure'" in node_stmts[0], "Node handle should be 'clinical_measure'"
+        assert "handle:'clinical_measure'" in node_stmts[0], (
+            "Node handle should be 'clinical_measure'"
+        )
         assert "version:'1.0.0'" in node_stmts[0], "Node should have version '1.0.0'"
 
         # Verify property is created with correct handle
         prop_stmts = [s for s in actual if s.startswith("CREATE (n0:property")]
         assert len(prop_stmts) == 2, "Two properties should be created"
-        assert any("handle:'imaging_software'" in s for s in prop_stmts), "Property handle should be 'imaging_software'"
-        assert any("handle:'second-imaging_software'" in s for s in prop_stmts), "Property handle should be 'second-imaging_software'"
-        assert all("version:'1.0.0'" in s for s in prop_stmts), "Both properties should have version '1.0.0'"
+        assert any("handle:'imaging_software'" in s for s in prop_stmts), (
+            "Property handle should be 'imaging_software'"
+        )
+        assert any("handle:'second-imaging_software'" in s for s in prop_stmts), (
+            "Property handle should be 'second-imaging_software'"
+        )
+        assert all("version:'1.0.0'" in s for s in prop_stmts), (
+            "Both properties should have version '1.0.0'"
+        )
 
         # Verify useNullCDE tag is created with correct handle and value
-        use_null_cde_creates = [s for s in actual if "useNullCDE" in s and "CREATE" in s]
+        use_null_cde_creates = [
+            s for s in actual if "useNullCDE" in s and "CREATE" in s
+        ]
         assert len(use_null_cde_creates) > 0, "useNullCDE tag should be created"
         # Both True and true are acceptable (boolean representations)
         tag_values = [s for s in use_null_cde_creates if "key:'useNullCDE'" in s]
-        assert len(tag_values) >= 1, f"At least one useNullCDE tag should be created, got: {use_null_cde_creates}"
+        assert len(tag_values) >= 1, (
+            f"At least one useNullCDE tag should be created, got: {use_null_cde_creates}"
+        )
 
         # Verify that properties and tags are connected
-        use_null_cde_relations = [s for s in actual if "useNullCDE" in s and "MERGE" in s and "has_tag" in s]
-        assert len(use_null_cde_relations) >= 2, "Both properties should be connected to useNullCDE tag with has_tag relationship"
+        use_null_cde_relations = [
+            s for s in actual if "useNullCDE" in s and "MERGE" in s and "has_tag" in s
+        ]
+        assert len(use_null_cde_relations) >= 2, (
+            "Both properties should be connected to useNullCDE tag with has_tag relationship"
+        )
 
     def test_property_with_use_null_cde_tag_manual(self) -> None:
         """Test manual creation of property with useNullCDE tag."""
@@ -302,20 +286,24 @@ class TestMakeModelChangelog:
         node = Node({"handle": "test_entity", "model": MODEL_HDL, "version": "1.0"})
 
         # Create property with useNullCDE tag
-        prop = Property({
-            "handle": "status",
-            "model": MODEL_HDL,
-            "value_domain": "string",
-            "version": "1.0",
-            "_commit": _COMMIT,
-        })
+        prop = Property(
+            {
+                "handle": "status",
+                "model": MODEL_HDL,
+                "value_domain": "string",
+                "version": "1.0",
+                "_commit": _COMMIT,
+            }
+        )
 
         # Add useNullCDE tag
-        prop.tags["useNullCDE"] = Tag({
-            "key": "useNullCDE",
-            "value": "Yes",
-            "_commit": _COMMIT,
-        })
+        prop.tags["useNullCDE"] = Tag(
+            {
+                "key": "useNullCDE",
+                "value": "Yes",
+                "_commit": _COMMIT,
+            }
+        )
 
         node.props = {prop.handle: prop}
         model.nodes = {node.handle: node}
@@ -356,20 +344,85 @@ class TestMakeModelChangelog:
             remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
         ]
 
-        expected = (
-            'MATCH (prop:property {handle: "program_name", model: "TEST", version: "1.2.3"}) '
-            "MATCH (edp:term) "
-            'WHERE edp.origin_name = "CRDC" '
-            'AND edp.origin_id = "CRDC00005" '
-            'AND edp.origin_version = "1" '
-            "MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
-            "MERGE (prop)-[:has_value_set]->(vs)"
-        )
+        edp_links = [
+            stmt
+            for stmt in actual
+            if "MATCH (edp)-[:specifies_value_set]->(vs:value_set)" in stmt
+            and "MERGE (prop)-[:has_value_set]->(vs)" in stmt
+        ]
 
-        assert expected in actual
+        assert len(edp_links) == 1
+
+        edp_link = edp_links[0]
+        assert 'handle: "program_name"' in edp_link
+        assert 'model: "TEST"' in edp_link
+        assert 'version: "1.2.3"' in edp_link
+        assert 'edp.origin_name = "CRDC"' in edp_link
+        assert 'edp.origin_id = "CRDC00005"' in edp_link
+        assert "coalesce(edp.origin_version, '') = \"1\"" in edp_link
+
         assert not any(
             "MATCH (n0:property" in stmt
             and "handle:'program_name'" in stmt
             and "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
             for stmt in actual
         )
+
+    def test_value_set_commit_replaces_dummy(self) -> None:
+        value_set = ValueSet({"_commit": "dummy"})
+        converter = ModelToChangelogConverter(
+            model=Model(handle="TEST"),
+            _commit="real-commit",
+        )
+
+        converter.set_value_set_commit(value_set)
+
+        assert value_set._commit == "real-commit"  # noqa: SLF001
+
+    def test_value_set_commit_replaces_missing(self) -> None:
+        value_set = ValueSet()
+        converter = ModelToChangelogConverter(
+            model=Model(handle="TEST"),
+            _commit="real-commit",
+        )
+
+        converter.set_value_set_commit(value_set)
+
+        assert value_set._commit == "real-commit"  # noqa: SLF001
+
+    def test_value_set_commit_preserves_real_commit(self) -> None:
+        value_set = ValueSet({"_commit": "original-commit"})
+        converter = ModelToChangelogConverter(
+            model=Model(handle="TEST"),
+            _commit="new-commit",
+        )
+
+        converter.set_value_set_commit(value_set)
+
+        assert value_set._commit == "original-commit"  # noqa: SLF001
+
+    def test_mapping_source_tag_is_merged_onto_concept(self) -> None:
+        concept_hash = "concept-hash"
+        mapping_source = "TEST"
+
+        converter = ModelToChangelogConverter(
+            model=Model(handle="TEST"),
+            _commit="real-commit",
+        )
+
+        converter.generate_cypher_to_merge_mapping_source_tag(
+            concept_hash,
+            mapping_source,
+        )
+
+        statements = converter.cypher_stmts["add_rels"]["statements"]
+        assert len(statements) == 1
+
+        text = str(statements[0])
+
+        assert "MATCH (concept:concept {" in text
+        assert 'concept_hash: "concept-hash"' in text
+        assert "MERGE (concept)-[:has_tag]->(:tag {" in text
+        assert 'key: "mapping_source"' in text
+        assert 'value: "TEST"' in text
+        assert "CREATE" not in text
