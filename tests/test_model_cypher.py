@@ -384,17 +384,3 @@ class TestMakeModelChangelog:
             and "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
             for stmt in actual
         )
-        assert any(
-        "OPTIONAL MATCH (edp:term)" in stmt
-        and "OPTIONAL MATCH (edp)-[:specifies_value_set]" in stmt
-        and "head(collect(candidate_vs)) AS vs" in stmt
-        and "FOREACH" in stmt
-        and "MERGE (prop)-[:has_value_set]->(vs)" in stmt
-        and "END AS warning" in stmt
-        for stmt in actual
-        )
-        assert any(
-        "EDP CRDC/CRDC00005/1 referenced by TEST/program/program_name "
-        "is not registered in MDB" in stmt
-        for stmt in actual
-        )

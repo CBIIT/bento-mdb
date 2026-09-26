@@ -25,6 +25,10 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      warnings:
+        description: "Warnings returned while applying MDB changelogs"
+        value: ${{ jobs.update-mdb.outputs.warnings }}
     secrets:
       PREFECT_API_KEY:
         required: true
@@ -40,6 +44,8 @@ on:
 jobs:
   update-mdb:
     runs-on: ubuntu-latest
+    outputs:
+      warnings: ${{ steps.liquibase-update.outputs.warnings }}
     env:
       AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -84,6 +90,9 @@ jobs:
           echo '${{ inputs.changelog_files }}' | jq -r '.[]'
           
           HAS_FAILURE=false
+
+          WARNINGS_FILE="${RUNNER_TEMP}/mdb-warnings.txt"
+          : > "$WARNINGS_FILE"
 
           for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
             echo "Running $file"
@@ -161,6 +170,14 @@ jobs:
               echo "ERROR: Flow run for $file timed out after 4 hours"
             fi
 
+            echo "Reading Prefect logs for flow run $RUN_UUID..."
+            FLOW_LOGS=$(uv run prefect flow-run logs "$RUN_UUID" 2>&1 || true)
+            echo "$FLOW_LOGS"
+
+            echo "$FLOW_LOGS" |
+              sed -n 's/.*MDB_WARNING: //p' \
+              >> "$WARNINGS_FILE"
+
             if [ "$FLOW_SUCCESS" = true ]; then
               echo "Flow run for $file completed successfully."
             else
@@ -168,6 +185,22 @@ jobs:
               HAS_FAILURE=true
             fi
           done
+
+          if [ -s "$WARNINGS_FILE" ]; then
+            SORTED_WARNINGS_FILE="${RUNNER_TEMP}/mdb-warnings-sorted.txt"
+            sort -u "$WARNINGS_FILE" > "$SORTED_WARNINGS_FILE"
+
+            {
+              echo "warnings<<EOF"
+              cat "$SORTED_WARNINGS_FILE"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+
+            echo "MDB warnings:"
+            cat "$SORTED_WARNINGS_FILE"
+          else
+            echo "warnings=" >> "$GITHUB_OUTPUT"
+          fi
 
           if [ "$HAS_FAILURE" = true ]; then
             echo "One or more flow runs failed."
