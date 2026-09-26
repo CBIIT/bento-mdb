@@ -90,6 +90,25 @@ def _generate_edp_link_cypher(
         f"MERGE (cde)-[:specifies_value_set]->(vs)"
     )
 
+def _generate_cadsr_value_set_link_cypher(
+    cde_id: str,
+    cde_version: str,
+) -> str:
+    """Link a caDSR CDE term to its conventionally named value set."""
+    cde_id_literal = _cypher_string_literal(cde_id)
+    cde_version_literal = _cypher_string_literal(cde_version)
+    value_set_handle_literal = _cypher_string_literal(
+        f"{cde_id}|{cde_version}",
+    )
+
+    return (
+        f"MATCH (cde:term {{origin_id: {cde_id_literal}}}) "
+        "WHERE toLower(cde.origin_name) = 'cadsr' "
+        f"AND cde.origin_version = {cde_version_literal} "
+        f"MATCH (vs:value_set {{handle: {value_set_handle_literal}}}) "
+        "MERGE (cde)-[:specifies_value_set]->(vs)"
+    )
+
 
 def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
@@ -145,7 +164,15 @@ def convert_annotation_to_changesets(
         },
     )
     statements.append(create_entity_cypher_stmt(cde_vs)[0])
-    
+
+    if target_ver and (has_new_pvs or has_removed_pvs):
+        statements.append(
+            _generate_cadsr_value_set_link_cypher(
+                cde_id,
+                target_ver,
+            ),
+        )
+
     # Handle removed PVs (delete relationship from the OLD value set)
     removed_pvs = annotation.get("removed_pvs", [])
     if removed_pvs:
