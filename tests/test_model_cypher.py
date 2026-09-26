@@ -357,16 +357,27 @@ class TestMakeModelChangelog:
         ]
 
         expected = (
-            'MATCH (prop:property {handle: "program_name", model: "TEST", version: "1.2.3"}) '
-            "MATCH (edp:term) "
+            'MATCH (owner {handle: "program", model: "TEST", version: "1.2.3"})'
+            '-[:has_property]->(prop:property '
+            '{handle: "program_name", model: "TEST", version: "1.2.3"}) '
+            "OPTIONAL MATCH (edp:term) "
             'WHERE edp.origin_name = "CRDC" '
             'AND edp.origin_id = "CRDC00005" '
             'AND edp.origin_version = "1" '
-            "MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
-            "MERGE (prop)-[:has_value_set]->(vs)"
+            "OPTIONAL MATCH (edp)-[:specifies_value_set]"
+            "->(candidate_vs:value_set) "
+            "WITH prop, head(collect(candidate_vs)) AS vs "
+            "FOREACH (_ IN CASE WHEN vs IS NULL THEN [] ELSE [1] END | "
+            "MERGE (prop)-[:has_value_set]->(vs)) "
+            "RETURN CASE WHEN vs IS NULL THEN "
+            '"EDP CRDC/CRDC00005/1 referenced by TEST/program/program_name '
+            "is not registered in MDB. The property may be created without an "
+            'EDP value-set link." '
+            "ELSE null END AS warning"
         )
 
         assert expected in actual
+
         assert not any(
             "MATCH (n0:property" in stmt
             and "handle:'program_name'" in stmt
