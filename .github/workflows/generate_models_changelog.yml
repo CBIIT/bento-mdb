@@ -236,7 +236,6 @@ jobs:
           --model_handle "${{ matrix.model }}" \
           --model_version "${{ matrix.version }}" \
           "${MDF_FILES_ARRAY[@]}" \
-          --edp_config_file "config/mdb_edps.yml" \
           --output_file_path "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
           --author "GitHub Actions" \
           --_commit "${{ github.sha }}" \

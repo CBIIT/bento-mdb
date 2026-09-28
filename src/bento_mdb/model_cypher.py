@@ -189,20 +189,30 @@ class ModelToChangelogConverter:
         self.process_terms(entity.concept)
 
     def generate_cypher_to_link_edp_value_set(self, entity: Entity) -> None:
-        """Generate cypher to link a model property to an EDP value set."""
+        """Link a model property to an existing EDP value set, or return a warning."""
         edp_term = get_edp_enum_term(entity)
         if not edp_term:
             return
 
         prop_attrs = entity.get_attr_dict()
+        parent_handle = getattr(entity, "_parent_handle", None)
+        if not parent_handle:
+            msg = f"EDP property is missing its parent handle: {prop_attrs}"
+            raise ValueError(msg)
+
         prop_filters = [
             f"handle: {_cypher_string_literal(prop_attrs['handle'])}",
             f"model: {_cypher_string_literal(prop_attrs['model'])}",
         ]
+        owner_filters = [
+            f"handle: {_cypher_string_literal(parent_handle)}",
+            f"model: {_cypher_string_literal(prop_attrs['model'])}",
+        ]
+
         if prop_attrs.get("version"):
-            prop_filters.append(
-                f"version: {_cypher_string_literal(prop_attrs['version'])}",
-            )
+            version_literal = _cypher_string_literal(prop_attrs["version"])
+            prop_filters.append(f"version: {version_literal}")
+            owner_filters.append(f"version: {version_literal}")
 
         edp_filters = [
             f"edp.origin_name = {_cypher_string_literal(edp_term.origin_name)}",
@@ -210,22 +220,53 @@ class ModelToChangelogConverter:
         ]
         if getattr(edp_term, "origin_version", None):
             edp_filters.append(
-                f"edp.origin_version = {_cypher_string_literal(edp_term.origin_version)}",
+                "edp.origin_version = "
+                f"{_cypher_string_literal(edp_term.origin_version)}",
             )
 
-        stmt = (
-            f"MATCH (prop:property {{{', '.join(prop_filters)}}}) "
-            f"MATCH (edp:term) "
-            f"WHERE {' AND '.join(edp_filters)} "
-            f"MATCH (edp)-[:specifies_value_set]->(vs:value_set) "
-            f"MERGE (prop)-[:has_value_set]->(vs)"
+        edp_identity = "/".join(
+            [
+                str(edp_term.origin_name or ""),
+                str(edp_term.origin_id or ""),
+                str(edp_term.origin_version or ""),
+            ],
         )
+        property_path = "/".join(
+            [
+                str(prop_attrs["model"]),
+                str(parent_handle),
+                str(prop_attrs["handle"]),
+            ],
+        )
+        warning = (
+            f"EDP {edp_identity} referenced by {property_path} is not registered "
+            "in MDB. The property may be created without an EDP value-set link."
+        )
+
+        stmt = (
+            f"MATCH (owner {{{', '.join(owner_filters)}}})"
+            f"-[:has_property]->(prop:property {{{', '.join(prop_filters)}}}) "
+            f"OPTIONAL MATCH (edp:term) "
+            f"WHERE {' AND '.join(edp_filters)} "
+            f"OPTIONAL MATCH (edp)-[:specifies_value_set]"
+            f"->(candidate_vs:value_set) "
+            f"WITH prop, head(collect(candidate_vs)) AS vs "
+            f"FOREACH (_ IN CASE WHEN vs IS NULL THEN [] ELSE [1] END | "
+            f"MERGE (prop)-[:has_value_set]->(vs)) "
+            f"RETURN CASE WHEN vs IS NULL "
+            f"THEN {_cypher_string_literal(warning)} "
+            f"ELSE null END AS warning"
+        )
+
         rollback = (
-            f"MATCH (prop:property {{{', '.join(prop_filters)}}})"
-            f"-[r:has_value_set]->(vs:value_set)<-[:specifies_value_set]-(edp:term) "
+            f"MATCH (owner {{{', '.join(owner_filters)}}})"
+            f"-[:has_property]->(prop:property {{{', '.join(prop_filters)}}})"
+            f"-[r:has_value_set]->(vs:value_set)"
+            f"<-[:specifies_value_set]-(edp:term) "
             f"WHERE {' AND '.join(edp_filters)} "
             f"DELETE r"
         )
+
         self.add_statement("add_rels", stmt, rollback)
 
     def get_value_set_term_key(self, value_set: Entity) -> tuple:
