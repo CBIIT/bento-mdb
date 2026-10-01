@@ -1,3 +1,16 @@
+CRDC_STUDY_NAMES:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  mdf_files:
+  - edp-props.yml
+  - terms/crdc-studynames-terms.yml
+  latest_version: '1'
+  versions:
+  - version: '1'
+    tag: '1'
+  origin: CRDC
+  code: CRDC0008
+  property: crdc_study_names
 OBIB:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
