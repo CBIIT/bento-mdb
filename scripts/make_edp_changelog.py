@@ -1,15 +1,19 @@
 """Generate Liquibase changelog for EDP definitions."""
 
 from __future__ import annotations
-import xml.etree.ElementTree as ET
+
 import logging
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
-import yaml
+
 import click
-from liquichange.changelog import Changelog, Changeset, CypherChange
-from bento_mdb.cypher_utils import DEFAULT_AUTHOR, DEFAULT_COMMIT
+import yaml
 from bento_mdf import MDF
+from liquichange.changelog import Changelog, Changeset, CypherChange
+
+from bento_mdb.cypher_utils import DEFAULT_AUTHOR, DEFAULT_COMMIT
+from scripts.edp_packages import load_all_edp_packages
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,48 @@ def _term_attrs(term) -> dict:
         "origin_definition": attrs.get("origin_definition") or "",
     }
 
+def generate_edp_changelog_from_root(
+    edp_root: Path,
+    author: str = DEFAULT_AUTHOR,
+    _commit: str = DEFAULT_COMMIT,
+    edp_config_file: Path | None = None,
+) -> Changelog:
+    parsed_packages = load_all_edp_packages(edp_root)
+
+    definitions = [
+        (
+            parsed.property_handle,
+            parsed.property_definition,
+        )
+        for parsed in parsed_packages
+    ]
+
+    definitions = _filter_edp_definitions_from_config(
+        definitions,
+        edp_config_file,
+    )
+
+    changelog = Changelog()
+    next_id = 1
+
+    for property_handle, prop in definitions:
+        changesets = _generate_edp_changesets(
+            property_handle,
+            prop,
+            author,
+            _commit,
+            next_id,
+        )
+
+        for changeset in changesets:
+            changelog.add_changeset(changeset)
+
+        next_id += len(changesets)
+
+    if next_id == 1:
+        logger.warning("No configured EDP definitions were selected.")
+
+    return changelog
 
 def _edp_definitions_from_files(
     edp_yaml_files: list[Path],
@@ -231,16 +277,15 @@ def generate_edp_changelog(
 
 @click.command()
 @click.option(
-    "--edp_yaml_files",
-    multiple=True,
+    "--edp_root",
     required=True,
-    help="Paths to EDP props YAML files (e.g. edp-props.yml).",
-)
-@click.option(
-    "--terms_files",
-    multiple=True,
-    required=True,
-    help="Paths to terms YAML files (e.g. obib-terms.yml).",
+    type=click.Path(
+        exists=True,
+        dir_okay=True,
+        file_okay=False,
+        path_type=Path,
+    ),
+    help="Directory containing one subdirectory per EDP.",
 )
 @click.option(
     "--edp_config_file",
@@ -252,22 +297,22 @@ def generate_edp_changelog(
 @click.option("--author", default=DEFAULT_AUTHOR, help="Author for changesets.")
 @click.option("--_commit", default=DEFAULT_COMMIT, help="Commit SHA for changesets.")
 def main(
-    edp_yaml_files: tuple[str, ...],
-    terms_files: tuple[str, ...],
+    edp_root: Path,
     output_file: str,
     author: str,
     _commit: str,
     edp_config_file: str | None,
 ) -> None:
     """CLI entry point: generate EDP changelog from YAML files."""
-    edp_paths = [Path(f) for f in edp_yaml_files]
-    terms_paths = [Path(f) for f in terms_files]
-    changelog = generate_edp_changelog(
-        edp_paths,
-        terms_paths,
+    changelog = generate_edp_changelog_from_root(
+        edp_root,
         author=author,
         _commit=_commit,
-        edp_config_file=Path(edp_config_file) if edp_config_file else None,
+        edp_config_file=(
+            Path(edp_config_file)
+            if edp_config_file
+            else None
+        ),
     )
     out = Path(output_file)
     out.parent.mkdir(parents=True, exist_ok=True)

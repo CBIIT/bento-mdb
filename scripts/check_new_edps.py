@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Check bento-edps for new EDP versions and update EDP config."""
 
 from __future__ import annotations
@@ -12,8 +11,7 @@ from packaging.version import parse as parse_version
 
 from bento_mdb.clients import GitHubClient
 from bento_mdb.model_cdes import dump_to_yaml
-from bento_mdf import MDF
-from bento_meta.model import Model
+from scripts.edp_packages import load_all_edp_packages
 
 logger = logging.getLogger(__name__)
 
@@ -22,34 +20,30 @@ def load_yaml(path: Path) -> dict:
     with Path(path).open(encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
+def _find_config_entry(
+    edp_config: dict,
+    origin: str,
+    code: str,
+) -> tuple[str, dict] | None:
+    for name, spec in edp_config.items():
+        if (
+            str(spec.get("origin") or "") == origin
+            and str(spec.get("code") or "") == code
+        ):
+            return name, spec
 
-def load_edp_model(edp_repo_path: Path, spec: dict) -> Model:
-    """Load EDP definitions using bento-mdf."""
-    mdf_directory = spec.get("mdf_directory", "model-desc")
-    mdf_files = spec.get("mdf_files") or ["edp-props.yml"]
-
-    files = [edp_repo_path / mdf_directory / file_name for file_name in mdf_files]
-    mdf = MDF(*files, handle="_EDP", raise_error=True)
-
-    return mdf.model
+    return None
 
 
-def get_edp_version(edp_definitions: dict, prop_definition: str) -> str | None:
-    """Get an EDP version from parsed bento-mdf EDP definitions."""
-    prop = edp_definitions.get(prop_definition)
-    if not prop:
-        logger.warning("No EDP PropDefinition found for %s", prop_definition)
-        return None
+def _new_config_key(edp_config: dict, property_handle: str) -> str:
+    if property_handle not in edp_config:
+        return property_handle
 
-    if not prop.concept or not prop.concept.terms:
-        logger.warning("No EDP Term found for %s", prop_definition)
-        return None
+    suffix = 2
+    while f"{property_handle}_{suffix}" in edp_config:
+        suffix += 1
 
-    edp_term = next(iter(prop.concept.terms.values()))
-    version = getattr(edp_term, "origin_version", None)
-
-    return str(version) if version is not None else None
-
+    return f"{property_handle}_{suffix}"
 
 def update_edp_versions(
     edp_config: dict,
@@ -58,53 +52,102 @@ def update_edp_versions(
     new_only: bool = True,
 ) -> bool:
     updated = False
+    model_directory = Path(edp_repo_path) / "model-desc"
+    edp_root = model_directory / "edps"
 
-    for edp_name, spec in edp_config.items():
-        logger.info("Checking %s for new EDP version...", edp_name)
+    for parsed in load_all_edp_packages(edp_root):
+        term = parsed.edp_term
 
-        edp_model = load_edp_model(edp_repo_path, spec)
+        origin = str(term.origin_name)
+        code = str(term.origin_id)
+        version = str(term.origin_version)
+        property_handle = parsed.property_handle
+        package = parsed.package.directory.relative_to(model_directory)
+        source_hash = parsed.package.source_hash()
 
-        try:
-           edp  = edp_model.nodes['_edp'].props[spec['property']]
-        except KeyError:
-            logger.error("No property '%s' defined for %s in config",
-                          spec['property'], edp_name)
+        existing = _find_config_entry(edp_config, origin, code)
+
+        if existing is None:
+            config_name = _new_config_key(
+                edp_config,
+                property_handle,
+            )
+            edp_config[config_name] = {
+                "repository": "CBIIT/bento-edps",
+                "mdf_directory": "model-desc",
+                "package": package.as_posix(),
+                "latest_version": version,
+                "versions": [
+                    {
+                        "version": version,
+                        "tag": version,
+                    }
+                ],
+                "origin": origin,
+                "code": code,
+                "property": property_handle,
+                "source_hash": source_hash,
+            }
+            updated = True
             continue
 
-        if not edp.is_extended:
-            logger.error("Property '%s' is not an extended property for %s in config",
-                          spec['property'], edp_name)
-            continue
-        
-        found_version = list(edp.value_set.edp_terms.values())[0].origin_version
-        if not found_version:
-            logger.warning("No Version found for %s", edp_name)
-            continue
+        _, spec = existing
+        current_latest = str(
+            spec.get("latest_version") or "0.0.0"
+        )
 
-        versions = spec.setdefault("versions", [])
-        known_versions = {str(v.get("version")) for v in versions}
-
-        current_latest = str(spec.get("latest_version") or "0.0.0")
-        if new_only and parse_version(found_version) <= parse_version(current_latest):
-            logger.info(
-                "Skipping %s v%s, not newer than latest version %s",
-                edp_name,
-                found_version,
+        if (
+            new_only
+            and parse_version(version) < parse_version(current_latest)
+        ):
+            logger.warning(
+                "Skipping %s v%s because latest is %s",
+                property_handle,
+                version,
                 current_latest,
             )
             continue
 
-        if found_version not in known_versions:
-            logger.info("Adding EDP version %s for %s", found_version, edp_name)
-            versions.append({"version": found_version, "tag": found_version})
+        expected = {
+            "repository": "CBIIT/bento-edps",
+            "mdf_directory": "model-desc",
+            "package": package.as_posix(),
+            "origin": origin,
+            "code": code,
+            "property": property_handle,
+            "source_hash": source_hash,
+        }
+
+        for field, value in expected.items():
+            if spec.get(field) != value:
+                spec[field] = value
+                updated = True
+
+        versions = spec.setdefault("versions", [])
+        known_versions = {
+            str(item.get("version"))
+            for item in versions
+        }
+
+        if version not in known_versions:
+            versions.append(
+                {
+                    "version": version,
+                    "tag": version,
+                }
+            )
             updated = True
 
-        sorted_versions = sorted(
-            versions,
-            key=lambda x: parse_version(str(x["version"])),
+        versions.sort(
+            key=lambda item: parse_version(
+                str(item["version"])
+            )
         )
-        spec["versions"] = sorted_versions
-        spec["latest_version"] = str(sorted_versions[-1]["version"])
+
+        newest = str(versions[-1]["version"])
+        if str(spec.get("latest_version")) != newest:
+            spec["latest_version"] = newest
+            updated = True
 
     return updated
 

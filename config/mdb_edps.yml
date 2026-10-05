@@ -1,9 +1,7 @@
 CRDC_STUDY_NAMES:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/crdc-studynames-terms.yml
+  package: edps/crdc_study_names
   latest_version: '1'
   versions:
   - version: '1'
@@ -11,12 +9,11 @@ CRDC_STUDY_NAMES:
   origin: CRDC
   code: CRDC0008
   property: crdc_study_names
+  source_hash: e63364b3d9c479528bf9415547a126e70c2754f10679ce7b88ed0fb1f80b62ee
 OBIB:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/obib-terms.yml
+  package: edps/obib_terms_valueset
   latest_version: '1'
   versions:
   - version: '1'
@@ -28,12 +25,11 @@ OBIB:
   - bioportal.bioontology.org/ontologies/OBIB
   - ebi.ac.uk/ols4/ontologies/obib
   - obib
+  source_hash: 2697fd269fa04445761f325332b609d5521459d2c2b167caea71b54b2f524b00
 QA_TEST:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/qa-test-terms.yml
+  package: edps/qa_test_valueset
   latest_version: '1'
   versions:
   - version: '1'
@@ -41,3 +37,4 @@ QA_TEST:
   origin: CRDC
   code: CRDC0005
   property: qa_test_valueset
+  source_hash: 155cf271213e7b4b2aa021e465c66848b50b94ed1a9f0fbb300d8cc070afe1f1
