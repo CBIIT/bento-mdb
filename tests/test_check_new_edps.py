@@ -62,14 +62,6 @@ def make_edp_repo(tmp_path: Path, version: str) -> Path:
 
     return repo
 
-
-def current_source_hash(repo: Path) -> str:
-    packages = discover_edp_packages(
-        repo / "model-desc" / "edps"
-    )
-    return packages[0].source_hash()
-
-
 def base_config(repo: Path, latest_version: str = "1") -> dict:
     return {
         "OBIB": {
@@ -86,7 +78,6 @@ def base_config(repo: Path, latest_version: str = "1") -> dict:
             "origin": "CRDC",
             "code": "CRDC0002",
             "property": "obib_terms_valueset",
-            "source_hash": current_source_hash(repo),
             "by_reference_url_patterns": ["obib"],
         }
     }
@@ -107,8 +98,6 @@ def test_registers_new_edp(tmp_path: Path) -> None:
     assert spec["code"] == "CRDC0002"
     assert spec["latest_version"] == "1"
     assert spec["package"] == "edps/obib_terms_valueset"
-    assert spec["source_hash"] == current_source_hash(repo)
-
 
 def test_adds_new_edp_version(tmp_path: Path) -> None:
     repo = make_edp_repo(tmp_path, "1")
@@ -168,63 +157,6 @@ def test_updates_latest_version_and_sorts_versions(
         item["version"]
         for item in config["OBIB"]["versions"]
     ] == ["2", "10"]
-
-
-def test_detects_props_change_with_same_version(
-    tmp_path: Path,
-) -> None:
-    repo = make_edp_repo(tmp_path, "1")
-    config = base_config(repo, "1")
-    previous_hash = config["OBIB"]["source_hash"]
-
-    props_file = (
-        repo
-        / "model-desc"
-        / "edps"
-        / "obib_terms_valueset"
-        / "edp-props.yml"
-    )
-    data = yaml.safe_load(
-        props_file.read_text(encoding="utf-8")
-    )
-    data["PropDefinitions"]["obib_terms_valueset"][
-        "Desc"
-    ] = "Updated description"
-    write_yaml(props_file, data)
-
-    updated = update_edp_versions(config, repo)
-
-    assert updated is True
-    assert config["OBIB"]["source_hash"] != previous_hash
-
-
-def test_detects_terms_change_with_same_version(
-    tmp_path: Path,
-) -> None:
-    repo = make_edp_repo(tmp_path, "1")
-    config = base_config(repo, "1")
-    previous_hash = config["OBIB"]["source_hash"]
-
-    terms_file = (
-        repo
-        / "model-desc"
-        / "edps"
-        / "obib_terms_valueset"
-        / "terms.yml"
-    )
-    data = yaml.safe_load(
-        terms_file.read_text(encoding="utf-8")
-    )
-    data["Terms"]["term_1"]["Definition"] = (
-        "Updated definition"
-    )
-    write_yaml(terms_file, data)
-
-    updated = update_edp_versions(config, repo)
-
-    assert updated is True
-    assert config["OBIB"]["source_hash"] != previous_hash
-
 
 def test_preserves_manual_config_fields(
     tmp_path: Path,

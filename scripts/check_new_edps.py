@@ -63,7 +63,6 @@ def update_edp_versions(
         version = str(term.origin_version)
         property_handle = parsed.property_handle
         package = parsed.package.directory.relative_to(model_directory)
-        source_hash = parsed.package.source_hash()
 
         existing = _find_config_entry(edp_config, origin, code)
 
@@ -86,7 +85,6 @@ def update_edp_versions(
                 "origin": origin,
                 "code": code,
                 "property": property_handle,
-                "source_hash": source_hash,
             }
             updated = True
             continue
@@ -115,7 +113,6 @@ def update_edp_versions(
             "origin": origin,
             "code": code,
             "property": property_handle,
-            "source_hash": source_hash,
         }
 
         for field, value in expected.items():

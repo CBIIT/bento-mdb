@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from hashlib import sha256
 from pathlib import Path
 
 from bento_mdf import MDF
@@ -18,18 +17,6 @@ class EDPPackage:
     @property
     def name(self) -> str:
         return self.directory.name
-
-    def source_hash(self) -> str:
-        digest = sha256()
-
-        for path in (self.props_file, self.terms_file):
-            digest.update(path.name.encode("utf-8"))
-            digest.update(b"\0")
-            digest.update(path.read_bytes())
-            digest.update(b"\0")
-
-        return digest.hexdigest()
-
 
 @dataclass(frozen=True)
 class ParsedEDPPackage:
