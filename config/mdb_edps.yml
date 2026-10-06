@@ -1,9 +1,7 @@
 CRDC_STUDY_NAMES:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/crdc-studynames-terms.yml
+  package: edps/crdc_study_names
   latest_version: '1'
   versions:
   - version: '1'
@@ -14,9 +12,7 @@ CRDC_STUDY_NAMES:
 OBIB:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/obib-terms.yml
+  package: edps/obib_terms_valueset
   latest_version: '1'
   versions:
   - version: '1'
@@ -31,9 +27,7 @@ OBIB:
 QA_TEST:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
-  mdf_files:
-  - edp-props.yml
-  - terms/qa-test-terms.yml
+  package: edps/qa_test_valueset
   latest_version: '1'
   versions:
   - version: '1'

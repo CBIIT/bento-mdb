@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 import yaml
 
 from scripts.make_edp_changelog import (
-    _escape,
-    _to_snake_case,
-    _generate_edp_changesets,
     _edp_definitions_from_files,
+    _escape,
+    _generate_edp_changesets,
+    _to_snake_case,
     generate_edp_changelog,
+    generate_edp_changelog_from_root,
 )
 
 TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_edp_props.yml"
@@ -18,6 +20,56 @@ TEST_EDP_TERMS = Path(__file__).parent / "samples" / "test_edp_terms.yml"
 TEST_AUTHOR = "test-author"
 TEST_COMMIT = "abc1234"
 
+def write_edp_package(
+    edp_root: Path,
+    handle: str,
+    code: str,
+    value: str,
+) -> None:
+    package = edp_root / handle
+    package.mkdir(parents=True)
+
+    (package / "edp-props.yml").write_text(
+        yaml.safe_dump(
+            {
+                "Nodes": {},
+                "Relationships": {},
+                "PropDefinitions": {
+                    handle: {
+                        "Ext": True,
+                        "Term": [
+                            {
+                                "Origin": "CRDC",
+                                "Code": code,
+                                "Version": "1",
+                                "Value": value,
+                            }
+                        ],
+                        "Enum": [f"{handle}_term"],
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (package / "terms.yml").write_text(
+        yaml.safe_dump(
+            {
+                "Terms": {
+                    f"{handle}_term": {
+                        "Origin": "TEST",
+                        "Code": f"{code}-PV1",
+                        "Version": "1",
+                        "Value": f"{handle}_term",
+                    }
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
 
 class TestToSnakeCase:
     def test_lowercases_and_replaces_spaces(self) -> None:
@@ -134,6 +186,133 @@ class TestGenerateEdpChangesets:
 
 
 class TestGenerateEdpChangelog:
+    def test_generates_from_multiple_edp_packages(
+    self,
+    tmp_path: Path,
+) -> None:
+        edp_root = tmp_path / "edps"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+        )
+
+        statements = [
+            changeset.change_type.text
+            for changeset in changelog.subelements
+        ]
+
+        assert any(
+            "CRDC0001" in statement
+            for statement in statements
+        )
+        assert any(
+            "CRDC0002" in statement
+            for statement in statements
+        )
+
+
+    def test_root_generation_filters_from_config(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        edp_root = tmp_path / "edps"
+        config = tmp_path / "mdb_edps.yml"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        config.write_text(
+            yaml.safe_dump(
+                {
+                    "FIRST": {
+                        "property": "first_edp",
+                        "latest_version": "1",
+                    }
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+            edp_config_file=config,
+        )
+
+        statements = [
+            changeset.change_type.text
+            for changeset in changelog.subelements
+        ]
+
+        assert any(
+            "CRDC0001" in statement
+            for statement in statements
+        )
+        assert not any(
+            "CRDC0002" in statement
+            for statement in statements
+        )
+
+
+    def test_root_generation_assigns_sequential_changeset_ids(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        edp_root = tmp_path / "edps"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+        )
+
+        ids = [
+            int(changeset.id)
+            for changeset in changelog.subelements
+        ]
+
+        assert ids == list(range(1, len(ids) + 1))
+
     def test_no_edp_props_returns_empty_changelog(self, tmp_path: Path) -> None:
         """An EDP-shaped MDF with no EDP props should produce an empty changelog."""
         edp_props = tmp_path / "edp-props.yml"

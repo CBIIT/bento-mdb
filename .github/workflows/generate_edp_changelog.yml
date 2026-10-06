@@ -81,16 +81,10 @@ jobs:
         run: |
           mkdir -p data/output/edp_changelogs/
 
-          TERMS_ARGS=""
-          for f in edp-repo/model-desc/terms/*.yml; do
-            TERMS_ARGS="$TERMS_ARGS --terms_files $f"
-          done
-
           OUTPUT_FILE="data/output/edp_changelogs/edp_changelog_${{ github.run_id }}.xml"
 
           make_edp_changelog \
-            --edp_yaml_files edp-repo/model-desc/edp-props.yml \
-            $TERMS_ARGS \
+            --edp_root edp-repo/model-desc/edps \
             --edp_config_file config/mdb_edps.yml \
             --output_file "$OUTPUT_FILE" \
             --author "GitHub Actions" \
