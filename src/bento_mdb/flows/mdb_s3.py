@@ -36,22 +36,21 @@ def build_s3_url(bucket: str, key: str, endpoint: str = DEFAULT_S3_ENDPOINT) -> 
 @task(name="Export MDB to S3", cache_policy=NO_CACHE)
 def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     """Export MDB to graphml file in S3."""
-    # TODO: Re-enable the S3 export after testing.
     logger = get_run_logger()
-    logger.info("test.......Exporting MDB to S3: %s", s3_url)
-    # apoc_export_stmt = (
-    #     f"CALL apoc.export.graphml.all('{s3_url}', "
-    #     "{useTypes: true, batchSize: 10000}) "
-    #     "YIELD nodes, relationships, properties "
-    #     "RETURN nodes, relationships, properties"
-    # )
-    # result = mdb.get_with_statement(apoc_export_stmt)
-    #
-    # if result:
-    #     logger.info("Export result: %s", result)
-    #     return
-    # export_fail_msg = "Export failed - no results returned"
-    # raise RuntimeError(export_fail_msg)
+    logger.info("Exporting MDB to S3: %s", s3_url)
+    apoc_export_stmt = (
+        f"CALL apoc.export.graphml.all('{s3_url}', "
+        "{useTypes: true, batchSize: 10000}) "
+        "YIELD nodes, relationships, properties "
+        "RETURN nodes, relationships, properties"
+    )
+    result = mdb.get_with_statement(apoc_export_stmt)
+
+    if result:
+        logger.info("Export result: %s", result)
+        return
+    export_fail_msg = "Export failed - no results returned"
+    raise RuntimeError(export_fail_msg)
 
 
 @task(name="Clear MDB Database", cache_policy=NO_CACHE)
@@ -90,26 +89,25 @@ def import_mdb_from_s3(
     clear_db: bool = False,
 ) -> None:
     """Import MDB from graphml file in S3."""
-    # TODO: Re-enable the S3 import after testing.
     logger = get_run_logger()
-    #
-    # if clear_db:
-    #     clear_mdb_database(mdb)
-    #
-    logger.info("test.....Importing MDB from S3: %s", s3_url)
-    # apoc_import_stmt = (
-    #     f"CALL apoc.import.graphml('{s3_url}', "
-    #     "{readLabels: true, batchSize: 10000}) "
-    #     "YIELD nodes, relationships, properties "
-    #     "RETURN nodes, relationships, properties"
-    # )
-    # logger.info("Importing GraphML with fresh node ID assignment")
-    # result = mdb.put_with_statement(apoc_import_stmt)
-    # if result:
-    #     logger.info("Import result: %s", result)
-    #     return
-    # import_fail_msg = "Import failed - no results returned"
-    # raise RuntimeError(import_fail_msg)
+
+    if clear_db:
+        clear_mdb_database(mdb)
+
+    logger.info("Importing MDB from S3: %s", s3_url)
+    apoc_import_stmt = (
+        f"CALL apoc.import.graphml('{s3_url}', "
+        "{readLabels: true, batchSize: 10000}) "
+        "YIELD nodes, relationships, properties "
+        "RETURN nodes, relationships, properties"
+    )
+    logger.info("Importing GraphML with fresh node ID assignment")
+    result = mdb.put_with_statement(apoc_import_stmt)
+    if result:
+        logger.info("Import result: %s", result)
+        return
+    import_fail_msg = "Import failed - no results returned"
+    raise RuntimeError(import_fail_msg)
 
 
 @flow(name="mdb-export-s3")
