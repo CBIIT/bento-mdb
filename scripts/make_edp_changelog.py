@@ -164,10 +164,13 @@ def _generate_edp_changesets(
     cs_id = start_id
 
     edp_term_stmt = (
-        f"MERGE (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
+        f"MERGE (edp:term {{"
+        f"origin_name: '{_escape(origin_name)}', "
+        f"origin_id: '{_escape(origin_id)}', "
+        f"origin_version: '{_escape(origin_version)}'"
+        f"}}) "
         f"SET edp.handle = '{_escape(handle)}', "
         f"edp.value = '{_escape(value)}', "
-        f"edp.origin_version = '{_escape(origin_version)}', "
         f"edp.origin_definition = '{_escape(definition)}', "
         f"edp._commit = '{_escape(_commit)}'"
     )
@@ -182,7 +185,11 @@ def _generate_edp_changesets(
 
     vs_handle = f"{origin_id}|{origin_version}"
     vs_stmt = (
-        f"MATCH (edp:term {{origin_name: '{_escape(origin_name)}', origin_id: '{_escape(origin_id)}'}}) "
+        f"MATCH (edp:term {{"
+        f"origin_name: '{_escape(origin_name)}', "
+        f"origin_id: '{_escape(origin_id)}', "
+        f"origin_version: '{_escape(origin_version)}'"
+        f"}}) "
         f"MERGE (vs:value_set {{handle: '{_escape(vs_handle)}'}}) "
         f"SET vs._commit = '{_escape(_commit)}' "
         f"MERGE (edp)-[:specifies_value_set]->(vs)"
@@ -207,10 +214,13 @@ def _generate_edp_changesets(
         pv_handle = _to_snake_case(pv_value) if pv_value else pv_code
 
         pv_stmt = (
-            f"MERGE (pv:term {{origin_name: '{_escape(pv_origin)}', origin_id: '{_escape(pv_code)}'}}) "
+            f"MERGE (pv:term {{"
+            f"origin_name: '{_escape(pv_origin)}', "
+            f"origin_id: '{_escape(pv_code)}', "
+            f"origin_version: '{_escape(pv_version)}'"
+            f"}}) "
             f"SET pv.handle = '{_escape(pv_handle)}', "
             f"pv.value = '{_escape(pv_value)}', "
-            f"pv.origin_version = '{_escape(pv_version)}', "
             f"pv.origin_definition = '{_escape(pv_definition)}', "
             f"pv._commit = '{_escape(_commit)}'"
         )
@@ -225,7 +235,11 @@ def _generate_edp_changesets(
 
         link_stmt = (
             f"MATCH (vs:value_set {{handle: '{_escape(vs_handle)}'}}) "
-            f"MATCH (pv:term {{origin_name: '{_escape(pv_origin)}', origin_id: '{_escape(pv_code)}'}}) "
+            f"MATCH (pv:term {{"
+            f"origin_name: '{_escape(pv_origin)}', "
+            f"origin_id: '{_escape(pv_code)}', "
+            f"origin_version: '{_escape(pv_version)}'"
+            f"}}) "
             f"MERGE (vs)-[:has_term]->(pv)"
         )
         changesets.append(
