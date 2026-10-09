@@ -2,7 +2,8 @@ name: Check New EDPs
 
 on:
   schedule:
-    - cron: "30 23 * * *" # runs daily at 6:30 PM EST (23:30 UTC)
+    # Eastern Time may vary by 1 hour due to daylight saving time.
+    - cron: "30 21 * * *" # runs daily at 9:30 PM UTC (4:30 PM EST / 5:30 PM EDT)
   workflow_dispatch:
     inputs:
       edp_specs_path:
