@@ -3,8 +3,8 @@ name: Check New MDFs
 on:
   schedule:
     # Eastern Time may vary by 1 hour due to daylight saving time.
-    - cron: "30 18 * * *" # runs daily at 6:30 PM UTC (1:30 PM EST / 2:30 PM EDT)
-    - cron: "0 20 * * *" # runs daily at 8:00 PM UTC (3:00 PM EST / 4:00 PM EDT)
+    - cron: "0 19 * * *" # runs daily at 7:00 PM UTC (2:00 PM EST / 3:00 PM EDT)
+    - cron: "30 20 * * *" # runs daily at 8:30 PM UTC (3:30 PM EST / 4:30 PM EDT)
   workflow_dispatch:
     inputs:
       models_yaml_path:
