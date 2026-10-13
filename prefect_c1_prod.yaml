@@ -11,8 +11,12 @@ pull:
     directory: bento-mdb-main
     script: "sh -c 'for attempt in 1 2 3 4 5; do
         uv pip install --system . && exit 0;
-        echo \"[install-dependencies] Installation failed\";
-        [ \"$attempt\" -lt 5 ] && sleep 10;
+        if [ \"$attempt\" -lt 5 ]; then
+          echo \"[install-dependencies] Attempt ${attempt}/5 failed; retrying in 10 seconds.\";
+          sleep 10;
+        else
+          echo \"[install-dependencies] Attempt ${attempt}/5 failed; retries exhausted.\";
+        fi;
       done;
       exit 1'"
 - prefect.deployments.steps.run_shell_script:
