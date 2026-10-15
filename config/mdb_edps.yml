@@ -28,12 +28,25 @@ QA_TEST:
   repository: CBIIT/bento-edps
   mdf_directory: model-desc
   package: edps/qa_test_valueset
-  latest_version: '2'
+  latest_version: '3'
   versions:
   - version: '1'
     tag: '1'
   - version: '2'
     tag: '2'
+  - version: '3'
+    tag: '3'
   origin: CRDC
   code: CRDC0005
   property: qa_test_valueset
+qa_auto_register_valueset:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  package: edps/qa_auto_register_valueset
+  latest_version: '1'
+  versions:
+  - version: '1'
+    tag: '1'
+  origin: CRDC
+  code: CRDC0007
+  property: qa_auto_register_valueset
