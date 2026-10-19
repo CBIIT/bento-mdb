@@ -14,6 +14,7 @@ VALID_MDB_IDS = [
     "fnl-mdb-dev",
     "fnl-mdb-qa",
     "cloud-one-mdb-dev",
+    "cloud-one-mdb-dev2",
     "cloud-one-mdb-qa",
     "cloud-one-mdb-stage",
     "cloud-one-mdb-prod",
@@ -22,6 +23,7 @@ VALID_MDB_IDS = [
 MDB_IDS_WITH_PRERELEASES = [
     "fnl-mdb-dev",
     "cloud-one-mdb-dev",
+    "cloud-one-mdb-dev2",
 ]
 
 # =============================================================================
