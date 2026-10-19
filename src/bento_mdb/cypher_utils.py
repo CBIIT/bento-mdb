@@ -41,14 +41,11 @@ def normalize_optional_version(value: object | None) -> str:
         return ""
     return normalized
 
-
-def cypher_string_literal(value: object | None) -> str:
-    """Return a safe double-quoted Cypher string literal."""
-    return json.dumps(
-        normalize_identity_text(value),
-        ensure_ascii=False,
-    )
-
+def cypher_string_literal(value: str) -> str:
+    """Return a safe double-quoted Cypher string literal, with correct escapes"""
+    val = normalize_identity_text(value)
+    escaped = val.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 def hash_identity(value: object) -> str:
     """Return a deterministic SHA-256 hash for an identity structure."""
@@ -175,7 +172,7 @@ def get_entity_identity_props(entity: Entity) -> dict[str, str | bool]:
         key: (
             value
             if isinstance(value, bool)
-            else normalize_identity_text(value)
+            else cypher_string_literal(value)
         )
         for key, kind in entity.attspec.items()
         if kind == "simple"

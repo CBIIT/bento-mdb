@@ -331,7 +331,7 @@ def convert_annotation_to_changesets(
     # create changesets for each statement
     cs_id = changeset_id
     for stmt in statements:
-        str_stmt = str(stmt).replace("\\'", "'")
+        str_stmt = str(stmt)
         changesets.append(
             Changeset(
                 id=str(cs_id),
