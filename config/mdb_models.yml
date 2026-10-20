@@ -245,7 +245,9 @@ CTDC:
     tag: 3.9.0
   - version: 3.10.0
     tag: 3.10.0
-  latest_version: 3.10.0
+  - version: 4.0.0
+    tag: 4.0.0
+  latest_version: 4.0.0
   latest_prerelease_commit: eebc01bf6c6a467c33841b8e8e710a50b7643842
   latest_prerelease_version: 4.0.0
 GDC:
@@ -298,8 +300,8 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 2.1.0
-  latest_prerelease_commit: 330571d9d9095cb3bedec1d12767f03b1a63442a
-  latest_prerelease_version: 2.1.0
+  latest_prerelease_commit: 4903b69b1f539f9067e8aa4d0244c961489636ce
+  latest_prerelease_version: 9.9.9
 PDC:
   repository: CBIIT/pdc-model
   mdf_directory: model-desc
