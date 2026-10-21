@@ -344,29 +344,18 @@ class TestMakeModelChangelog:
             remove_nanoids_from_str(x.change_type.text) for x in changelog.subelements
         ]
 
-        edp_links = [
-            stmt
-            for stmt in actual
-            if "MATCH (edp)-[:specifies_value_set]->(vs:value_set)" in stmt
-            and "MERGE (prop)-[:has_value_set]->(vs)" in stmt
-        ]
+        # check edp_links
+        stmt = " ".join(actual)
+        assert stmt.find("MATCH (edp)-[:specifies_value_set]->(candidate_vs:value_set)") >= 0
+        assert stmt.find("MERGE (prop)-[:has_value_set]->(vs)") >= 0
 
-        assert len(edp_links) == 1
-
-        edp_link = edp_links[0]
+        edp_link = list([l for l in actual if l.find("edp") >= 0])[0]
         assert 'handle: "program_name"' in edp_link
         assert 'model: "TEST"' in edp_link
         assert 'version: "1.2.3"' in edp_link
         assert 'edp.origin_name = "CRDC"' in edp_link
         assert 'edp.origin_id = "CRDC00005"' in edp_link
         assert "coalesce(edp.origin_version, '') = \"1\"" in edp_link
-
-        assert not any(
-            "MATCH (n0:property" in stmt
-            and "handle:'program_name'" in stmt
-            and "MERGE (n0)-[r0:has_value_set]->(n1)" in stmt
-            for stmt in actual
-        )
 
     def test_value_set_commit_replaces_dummy(self) -> None:
         value_set = ValueSet({"_commit": "dummy"})

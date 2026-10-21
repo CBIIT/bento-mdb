@@ -1,6 +1,6 @@
 """Tests for cde changelog generation script."""
 import pytest
-from pdb import set_trace
+
 from bento_mdb.cde_cypher import (
     convert_annotation_to_changesets,
     convert_model_cdes_to_changelog,
