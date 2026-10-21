@@ -152,9 +152,9 @@ def _generate_cadsr_value_set_link_cypher(
     cde_version: str,
 ) -> str:
     """Link a caDSR CDE term to its conventionally named value set."""
-    cde_id_literal = _cypher_string_literal(cde_id)
-    cde_version_literal = _cypher_string_literal(cde_version)
-    value_set_handle_literal = _cypher_string_literal(
+    cde_id_literal = cypher_string_literal(cde_id)
+    cde_version_literal = cypher_string_literal(cde_version)
+    value_set_handle_literal = cypher_string_literal(
         f"{cde_id}|{cde_version}",
     )
 

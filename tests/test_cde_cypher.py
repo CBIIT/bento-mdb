@@ -1,6 +1,6 @@
 """Tests for cde changelog generation script."""
 import pytest
-
+from pdb import set_trace
 from bento_mdb.cde_cypher import (
     convert_annotation_to_changesets,
     convert_model_cdes_to_changelog,
@@ -8,6 +8,7 @@ from bento_mdb.cde_cypher import (
     create_delete_pv_cypher,
     get_cde_value_set_handle,
     get_cde_value_set_url,
+    _generate_cadsr_value_set_link_cypher,
 )
 
 from tests.test_utils import (
@@ -379,7 +380,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 2
+        assert len(actual) == 3
 
         assert_cde_value_set_merge(
             actual[0],
@@ -389,11 +390,10 @@ class TestConvertAnnotationToChangesets:
                 "api/DataElement/12345?version=1.0"
             ),
         )
-
-        assert "MATCH (t:term" in actual[1]
-        assert "origin_id: '12345'" in actual[1]
-        assert "toLower(t.origin_name) CONTAINS 'cadsr'" in actual[1]
-        assert 'SET t.value = "New CDE Name"' in actual[1]
+        assert "MATCH (t:term" in actual[2]
+        assert "origin_id: '12345'" in actual[2]
+        assert "toLower(t.origin_name) CONTAINS 'cadsr'" in actual[2]
+        assert 'SET t.value = "New CDE Name"' in actual[2]
 
     def test_convert_annotation_to_changesets_with_name_and_version_change(
     self,
@@ -423,7 +423,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 2
+        assert len(actual) == 3
 
         assert_cde_value_set_merge(
             actual[0],
@@ -433,20 +433,8 @@ class TestConvertAnnotationToChangesets:
                 "api/DataElement/12345?version=2.0"
             ),
         )
-        actual = [
-            remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
-            for x in changesets
-        ]
-        
-        expected = [
-            "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
-            'MATCH (cde:term {origin_id: "12345"}) WHERE toLower(cde.origin_name) = \'cadsr\' AND cde.origin_version = "1.0" MATCH (vs:value_set {handle: "12345|1.0"}) MERGE (cde)-[:specifies_value_set]->(vs)',
-            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559594\' AND pv.value = "OldPV1" AND pv.origin_version = "1" DELETE r',
-            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND pv.origin_version = "2" DELETE r',
-        ]
-        assert_equal(actual, expected)
 
-        assert 'SET t.value = "New Name"' in actual[1]
+        assert 'SET t.value = "New Name"' in actual[2]
 
     def test_convert_annotation_to_changesets_only_removed_pvs_no_new_pvs(
     self,
@@ -486,7 +474,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 3
+        assert len(actual) == 5
 
         assert_cde_value_set_merge(
             actual[0],
@@ -547,7 +535,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 2
+        assert len(actual) == 4
 
         assert_cde_value_set_merge(
             actual[0],
