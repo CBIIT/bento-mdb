@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 import yaml
 
 from scripts.make_edp_changelog import (
-    _escape,
-    _to_snake_case,
-    _generate_edp_changesets,
     _edp_definitions_from_files,
+    _escape,
+    _generate_edp_changesets,
+    _to_snake_case,
     generate_edp_changelog,
+    generate_edp_changelog_from_root,
 )
 
 TEST_EDP_PROPS = Path(__file__).parent / "samples" / "test_edp_props.yml"
@@ -18,6 +20,56 @@ TEST_EDP_TERMS = Path(__file__).parent / "samples" / "test_edp_terms.yml"
 TEST_AUTHOR = "test-author"
 TEST_COMMIT = "abc1234"
 
+def write_edp_package(
+    edp_root: Path,
+    handle: str,
+    code: str,
+    value: str,
+) -> None:
+    package = edp_root / handle
+    package.mkdir(parents=True)
+
+    (package / "edp-props.yml").write_text(
+        yaml.safe_dump(
+            {
+                "Nodes": {},
+                "Relationships": {},
+                "PropDefinitions": {
+                    handle: {
+                        "Ext": True,
+                        "Term": [
+                            {
+                                "Origin": "CRDC",
+                                "Code": code,
+                                "Version": "1",
+                                "Value": value,
+                            }
+                        ],
+                        "Enum": [f"{handle}_term"],
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (package / "terms.yml").write_text(
+        yaml.safe_dump(
+            {
+                "Terms": {
+                    f"{handle}_term": {
+                        "Origin": "TEST",
+                        "Code": f"{code}-PV1",
+                        "Version": "1",
+                        "Value": f"{handle}_term",
+                    }
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
 
 class TestToSnakeCase:
     def test_lowercases_and_replaces_spaces(self) -> None:
@@ -73,8 +125,9 @@ class TestGenerateEdpChangesets:
         with pytest.raises(RuntimeError, match="but has no Term: annotation"):
             prop_handle, prop = _edp_definitions_from_files([edp_props], [terms])[0]
 
-    def test_generates_edp_term_changeset(self) -> None:
-        """Should generate MERGE for EDP term node."""
+    def test_generates_versioned_edp_term_and_value_set(
+        self,
+    ) -> None:
         prop_handle, prop = _edp_definitions_from_files(
             [TEST_EDP_PROPS],
             [TEST_EDP_TERMS],
@@ -88,13 +141,49 @@ class TestGenerateEdpChangesets:
             1,
         )
 
-        stmts = [cs.change_type.text for cs in changesets]
-        assert any("MERGE (edp:term" in s for s in stmts)
-        assert any("specifies_value_set" in s for s in stmts)
-        assert any("CRDC00001" in s for s in stmts)
+        statements = [
+            changeset.change_type.text
+            for changeset in changesets
+        ]
 
-    def test_generates_pv_term_changesets(self) -> None:
-        """Should generate MERGE + has_term for each PV."""
+        edp_statement = statements[0]
+        value_set_statement = statements[1]
+
+        assert (
+            "MERGE (edp:term {"
+            "origin_name: 'CRDC', "
+            "origin_id: 'CRDC00001', "
+            "origin_version: '1'"
+            "})"
+        ) in edp_statement
+
+        assert "SET edp.handle = 'test_obib'" in edp_statement
+        assert "edp.value = 'Test Obib'" in edp_statement
+
+        # Version is immutable identity, not mutable SET metadata.
+        assert "SET edp.origin_version" not in edp_statement
+        assert ", edp.origin_version" not in edp_statement
+
+        assert (
+            "MATCH (edp:term {"
+            "origin_name: 'CRDC', "
+            "origin_id: 'CRDC00001', "
+            "origin_version: '1'"
+            "})"
+        ) in value_set_statement
+
+        assert (
+            "MERGE (vs:value_set {handle: 'CRDC00001|1'})"
+            in value_set_statement
+        )
+        assert (
+            "MERGE (edp)-[:specifies_value_set]->(vs)"
+            in value_set_statement
+        )
+
+    def test_generates_versioned_pv_terms_and_links(
+        self,
+    ) -> None:
         prop_handle, prop = _edp_definitions_from_files(
             [TEST_EDP_PROPS],
             [TEST_EDP_TERMS],
@@ -108,11 +197,132 @@ class TestGenerateEdpChangesets:
             1,
         )
 
-        stmts = [cs.change_type.text for cs in changesets]
-        assert any("MERGE (pv:term" in s for s in stmts)
-        assert any("has_term" in s for s in stmts)
-        assert any("OBIB:0000070" in s for s in stmts)
-        assert any("OBIB:0000071" in s for s in stmts)
+        statements = [
+            changeset.change_type.text
+            for changeset in changesets
+        ]
+
+        pv_merge_statements = [
+            statement
+            for statement in statements
+            if statement.startswith("MERGE (pv:term")
+        ]
+        pv_link_statements = [
+            statement
+            for statement in statements
+            if "MERGE (vs)-[:has_term]->(pv)" in statement
+        ]
+
+        assert len(pv_merge_statements) == 2
+        assert len(pv_link_statements) == 2
+
+        assert any(
+            "origin_name: 'OBIB', "
+            "origin_id: 'OBIB:0000070', "
+            "origin_version: '2024-01-01'"
+            in statement
+            for statement in pv_merge_statements
+        )
+        assert any(
+            "origin_name: 'OBIB', "
+            "origin_id: 'OBIB:0000071', "
+            "origin_version: '2024-01-01'"
+            in statement
+            for statement in pv_merge_statements
+        )
+
+        assert all(
+            "SET pv.origin_version" not in statement
+            and ", pv.origin_version" not in statement
+            for statement in pv_merge_statements
+        )
+
+        assert all(
+            "MATCH (vs:value_set {handle: 'CRDC00001|1'})"
+            in statement
+            for statement in pv_link_statements
+        )
+        assert all(
+            "origin_version: '2024-01-01'"
+            in statement
+            for statement in pv_link_statements
+        )
+
+    def test_different_edp_versions_generate_distinct_identities(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        terms = tmp_path / "terms.yml"
+        terms.write_text(
+            yaml.safe_dump(
+                {
+                    "Terms": {
+                        "alpha": {
+                            "Origin": "CRDC",
+                            "Code": "QA0001",
+                            "Version": "1",
+                            "Value": "alpha",
+                        }
+                    }
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        generated_statements = {}
+
+        for version in ("1", "2"):
+            props = tmp_path / f"edp-v{version}.yml"
+            props.write_text(
+                yaml.safe_dump(
+                    {
+                        "Nodes": {},
+                        "Relationships": {},
+                        "PropDefinitions": {
+                            "qa_test_valueset": {
+                                "Ext": True,
+                                "Term": [
+                                    {
+                                        "Origin": "CRDC",
+                                        "Code": "CRDC0005",
+                                        "Version": version,
+                                        "Value": "QA Test Value Set",
+                                    }
+                                ],
+                                "Enum": ["alpha"],
+                            }
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            prop_handle, prop = _edp_definitions_from_files(
+                [props],
+                [terms],
+            )[0]
+
+            generated_statements[version] = [
+                changeset.change_type.text
+                for changeset in _generate_edp_changesets(
+                    prop_handle,
+                    prop,
+                    TEST_AUTHOR,
+                    TEST_COMMIT,
+                    1,
+                )
+            ]
+
+        assert "origin_version: '1'" in generated_statements["1"][0]
+        assert "handle: 'CRDC0005|1'" in generated_statements["1"][1]
+
+        assert "origin_version: '2'" in generated_statements["2"][0]
+        assert "handle: 'CRDC0005|2'" in generated_statements["2"][1]
+
+        assert generated_statements["1"][0] != generated_statements["2"][0]
+        assert generated_statements["1"][1] != generated_statements["2"][1]
 
     def test_changeset_ids_are_sequential(self) -> None:
         """Changeset IDs should start at start_id and increment."""
@@ -134,6 +344,133 @@ class TestGenerateEdpChangesets:
 
 
 class TestGenerateEdpChangelog:
+    def test_generates_from_multiple_edp_packages(
+    self,
+    tmp_path: Path,
+) -> None:
+        edp_root = tmp_path / "edps"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+        )
+
+        statements = [
+            changeset.change_type.text
+            for changeset in changelog.subelements
+        ]
+
+        assert any(
+            "CRDC0001" in statement
+            for statement in statements
+        )
+        assert any(
+            "CRDC0002" in statement
+            for statement in statements
+        )
+
+
+    def test_root_generation_filters_from_config(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        edp_root = tmp_path / "edps"
+        config = tmp_path / "mdb_edps.yml"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        config.write_text(
+            yaml.safe_dump(
+                {
+                    "FIRST": {
+                        "property": "first_edp",
+                        "latest_version": "1",
+                    }
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+            edp_config_file=config,
+        )
+
+        statements = [
+            changeset.change_type.text
+            for changeset in changelog.subelements
+        ]
+
+        assert any(
+            "CRDC0001" in statement
+            for statement in statements
+        )
+        assert not any(
+            "CRDC0002" in statement
+            for statement in statements
+        )
+
+
+    def test_root_generation_assigns_sequential_changeset_ids(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        edp_root = tmp_path / "edps"
+
+        write_edp_package(
+            edp_root,
+            "first_edp",
+            "CRDC0001",
+            "First EDP",
+        )
+        write_edp_package(
+            edp_root,
+            "second_edp",
+            "CRDC0002",
+            "Second EDP",
+        )
+
+        changelog = generate_edp_changelog_from_root(
+            edp_root,
+            author=TEST_AUTHOR,
+            _commit=TEST_COMMIT,
+        )
+
+        ids = [
+            int(changeset.id)
+            for changeset in changelog.subelements
+        ]
+
+        assert ids == list(range(1, len(ids) + 1))
+
     def test_no_edp_props_returns_empty_changelog(self, tmp_path: Path) -> None:
         """An EDP-shaped MDF with no EDP props should produce an empty changelog."""
         edp_props = tmp_path / "edp-props.yml"

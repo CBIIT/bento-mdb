@@ -131,6 +131,21 @@ def test_create_delete_pv_cypher_escapes_single_quotes() -> None:
     assert actual.endswith("DELETE r")
     assert "DELETE r, pv" not in actual
 
+def test_generate_cadsr_value_set_link_cypher() -> None:
+    actual = _generate_cadsr_value_set_link_cypher(
+        "6118266",
+        "1.00",
+    )
+    expected = (
+        'MATCH (cde:term {origin_id: "6118266"}) '
+        "WHERE toLower(cde.origin_name) = 'cadsr' "
+        'AND cde.origin_version = "1.00" '
+        'MATCH (vs:value_set {handle: "6118266|1.00"}) '
+        "MERGE (cde)-[:specifies_value_set]->(vs)"
+    )
+
+    assert_equal(actual, expected)
+
 
 class TestConvertAnnotationToChangesets:
     """Tests for convert_annotation_to_changesets."""
@@ -296,6 +311,16 @@ class TestConvertAnnotationToChangesets:
             remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
             for x in changesets
         ]
+
+        link_statements = [
+            stmt
+            for stmt in actual
+            if "MERGE (cde)-[:specifies_value_set]->(vs)" in stmt
+        ]
+        assert len(link_statements) == 1
+        assert 'origin_id: "6118266"' in link_statements[0]
+        assert 'origin_version = "1.00"' in link_statements[0]
+        assert 'handle: "6118266|1.00"' in link_statements[0]
         
         # Check that DELETE statements are present for removed PVs (deletes relationship only)
         # Uses composite key for matching (origin_id + value + origin_version, within value_set)
@@ -408,6 +433,18 @@ class TestConvertAnnotationToChangesets:
                 "api/DataElement/12345?version=2.0"
             ),
         )
+        actual = [
+            remove_nanoids_from_str(x.change_type.text) if x.change_type else ""
+            for x in changesets
+        ]
+        
+        expected = [
+            "MERGE (n0:value_set {handle:'12345|1.0',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/12345?version=1.0'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
+            'MATCH (cde:term {origin_id: "12345"}) WHERE toLower(cde.origin_name) = \'cadsr\' AND cde.origin_version = "1.0" MATCH (vs:value_set {handle: "12345|1.0"}) MERGE (cde)-[:specifies_value_set]->(vs)',
+            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559594\' AND pv.value = "OldPV1" AND pv.origin_version = "1" DELETE r',
+            'MATCH (vs:value_set {handle: \'12345|1.0\'})-[r:has_term]->(pv:term) WHERE toLower(pv.origin_name) CONTAINS \'cadsr\' AND pv.origin_id = \'2559595\' AND pv.value = "OldPV2" AND pv.origin_version = "2" DELETE r',
+        ]
+        assert_equal(actual, expected)
 
         assert 'SET t.value = "New Name"' in actual[1]
 

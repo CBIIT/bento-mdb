@@ -152,9 +152,13 @@ CDS:
     tag: 11.0.4-GC_Release
   - version: 12.0.0
     tag: 12.0.0-GC_Release
-  latest_version: 12.0.0
-  latest_prerelease_commit: 0fea351c3cee88c246b14ab4f69929f12ebd08a1
-  latest_prerelease_version: 12.0.0
+  - version: 13.0.0
+    tag: 13.0.0-GC_Release
+  - version: 13.0.1
+    tag: 13.0.1-GC_Release
+  latest_version: 13.0.1
+  latest_prerelease_commit: dec7dfc05ed9794c17e0b60f89e11c1c72b87aa3
+  latest_prerelease_version: 13.0.1
 CTDC:
   repository: CBIIT/ctdc-model
   mdf_directory: model-desc
@@ -235,9 +239,17 @@ CTDC:
     tag: 3.6.0
   - version: 3.7.0
     tag: 3.7.0
-  latest_version: 3.7.0
-  latest_prerelease_commit: 792e156421b14bb34b6299edd21646dcc85803c8
-  latest_prerelease_version: 3.7.0
+  - version: 3.8.0
+    tag: 3.8.0
+  - version: 3.9.0
+    tag: 3.9.0
+  - version: 3.10.0
+    tag: 3.10.0
+  - version: 4.0.0
+    tag: 4.0.0
+  latest_version: 4.0.0
+  latest_prerelease_commit: eebc01bf6c6a467c33841b8e8e710a50b7643842
+  latest_prerelease_version: 4.0.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
@@ -327,8 +339,8 @@ PSDC:
   - version: 1.0.0
     tag: 1.0.0
   latest_version: 1.0.0
-  latest_prerelease_commit: db3690cb7399e7aa740bbea0a7c0ef73f9c4e8e2
-  latest_prerelease_version: 1.0.0
+  latest_prerelease_commit: bfa8cadfc32057c611deb9b7a16f8c411cd354c8
+  latest_prerelease_version: 2.0.0
 TEST:
   repository: CBIIT/ctos-test-model
   prerelease_repository: CBIIT/ctos-test-model
@@ -348,5 +360,5 @@ TEST:
     tag: 1.2.0
     ignore: true
   latest_version: null
-  latest_prerelease_commit: 197a6b51d486f462b87189e91f7e129b27079b84
-  latest_prerelease_version: 1.2.0
+  latest_prerelease_commit: 21343c946db2abac3080308159b9b77cdb15e601
+  latest_prerelease_version: 1.5.0

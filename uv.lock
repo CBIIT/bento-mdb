@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -183,14 +183,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bento-mdf", specifier = ">=0.13.3b2" },
+    { name = "bento-mdf", specifier = ">=0.13.4" },
     { name = "bento-meta", specifier = ">=0.3.2" },
     { name = "boto3", specifier = ">=1.38.36" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "docker", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "importlib-metadata", specifier = ">=6,<9" },
     { name = "liquichange", specifier = ">=0.2.1" },
-    { name = "mdb-changelog-runner", specifier = "==1.0.3" },
+    { name = "mdb-changelog-runner", specifier = "==1.0.4" },
     { name = "minicypher", specifier = ">=0.1.1" },
     { name = "neo4j", specifier = ">=4.4,<6.0" },
     { name = "packaging", specifier = ">=24.2" },
@@ -211,7 +211,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "bento-mdf"
-version = "0.13.3"
+version = "0.13.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-types" },
@@ -231,9 +231,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/91/1a10ef24ce68322c68b66adc73d3abcab800e0a18f1fa6a35f2b55b5d078/bento_mdf-0.13.3.tar.gz", hash = "sha256:4bacc5ee5d34bd0246200529f29a18183cd75dd66ca275e70c7d937138aadf3c", size = 32310, upload-time = "2026-08-14T16:48:49.129Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/37/b381f0df1fc1f9474747975c2ceb5e4fd94c6d361c7f26c186ed508b799d/bento_mdf-0.13.4.tar.gz", hash = "sha256:e4e8eadcfdf88ff2b058694bac39e44effe0f221a881765b517ebf46851cf061", size = 32626, upload-time = "2026-08-25T20:06:04.798Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/72/fa325648714b2dc021a4832813c96f3c1be0d05a3719001269d7f4354284/bento_mdf-0.13.3-py3-none-any.whl", hash = "sha256:8d7d42739ef3d9acb73bbe9e506fe4ac3f9b8babdb0f7cad908519894a3e4a28", size = 37898, upload-time = "2026-08-14T16:48:48.188Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/01/3f4a0a0fbf7525d73b9ddf091799ce08d8593e888c26aaa6e965ac63ead3/bento_mdf-0.13.4-py3-none-any.whl", hash = "sha256:8ffaa02a41fbd5340821b84a7873e2ca9a8fdde3e10dc2a057534a3f7fb88f29", size = 38195, upload-time = "2026-08-25T20:06:03.655Z" },
 ]
 
 [[package]]
@@ -1318,15 +1318,15 @@ wheels = [
 
 [[package]]
 name = "mdb-changelog-runner"
-version = "1.0.3"
+version = "1.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
     { name = "neo4j" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/c1/f5b1a7007fe902fe339bb0404ca8b6990c0b73d365033443e75184c4a5fa/mdb_changelog_runner-1.0.3.tar.gz", hash = "sha256:9fa81123528b3ed937e6d733624405a9300e03d6a680e07035c5844422a46cbb", size = 5916, upload-time = "2026-07-15T14:55:33.126Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/ed/af1b632c01c316d25146b11e29aea341383b3cd608386925571dec5f0efd/mdb_changelog_runner-1.0.4.tar.gz", hash = "sha256:57bab5bbc25f5d4e6f22e458b6a6b0f17e46adc82932f9df584d80381cba75ca", size = 6073, upload-time = "2026-09-25T15:23:12.103Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/1e/b69988cced82732256b3fcc6b68d651063588171c22e551ba153cc99481e/mdb_changelog_runner-1.0.3-py3-none-any.whl", hash = "sha256:aa34851b8352aa84c22f1071583432e5ace951f7d339789f7f463ba144c8cc10", size = 7955, upload-time = "2026-07-15T14:55:32.114Z" },
+    { url = "https://files.pythonhosted.org/packages/93/51/f7a1c220ddc4ef738f92b7eccb7c590bc1795735217b753a2b140ed40151/mdb_changelog_runner-1.0.4-py3-none-any.whl", hash = "sha256:437dcf84051bd79ba386d41c44679822727dbcefc55096b73dde6d6aee723bc1", size = 8112, upload-time = "2026-09-25T15:23:10.849Z" },
 ]
 
 [[package]]

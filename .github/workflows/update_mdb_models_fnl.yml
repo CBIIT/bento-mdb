@@ -110,3 +110,4 @@ jobs:
           message: |
             *[FNL] Model Update*
             <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success') && '⚠️ Upstream workflow failed' || (needs.collect-changelogs.result == 'failure' || needs.update-fnl-mdb-dev.result == 'failure') && 'Failure' || 'Success' }}>
+            ${{ needs.update-fnl-mdb-dev.outputs.warnings != '' && format('*Warnings:*\n{0}', needs.update-fnl-mdb-dev.outputs.warnings) || '' }}
