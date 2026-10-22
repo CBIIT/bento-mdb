@@ -758,6 +758,9 @@ class GitHubClient:  # TODO: replace with GitHub API client
         commit_data = commit_response.json()
         cache_prefix = f"cache/{model}/"
         for file_info in commit_data.get("files", []):
+            if file_info.get("status") == "removed":
+                logger.info("Skipping removed cache file: %s", file_info["filename"])
+                continue
             file_path = file_info["filename"]
             if file_path.startswith(cache_prefix):
                 # Extract everything after "cache/{model}/" up to the next "/"

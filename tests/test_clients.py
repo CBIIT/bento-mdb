@@ -2,12 +2,13 @@ import copy
 import datetime
 import logging
 import zipfile
+from unittest.mock import patch
 
 import pytest
 import requests
 from requests.exceptions import HTTPError
 
-from bento_mdb.clients import CADSRClient, NCItClient
+from bento_mdb.clients import CADSRClient, GitHubClient, NCItClient
 from bento_mdb.constants import NCIM_TSV_NAME
 from bento_mdb.datatypes import AnnotationSpec
 from tests.test_utils import (
@@ -925,3 +926,35 @@ class TestNCItClient:
         # Version change detection is currently disabled
         # When re-enabled, this test should detect the version change
         assert len(annotations) == 0
+
+
+@pytest.mark.parametrize("remaining_status", [None, "added", "modified"])
+def test_prerelease_detection_skips_and_logs_removed_files(
+    caplog, remaining_status,
+):
+    removed_path = "cache/ICDC/9.9.9/icdc-model.yml"
+    files = [{"filename": removed_path, "status": "removed"}]
+    if remaining_status:
+        files.append({
+            "filename": "cache/ICDC/2.1.0/icdc-model.yml",
+            "status": remaining_status,
+        })
+    responses = [
+        FakeResponse(json_data=[{"sha": "test-commit"}]),
+        FakeResponse(json_data={"files": files}),
+    ]
+    client = GitHubClient(github_token="test-token")
+
+    with (
+        patch.object(client.session, "get", side_effect=responses),
+        caplog.at_level(logging.INFO, logger="bento_mdb.clients"),
+    ):
+        result = client.get_prerelease_model_info("ICDC")
+
+    expected = ("test-commit", "2.1.0") if remaining_status else None
+    assert result == expected
+    assert any(
+        record.levelno == logging.INFO
+        and record.getMessage() == f"Skipping removed cache file: {removed_path}"
+        for record in caplog.records
+    )
