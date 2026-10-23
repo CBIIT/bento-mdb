@@ -521,12 +521,10 @@ class ModelToChangelogConverter:
 
         for stmts in self.cypher_stmts.values():
             for stmt, rollback in zip(stmts["statements"], stmts["rollbacks"]):
-                # testing replacing poorly escaped quotes
-                str_stmt = str(stmt).replace("\\'", "'")
                 changeset = Changeset(
                     id=str(changeset_id),
                     author=author,
-                    change_type=CypherChange(text=str_stmt),
+                    change_type=CypherChange(text=str(stmt)),
                 )
                 if self.add_rollback:
                     changeset.set_rollback(Rollback(text=str(rollback)))
