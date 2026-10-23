@@ -415,3 +415,36 @@ class TestMakeModelChangelog:
         assert 'key: "mapping_source"' in text
         assert 'value: "TEST"' in text
         assert "CREATE" not in text
+
+    def test_model_changelog_preserves_apostrophe_escape(self) -> None:
+        model = Model(handle="TEST")
+        node = Node(
+            {
+                "handle": "children's_hospital",
+                "model": "TEST",
+            },
+        )
+        model.nodes[node.handle] = node
+
+        converter = ModelToChangelogConverter(
+            model=model,
+            add_rollback=False,
+        )
+        changelog = converter.convert_model_to_changelog(
+            author=AUTHOR,
+        )
+
+        statements = [
+            changeset.change_type.text
+            for changeset in changelog.subelements
+            if changeset.change_type
+        ]
+
+        assert any(
+            "children\\'s_hospital" in statement
+            for statement in statements
+        )
+        assert not any(
+            "handle:'children's_hospital'" in statement
+            for statement in statements
+        )
