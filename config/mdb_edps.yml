@@ -50,3 +50,14 @@ qa_auto_register_valueset:
   origin: CRDC
   code: CRDC0007
   property: qa_auto_register_valueset
+qa_dedupe_valueset:
+  repository: CBIIT/bento-edps
+  mdf_directory: model-desc
+  package: edps/qa_dedupe_valueset
+  latest_version: '1'
+  versions:
+  - version: '1'
+    tag: '1'
+  origin: CRDC
+  code: CRDC0099
+  property: qa_dedupe_valueset
