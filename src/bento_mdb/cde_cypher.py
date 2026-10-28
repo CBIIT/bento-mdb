@@ -228,7 +228,6 @@ def convert_annotation_to_changesets(
             _commit,
         ),
     )
-    statements.append(create_entity_cypher_stmt(cde_vs)[0])
 
     if target_ver and (has_new_pvs or has_removed_pvs):
         statements.append(

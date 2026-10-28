@@ -380,7 +380,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 3
+        assert len(actual) == 2
 
         assert_cde_value_set_merge(
             actual[0],
@@ -390,10 +390,10 @@ class TestConvertAnnotationToChangesets:
                 "api/DataElement/12345?version=1.0"
             ),
         )
-        assert "MATCH (t:term" in actual[2]
-        assert "origin_id: '12345'" in actual[2]
-        assert "toLower(t.origin_name) CONTAINS 'cadsr'" in actual[2]
-        assert 'SET t.value = "New CDE Name"' in actual[2]
+        assert "MATCH (t:term" in actual[1]
+        assert "origin_id: '12345'" in actual[1]
+        assert "toLower(t.origin_name) CONTAINS 'cadsr'" in actual[1]
+        assert 'SET t.value = "New CDE Name"' in actual[1]
 
     def test_convert_annotation_to_changesets_with_name_and_version_change(
     self,
@@ -423,7 +423,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 3
+        assert len(actual) == 2
 
         assert_cde_value_set_merge(
             actual[0],
@@ -434,7 +434,7 @@ class TestConvertAnnotationToChangesets:
             ),
         )
 
-        assert 'SET t.value = "New Name"' in actual[2]
+        assert 'SET t.value = "New Name"' in actual[1]
 
     def test_convert_annotation_to_changesets_only_removed_pvs_no_new_pvs(
     self,
@@ -474,7 +474,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 5
+        assert len(actual) == 4
 
         assert_cde_value_set_merge(
             actual[0],
@@ -535,7 +535,7 @@ class TestConvertAnnotationToChangesets:
         )
         actual = get_changeset_texts(changesets)
 
-        assert len(actual) == 4
+        assert len(actual) == 3
 
         assert_cde_value_set_merge(
             actual[0],
@@ -556,6 +556,33 @@ class TestConvertAnnotationToChangesets:
         assert "OldPV2" in delete_statements[0]
         assert "2559594" not in delete_statements[0]
         assert "OldPV1" not in delete_statements[0]
+
+    def test_cde_annotation_uses_only_canonical_value_set_creator(
+        self,
+    ) -> None:
+        """A CDE update must emit only one value-set creation statement."""
+        changesets = convert_annotation_to_changesets(
+            TEST_ANNOTATION_SPEC,
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        statements = get_changeset_texts(changesets)
+
+        dedicated_value_set_merges = [
+            statement
+            for statement in statements
+            if statement.startswith("MERGE (vs:value_set")
+        ]
+        generic_value_set_merges = [
+            statement
+            for statement in statements
+            if statement.startswith("MERGE (n0:value_set")
+        ]
+
+        assert len(dedicated_value_set_merges) == 1
+        assert generic_value_set_merges == []
+
 
 class TestConvertModelCDES:
     def test_convert_model_cdes_to_changelog_id(self):
