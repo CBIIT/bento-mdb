@@ -391,7 +391,8 @@ class TestConvertAnnotationToChangesets:
             ),
         )
         assert "MATCH (t:term" in actual[1]
-        assert "origin_id: '12345'" in actual[1]
+        assert 'origin_id: "12345"' in actual[1]
+        assert 'origin_version: "1.0"' in actual[1]
         assert "toLower(t.origin_name) CONTAINS 'cadsr'" in actual[1]
         assert 'SET t.value = "New CDE Name"' in actual[1]
 
@@ -434,7 +435,38 @@ class TestConvertAnnotationToChangesets:
             ),
         )
 
+        assert 'origin_id: "12345"' in actual[1]
+        assert 'origin_version: "2.0"' in actual[1]
         assert 'SET t.value = "New Name"' in actual[1]
+
+    def test_cde_name_change_without_version_does_not_update_terms(
+        self,
+    ) -> None:
+        """A missing version must not produce a broad CDE rename."""
+        annotation_without_version = {
+            "entity": {},
+            "annotation": {
+                "key": ("Old Name", "caDSR"),
+                "attrs": {
+                    "origin_id": "12345",
+                    "origin_version": None,
+                    "origin_name": "caDSR",
+                    "value": "Old Name",
+                },
+            },
+            "value_set": [],
+            "CDEFullName": "New Name",
+        }
+
+        changesets = convert_annotation_to_changesets(
+            annotation_without_version,  # type: ignore
+            1,
+            TEST_AUTHOR,
+            TEST_COMMIT,
+        )
+        statements = get_changeset_texts(changesets)
+
+        assert all("SET t.value" not in statement for statement in statements)
 
     def test_convert_annotation_to_changesets_only_removed_pvs_no_new_pvs(
     self,
