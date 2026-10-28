@@ -228,7 +228,6 @@ def convert_annotation_to_changesets(
             _commit,
         ),
     )
-    statements.append(create_entity_cypher_stmt(cde_vs)[0])
 
     if target_ver and (has_new_pvs or has_removed_pvs):
         statements.append(
@@ -273,25 +272,38 @@ def convert_annotation_to_changesets(
                 pv_value,
             )
 
-    # Update annotation term if CDE name changed
+    # Update only the exact versioned CDE term when its name changes.
     cde_full_name = annotation.get("CDEFullName")
 
-    if cde_full_name:
-        # Match by origin_id only
-        match_clause = (
-            f"MATCH (t:term {{origin_id: '{cde_id}'}}) "
-            f"WHERE toLower(t.origin_name) CONTAINS 'cadsr' "
-        )
-        set_clauses = []
-
-        logger.info("Updating CDE name for %s to: %s", cde_id, cde_full_name)
+    if cde_full_name and target_ver:
+        cde_id_literal = cypher_string_literal(cde_id)
+        cde_version_literal = cypher_string_literal(target_ver)
         escaped_name = cypher_string_literal(cde_full_name)
-        set_clauses.append(f"t.value = {escaped_name}")
 
-        # Note: The CADsr CDE version is not updated; it should be determined by the data model.
-        if set_clauses:
-            update_term_stmt = match_clause + "SET " + ", ".join(set_clauses)
-            statements.append(update_term_stmt)  # type: ignore
+        logger.info(
+            "Updating CDE name for %s version %s to: %s",
+            cde_id,
+            target_ver,
+            cde_full_name,
+        )
+
+        update_term_stmt = (
+            "MATCH (t:term {"
+            f"origin_id: {cde_id_literal}, "
+            f"origin_version: {cde_version_literal}"
+            "}) "
+            "WHERE toLower(t.origin_name) CONTAINS 'cadsr' "
+            f"SET t.value = {escaped_name}"
+        )
+        statements.append(update_term_stmt)  # type: ignore
+
+    elif cde_full_name:
+        logger.warning(
+            "Skipping CDE name update because the CDE version is missing: "
+            "cde_id=%s name=%s",
+            cde_id,
+            cde_full_name,
+        )
     for pv in tqdm(
         annotation["value_set"],
         desc="PVs",
