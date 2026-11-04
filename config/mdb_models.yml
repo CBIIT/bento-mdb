@@ -186,9 +186,9 @@ CTDC:
   - version: 1.7.0
     tag: 1.7.0
   - version: 1.8.0
-    tag: 1.8.0-mdf-fix_v2
+    tag: 1.8.0
   - version: 1.9.0
-    tag: 1.9.0-mdf-fix
+    tag: 1.9.0
   - version: 1.10.0
     tag: 1.10.0-mdf-fix
   - version: 1.11.0
