@@ -83,7 +83,7 @@ jobs:
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-          MDB_ID: cloud-one-mdb-dev
+          MDB_ID: fnl-mdb-dev
         run: |
           set -xeuo pipefail
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
