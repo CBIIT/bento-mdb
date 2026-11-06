@@ -39,7 +39,7 @@ jobs:
     uses: ./.github/workflows/generate_terms_changelog.yml
     secrets:
       PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
-      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL_C1 }}
+      PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
       AWS_CHANGELOG_ROLE_ARN: ${{ secrets.AWS_CHANGELOG_ROLE_ARN }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       S3_CHANGELOG_BUCKET: ${{ secrets.S3_CHANGELOG_BUCKET }}
