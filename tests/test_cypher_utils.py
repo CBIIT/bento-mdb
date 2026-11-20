@@ -1,14 +1,109 @@
 """Tests for cypher utilities."""
 
-from bento_meta.objects import Node, Property, Term
+import pytest
+from bento_meta.cmp_objects import (
+    CompositionOp,
+    VSComposition,
+    VSCompositionStep,
+)
+from bento_meta.objects import Node, Property, Term, ValueSet
 
 from bento_mdb.cypher_utils import (
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
     escape_quotes_in_attr,
     generate_cypher_to_link_term_synonyms,
+    get_edp_reference_identity,
+    get_value_set_composition_recipe,
+    get_value_set_union_operands,
+    union_edp_value_set_cypher,
 )
 from tests.test_utils import assert_equal
+
+
+def _edp_term(code: str, version: str = "1") -> Term:
+    return Term(
+        {
+            "handle": f"edp_{code}",
+            "value": f"EDP {code}",
+            "origin_name": "CRDC",
+            "origin_id": code,
+            "origin_version": version,
+        },
+    )
+
+
+def _composition_step(value_set: ValueSet, operator: str = "Union"):
+    return VSCompositionStep(
+        operator=CompositionOp(operator),
+        value_set=value_set,
+    )
+
+
+class TestValueSetUnion:
+    """Tests for shared value-set Union evaluation."""
+
+    def test_operands_and_recipe_preserve_order(self) -> None:
+        source_edp = _edp_term("CRDC0001")
+        source_operand = ValueSet()
+        source_operand.edp_terms[source_edp.handle] = source_edp
+
+        explicit_term = Term({"handle": "other", "value": "Other"})
+        explicit_operand = ValueSet()
+        explicit_operand.terms[explicit_term.handle] = explicit_term
+
+        composition = VSComposition(
+            steps=[
+                _composition_step(source_operand),
+                _composition_step(explicit_operand),
+            ],
+        )
+
+        operands = get_value_set_union_operands(composition)
+
+        assert operands == [source_operand, explicit_operand]
+        assert get_value_set_composition_recipe(operands) == (
+            '[{"Op":"Union","Enum":[{"Origin":"CRDC",'
+            '"Code":"CRDC0001","Version":"1"}]},'
+            '{"Op":"Union","Enum":[{"Value":"Other"}]}]'
+        )
+
+    def test_edp_reference_requires_exact_identity(self) -> None:
+        term = _edp_term("CRDC0001", "1.00")
+        assert get_edp_reference_identity(term) == (
+            "CRDC",
+            "CRDC0001",
+            "1.00",
+        )
+
+        term.origin_version = None
+        with pytest.raises(ValueError, match="Origin, Code, and Version"):
+            get_edp_reference_identity(term)
+
+    def test_unsupported_operator_fails(self) -> None:
+        operand = ValueSet()
+        operand.terms["term"] = Term({"value": "Term"})
+        composition = VSComposition(steps=[])
+        composition.steps.append(
+            VSCompositionStep(
+                value_set=operand,
+                operator="Difference",  # type: ignore[arg-type]
+            ),
+        )
+        with pytest.raises(ValueError, match="Unsupported"):
+            get_value_set_union_operands(composition)
+
+    def test_union_cypher_uses_exact_edp_identity(self) -> None:
+        actual = union_edp_value_set_cypher(
+            'MATCH (target_vs:value_set {handle: "TARGET|1"})',
+            _edp_term("CRDC0001", "1.00"),
+        )
+
+        assert 'origin_name: "CRDC"' in actual
+        assert 'origin_id: "CRDC0001"' in actual
+        assert 'origin_version: "1.00"' in actual
+        assert "(source_vs)-[:has_term]->(pv:term)" in actual
+        assert "MERGE (target_vs)-[:has_term]->(pv)" in actual
 
 
 def test_escape_quotes_in_attr() -> None:

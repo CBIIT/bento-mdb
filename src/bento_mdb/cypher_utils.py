@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from string import Template
 from typing import TYPE_CHECKING
 
+from bento_meta.cmp_objects import CompositionOp, VSComposition
 from bento_meta.objects import Concept, Edge, Property, Tag, Term, ValueSet
 from minicypher.clauses import (
     Clause,
@@ -146,6 +147,147 @@ def get_value_set_identity_props(value_set: ValueSet) -> dict[str, str]:
         raise ValueError(msg)
 
     return {"nanoid": nanoid}
+
+
+def get_edp_reference_identity(
+    term: Entity,
+) -> tuple[str, str, str]:
+    """Return the exact identity of an EDP composition operand."""
+    identity = (
+        normalize_identity_text(
+            getattr(term, "origin_name", None),
+        ),
+        normalize_identity_text(
+            getattr(term, "origin_id", None),
+        ),
+        normalize_optional_version(
+            getattr(term, "origin_version", None),
+        ),
+    )
+
+    if not all(identity):
+        raise ValueError(
+            "Every EDP composition operand must define "
+            "Origin, Code, and Version."
+        )
+
+    return identity
+
+
+def get_value_set_union_operands(
+    composition: VSComposition,
+) -> list[ValueSet]:
+    """Return ordered Union operands from a validated composition."""
+    operands = []
+
+    for step in composition.steps:
+        operator = getattr(step, "operator", None)
+        operator = getattr(operator, "value", operator)
+
+        if operator != CompositionOp.UNION.value:
+            raise ValueError(
+                "Unsupported value-set composition operator: "
+                f"{operator}"
+            )
+
+        operands.append(step.value_set)
+
+    return operands
+
+
+def get_value_set_composition_recipe(
+    operands: list[ValueSet],
+) -> str:
+    """Serialize ordered Union operands for value-set provenance."""
+    recipe = []
+
+    for operand in operands:
+        enum_items = []
+
+        for edp_term in operand.edp_terms.values():
+            origin, code, version = get_edp_reference_identity(
+                edp_term,
+            )
+            enum_items.append(
+                {
+                    "Origin": origin,
+                    "Code": code,
+                    "Version": version,
+                },
+            )
+
+        for term in operand.terms.values():
+            origin, code, version, value = get_term_identity(term)
+            item = {"Value": value}
+            if origin:
+                item["Origin"] = origin
+            if code:
+                item["Code"] = code
+            if version:
+                item["Version"] = version
+            enum_items.append(item)
+
+        recipe.append({"Op": "Union", "Enum": enum_items})
+
+    return json.dumps(
+        recipe,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def union_edp_value_set_cypher(
+    target_value_set_match: str,
+    edp_term: Entity,
+) -> str:
+    """Merge one referenced EDP value set into target_vs."""
+    origin, code, version = get_edp_reference_identity(
+        edp_term
+    )
+
+    return (
+        f"{target_value_set_match} "
+        "MATCH (source_edp:term {"
+        f"origin_name: {cypher_string_literal(origin)}, "
+        f"origin_id: {cypher_string_literal(code)}, "
+        f"origin_version: {cypher_string_literal(version)}"
+        "})-[:specifies_value_set]->(source_vs:value_set) "
+        "MATCH (source_vs)-[:has_term]->(pv:term) "
+        "MERGE (target_vs)-[:has_term]->(pv)"
+    )
+
+
+def validate_edp_value_set_operand_cypher(
+    edp_term: Entity,
+) -> str:
+    """Fail before mutation when an EDP operand is unavailable."""
+    origin, code, version = get_edp_reference_identity(
+        edp_term,
+    )
+
+    return (
+        "OPTIONAL MATCH (source_edp:term {"
+        f"origin_name: {cypher_string_literal(origin)}, "
+        f"origin_id: {cypher_string_literal(code)}, "
+        f"origin_version: {cypher_string_literal(version)}"
+        "})-[:specifies_value_set]->(source_vs:value_set) "
+        "WITH count(source_vs) AS source_count "
+        # A zero count deliberately fails the changeset before target
+        # value-set creation. This avoids publishing a partial result.
+        "RETURN 1 / source_count AS validated"
+    )
+
+
+def set_value_set_composition_recipe_cypher(
+    target_value_set_match: str,
+    recipe: str,
+) -> str:
+    """Store an ordered composition recipe on target_vs."""
+    return (
+        f"{target_value_set_match} "
+        "SET target_vs.composition = "
+        f"{cypher_string_literal(recipe)}"
+    )
 
 
 def get_entity_identity_props(entity: Entity) -> dict[str, str | bool]:
