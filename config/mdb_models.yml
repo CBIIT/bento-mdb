@@ -257,9 +257,11 @@ CTDC:
     tag: 4.2.0
   - version: 4.3.0
     tag: 4.3.0
-  latest_version: 4.3.0
-  latest_prerelease_commit: a9f9dd7ae1cb6c0cbe56047d6fe4e29ed3353ef7
-  latest_prerelease_version: 4.3.0
+  - version: 4.4.0
+    tag: 4.4.0
+  latest_version: 4.4.0
+  latest_prerelease_commit: 6a43920260b8682118a19872c6ff2bf58fd2f6b8
+  latest_prerelease_version: 4.4.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
